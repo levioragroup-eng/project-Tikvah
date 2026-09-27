@@ -48,6 +48,93 @@ export const PRAY_NOOK = { tx: 32, ty: 18 };       // pray at home
 // Cafe (exterior cook spot)
 export const CAFE_COUNTER = { tx: 26, ty: 17 };
 
+// ---------- Collision (server-authoritative) ----------
+// The client renders server positions (no client-side prediction), so the server
+// is the single decider: a player's center may never enter a solid tile.
+// Tile predicates mirror the client's drawing layout (baseTile/isTree/isFence)
+// so what looks solid is solid.
+const FARM_RECT = { x0: 5, y0: 8, x1: 11, y1: 12 };    // matches client fence rect
+const CHURCH_RECT = { x0: 17, y0: 1, x1: 23, y1: 4 };  // building incl. roof row
+const HOME_RECT = { x0: 10, y0: 14, x1: 12, y1: 16 };
+const CAFE_RECT = { x0: 25, y0: 14, x1: 27, y1: 16 };
+const STALL_TILES = [ {tx:24,ty:10}, {tx:26,ty:10}, {tx:28,ty:10} ];
+const FOUNTAIN_TILE = { tx: 24, ty: 13 };
+
+function inRect(tx, ty, r) { return tx >= r.x0 && tx <= r.x1 && ty >= r.y0 && ty <= r.y1; }
+
+function baseKind(tx, ty) {   // mirrors client baseTile()
+  if (tx === 30 || tx === 31) return (ty === 14) ? 'bridge' : 'water';
+  if (tx === 29 || tx === 32) return 'sand';
+  if (ty === 14 && tx >= 11 && tx <= 32) return 'path';
+  if (tx === 20 && ty >= 6 && ty <= 14) return 'path';
+  if (tx >= 29 && tx <= 33 && ty === 20) return 'path';
+  if (tx === 11 && ty >= 14 && ty <= 18) return 'path';
+  if (ty === 18 && tx >= 11 && tx <= 27) return 'path';
+  if (tx === 26 && ty >= 14 && ty <= 18) return 'path';
+  if (tx >= 18 && tx <= 22 && ty >= 12 && ty <= 16) return 'plaza';
+  return 'grass';
+}
+
+function nearStoneClearing(tx, ty) {
+  // Small clearings around the ruin stones so the co-op moment stays reachable
+  // even though both stones sit in the forest bands.
+  return (Math.abs(tx - STONE_A.tx) <= 1 && Math.abs(ty - STONE_A.ty) <= 1) ||
+         (Math.abs(tx - STONE_B.tx) <= 1 && Math.abs(ty - STONE_B.ty) <= 1);
+}
+
+function isTreeTile(tx, ty) {   // mirrors client isTree(), minus the ruin clearings
+  if (nearStoneClearing(tx, ty)) return false;
+  if (tx === FARM_RECT.x1 && ty === 10) return false;  // the farm gate stays open
+  if (tx >= 1 && tx <= 5 && ty >= 4 && ty <= 24) return (tx*13 + ty*7) % 4 !== 3;
+  if (tx >= 34 && tx <= 39 && ty >= 6 && ty <= 20) return (tx*11 + ty*5) % 5 !== 4;
+  if ((tx*7 + ty*13) % 23 === 0 && baseKind(tx,ty) === 'grass' &&
+      !(tx>=17&&tx<=23&&ty<=6) && !(tx>=10&&tx<=12&&ty>=14&&ty<=18) &&
+      !(tx>=25&&tx<=27&&ty>=14&&ty<=19) && !(tx>=24&&tx<=28&&ty>=9&&ty<=11))
+    return true;
+  return false;
+}
+
+function isFenceTile(tx, ty) {   // mirrors client isFence()
+  const onH = (ty === FARM_RECT.y0 || ty === FARM_RECT.y1) && tx >= FARM_RECT.x0 && tx <= FARM_RECT.x1;
+  const onV = (tx === FARM_RECT.x0 || tx === FARM_RECT.x1) && ty >= FARM_RECT.y0 && ty <= FARM_RECT.y1;
+  if (!onH && !onV) return false;
+  if (tx === FARM_RECT.x1 && ty === 10) return false;  // east gate stays open
+  return true;
+}
+
+export function isSolid(tx, ty, place) {
+  // place: null = outside, 'church' | 'home' = interiors
+  if (tx < 0 || ty < 0 || tx >= WORLD_W || ty >= WORLD_H) return true;
+  if (place === 'church') {
+    if (!(tx >= 15 && tx <= 25 && ty >= 18 && ty <= 25)) return true; // walls: stay in the room
+    if ((tx === 17 || tx === 23) && (ty === 20 || ty === 22)) return true; // pews
+    if (tx === 20 && ty === 20) return true; // altar
+    return false;
+  }
+  if (place === 'home') {
+    if (!(tx >= 29 && tx <= 37 && ty >= 18 && ty <= 25)) return true; // walls: stay in the room
+    return false;
+  }
+  if (baseKind(tx, ty) === 'water') return true;      // the river (the bridge stays walkable)
+  if (isTreeTile(tx, ty)) return true;
+  if (isFenceTile(tx, ty)) return true;
+  if (inRect(tx, ty, CHURCH_RECT) || inRect(tx, ty, HOME_RECT) || inRect(tx, ty, CAFE_RECT)) return true;
+  for (const s of STALL_TILES) if (tx === s.tx && ty === s.ty) return true;
+  if (tx === FOUNTAIN_TILE.tx && ty === FOUNTAIN_TILE.ty) return true;
+  return false;
+}
+
+function solidAt(place, x, y) {
+  return isSolid(Math.floor(x / TILE), Math.floor(y / TILE), place);
+}
+
+function collideMove(p, nx, ny) {
+  // Axis-separated slide: try x, then y — players glide around obstacles
+  // instead of sticking to them.
+  if (!solidAt(p.place, nx, p.y)) p.x = nx;
+  if (!solidAt(p.place, p.x, ny)) p.y = ny;
+}
+
 const CROP_GROW_MS = parseInt(process.env.CROP_GROW_MS || '45000', 10); // watered -> ready
 const FISH_WAIT_MIN = parseInt(process.env.FISH_WAIT_MIN || '3000', 10);
 const FISH_WAIT_MAX = parseInt(process.env.FISH_WAIT_MAX || '7000', 10);
@@ -301,9 +388,10 @@ function handleInteract(room, ws, p) {
     if (near(p, HOME_EXIT.tx, HOME_EXIT.ty)) { exitInterior(room, ws, p, HOME_DOOR.tx, HOME_DOOR.ty); return {ok:true, action:'exit-home'}; }
     if (near(p, SLEEP_SPOT.tx, SLEEP_SPOT.ty)) {
       room.day.n++; room.day.start = now;
-      room.rhythm = { farm: false, fish: false, cook: false, greet: false, candle: false };
-      broadcast(room, { t: 'day', ...dayPublic(room) });
-      broadcast(room, { t: 'slept', by: p.name, n: room.day.n });
+      // Sleep is personal rest: the day counter advances, but the room's
+      // rhythm flags and garden bloom persist (sleep never wipes progress).
+      broadcast(room, { t: 'day', ...dayPublic(room) });   // authoritative day: everyone
+      send(ws, { t: 'slept', by: p.name, n: room.day.n }); // personal rest effect: sleeper only
       return {ok:true, action:'sleep'};
     }
     if (near(p, HEARTH.tx, HEARTH.ty)) { send(ws, {t:'menu', kind:'cook'}); return {ok:true, action:'cook-menu'}; }
@@ -424,10 +512,9 @@ function tickRoom(room) {
   for (const [, p] of room.players) {
     if (p.ix !== 0 || p.iy !== 0) {
       const len = Math.hypot(p.ix, p.iy) || 1;
-      const nx = p.x + (p.ix/len)*MAX_SPEED*dt;
-      const ny = p.y + (p.iy/len)*MAX_SPEED*dt;
-      p.x = Math.max(TILE/2, Math.min(WORLD_W*TILE - TILE/2, nx));
-      p.y = Math.max(TILE/2, Math.min(WORLD_H*TILE - TILE/2, ny));
+      const nx = Math.max(TILE/2, Math.min(WORLD_W*TILE - TILE/2, p.x + (p.ix/len)*MAX_SPEED*dt));
+      const ny = Math.max(TILE/2, Math.min(WORLD_H*TILE - TILE/2, p.y + (p.iy/len)*MAX_SPEED*dt));
+      collideMove(p, nx, ny);   // server-authoritative: solids block, walls slide
       if (!p.moving) { p.moving = true; moved = true; }
       else moved = true;
       if (p.ix < 0) p.dir='left'; else if (p.ix > 0) p.dir='right';
@@ -680,7 +767,7 @@ wss.on('connection', (ws, req) => {
     if (!room) return;
     const p = room.players.get(ws);
     room.players.delete(ws); room.sockets.delete(ws);
-    if (p) broadcast(room, {t:'leave', id: p.id});
+    if (p) broadcast(room, {t:'leave', id: p.id, name: p.name});
     if (room.players.size === 0) {
       // keep empty rooms briefly so a dropped player can rejoin, then reap
       setTimeout(() => { if (room.players.size === 0) rooms.delete(room.code); }, 60_000).unref();

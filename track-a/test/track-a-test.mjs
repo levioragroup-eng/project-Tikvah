@@ -131,13 +131,43 @@ try {
   ok('speed cap respected (<=165px in ~1.1s)', moved <= 200, `moved ${moved.toFixed(0)}px`);
   ok('other client sees movement', await b.waitFor(() => Math.abs((b.state.players.get(a.state.you.id)?.x || 0) - p1.x) < 20, 3000));
 
+  // ---------- 2b. server-authoritative collision ----------
+  console.log('collision:');
+  const BRIDGE_E = { x: 31*TILE+16, y: 14*TILE+16 }; // east bridge tile: fully across the water
+  const PATH_E = { x: 29*TILE+16, y: 18*TILE+16 };    // east bank, south of the river
+  const PATH_W = { x: 20*TILE+16, y: 18*TILE+16 };    // village path row
+  ok('walk south along the cafe to the village path', await walkTo(a, 24*TILE+16, 18*TILE+16, 12000));
+  ok('walk east to the east bank', await walkTo(a, PATH_E.x, PATH_E.y, 12000));
+  ok('reach the bridge', await walkTo(a, BRIDGE_E.x, BRIDGE_E.y, 8000));
+  const waterPush = await walkTo(a, BRIDGE_E.x, 18*TILE+16, 3500);
+  ok('river is solid (cannot walk on water)', waterPush === false && a.me().y < 15*TILE, `y=${a.me()?.y?.toFixed(0)}`);
+  ok('walk back west to the farm', await walkTo(a, 6*TILE+16, 10*TILE+16, 14000));
+  ok('exit the farm via the east gate', await walkTo(a, 13*TILE+16, 10*TILE+16, 8000));
+  ok('walk to the lone tree', await walkTo(a, 14*TILE+16, 17*TILE+16, 12000));
+  // align precisely with the trunk (walkTo stops within 30px; the tree needs x in 448..480)
+  for (let i = 0; i < 30; i++) {
+    const p = a.me(); if (!p) break;
+    if (Math.abs(p.x - (14*TILE+16)) < 6) break;
+    a.send({ t: 'input', x: Math.sign(14*TILE+16 - p.x), y: 0 });
+    await sleep(100);
+  }
+  a.send({ t: 'input', x: 0, y: 0 });
+  await sleep(200);
+  const treePush = await walkTo(a, 14*TILE+16, 21*TILE+16, 3500);
+  ok('trees are solid', treePush === false && a.me().y < 19*TILE, `y=${a.me()?.y?.toFixed(0)}`);
+  ok('walk north of the farm', await walkTo(a, 11*TILE+16, 7*TILE+16, 12000));
+  ok('walk to the church front', await walkTo(a, 20*TILE+16, 7*TILE+16, 8000));
+  const wallPush = await walkTo(a, 20*TILE+16, 3*TILE+16, 3500);
+  ok('church walls are solid', wallPush === false && a.me().y >= 4*TILE - 1, `y=${a.me()?.y?.toFixed(0)}`);
+
   // ---------- 3. out-of-range interaction rejected ----------
   console.log('interaction validation:');
-  await walkTo(a, 20*TILE+16, 14*TILE+16); // center, far from farm
+  await walkTo(a, 19*TILE+16, 18*TILE+16); // village path, far from the farm
+  const farmBefore = JSON.stringify(a.state.farm);
   a.send({ t: 'interact' });
   await sleep(400);
-  const failMsg = a.lastOf('interact-fail');
-  ok('out-of-range interact rejected', !!failMsg && failMsg.reason === 'nothing-nearby');
+  // far from the farm: no farm action may fire (fox/villager harmlessly allowed)
+  ok('out-of-range interact rejected', JSON.stringify(a.state.farm) === farmBefore);
 
   // ---------- 4. farm cycle (plant -> water -> grow -> harvest) ----------
   console.log('farm:');
@@ -152,7 +182,11 @@ try {
 
   // ---------- 5. fishing (cast -> bite -> catch) ----------
   console.log('fishing:');
-  ok('walk to dock', await walkTo(b, DOCK.x - 16, DOCK.y));
+  ok('B walks to the farm gate', await walkTo(b, 11*TILE+16, 10*TILE+16, 12000));
+  ok('B walks to the village path', await walkTo(b, PATH_W.x, PATH_W.y, 12000));
+  ok('B walks to the east bank', await walkTo(b, PATH_E.x, PATH_E.y, 12000));
+  ok('B walks onto the bridge', await walkTo(b, BRIDGE_E.x, BRIDGE_E.y, 8000));
+  ok('walk to dock', await walkTo(b, DOCK.x - 16, DOCK.y, 12000));
   b.send({ t: 'interact' }); // cast
   ok('cast accepted', await b.waitFor(() => b.me()?.fishing === 'cast', 2000));
   ok('bite event fires', await b.waitFor(() => b.msgs.some(m => m.t === 'bite'), 5000));
@@ -161,12 +195,21 @@ try {
 
   // ---------- 6. church: enter, pray, read verse, exit ----------
   console.log('church:');
+  ok('A exits the farm via the east gate', await walkTo(a, 11*TILE+16, 10*TILE+16, 12000));
   ok('walk to church door', await walkTo(a, CHURCH_DOOR.x, CHURCH_DOOR.y + 8));
   a.send({ t: 'interact' }); // enter
   ok('enter church interior', await a.waitFor(() => a.me()?.inside === true, 2000));
+  // collision inside the church: interior walls + pews
+  ok('walk to the west aisle', await walkTo(a, 15*TILE+16, 24*TILE+16, 8000));
+  const wallPushIn = await walkTo(a, 15*TILE+16, 10*TILE+16, 3500);
+  ok('church interior walls hold', wallPushIn === false && a.me().y >= 18*TILE - 1, `y=${a.me()?.y?.toFixed(0)}`);
+  ok('walk north of the pew', await walkTo(a, 17*TILE+16, 19*TILE+16, 8000));
+  const pewPush = await walkTo(a, 17*TILE+16, 21*TILE+16, 3500);
+  ok('pews are solid', pewPush === false && a.me().y < 20*TILE, `y=${a.me()?.y?.toFixed(0)}`);
   ok('walk to altar', await walkTo(a, 20*TILE+16, 20*TILE+16));
   a.send({ t: 'interact' }); // pray
   ok('pray -> pray emote visible to other', await b.waitFor(() => b.state.players.get(a.state.you.id)?.emote === 'pray', 2000));
+  ok('walk around the pew to the verse stand', await walkTo(a, 16*TILE+16, 19*TILE+16));
   ok('walk to verse stand', await walkTo(a, 16*TILE+16, 20*TILE+16));
   a.send({ t: 'interact' }); // read
   const verse = await a.waitFor(() => a.msgs.some(m => m.t === 'verse'), 2000) ? a.lastOf('verse') : null;
@@ -177,16 +220,16 @@ try {
   ok('exit church', await a.waitFor(() => a.me()?.inside === false, 2000));
 
   // ---------- 6b. NPC dialogue (Hannah) ----------
-  // Hannah wanders, so walk to her live position and retry the greeting if she drifted.
+  // Hannah wanders (ignoring collision), so walk to her live position; if she
+  // drifted into a solid tile the player stops adjacent, still in talk range.
   console.log('villagers:');
   let say = null;
   for (let attempt = 0; attempt < 3 && !say; attempt++) {
     const h = a.state.npcs.get('Hannah');
     ok('Hannah is in the village', !!h);
-    if (await walkTo(a, h.x, h.y, 15000)) {
-      a.send({ t: 'interact' }); // talk
-      say = await a.waitFor(() => a.msgs.some(m => m.t === 'say'), 2000) ? a.lastOf('say') : null;
-    }
+    await walkTo(a, h.x, h.y, 8000);
+    a.send({ t: 'interact' }); // talk
+    say = await a.waitFor(() => a.msgs.some(m => m.t === 'say'), 2000) ? a.lastOf('say') : null;
   }
   ok('Hannah speaks', !!say && say.name === 'Hannah' && say.text.length > 10, say?.text);
   ok('dialogue visible to BOTH players', await b.waitFor(() => b.msgs.some(m => m.t === 'say'), 2000));
@@ -196,6 +239,11 @@ try {
   // ---------- 6c. cooking (B farms a second plot, cooks at the cafe, gives to A) ----------
   console.log('cooking:');
   const PLOT1 = { x: 10*TILE+16, y: 9*TILE+16 };   // FARM_PLOTS[2]
+  ok('B walks back to the bridge', await walkTo(b, BRIDGE_E.x, BRIDGE_E.y, 15000));
+  ok('B crosses to the west bank', await walkTo(b, 29*TILE+16, 14*TILE+16, 8000));
+  ok('B walks to the east bank', await walkTo(b, PATH_E.x, PATH_E.y, 12000));
+  ok('B walks to the village path', await walkTo(b, PATH_W.x, PATH_W.y, 12000));
+  ok('B walks to the farm gate', await walkTo(b, 11*TILE+16, 10*TILE+16, 12000));
   ok('B walks to plot 2', await walkTo(b, PLOT1.x, PLOT1.y, 15000));
   b.send({ t: 'interact' }); // plant
   ok('B plants', await b.waitFor(() => b.state.farm[2]?.stage === 'planted', 2000));
@@ -229,6 +277,7 @@ try {
   const candle = await a.waitFor(() => a.msgs.some(m => m.t === 'candle'), 2000) ? a.lastOf('candle') : null;
   ok('candle lit and shared', !!candle && candle.count === 1, 'count=' + candle?.count);
   ok('candle visible to B', await b.waitFor(() => b.msgs.some(m => m.t === 'candle'), 2000));
+  ok('walk around the pew to the altar', await walkTo(a, 20*TILE+16, 22*TILE+16));
   ok('walk to altar', await walkTo(a, 20*TILE+16, 20*TILE+16));
   a.send({ t: 'interact' }); // pray -> worship (candles are lit)
   ok('worship moment fires for both', await b.waitFor(() => b.msgs.some(m => m.t === 'worship'), 3000));
@@ -244,16 +293,22 @@ try {
   a.send({ t: 'interact' });
   ok('exit church', await a.waitFor(() => a.me()?.inside === false, 2000));
   const HOME_DOOR = { x: 11*TILE+16, y: 17*TILE+16 };
+  ok('walk to the village path', await walkTo(a, 20*TILE+16, 18*TILE+16, 12000));
   ok('walk to home door', await walkTo(a, HOME_DOOR.x, HOME_DOOR.y + 24, 15000));
   a.send({ t: 'interact' }); // enter home
   ok('enter home interior', await a.waitFor(() => a.me()?.inside === true && a.me()?.place === 'home', 2000));
+  const wallPushHome = await walkTo(a, 32*TILE+16, 10*TILE+16, 3500);
+  ok('home interior walls hold', wallPushHome === false && a.me().y >= 18*TILE - 1, `y=${a.me()?.y?.toFixed(0)}`);
   const BED = { x: 29*TILE+16, y: 18*TILE+16 };
   ok('walk to bed', await walkTo(a, BED.x, BED.y));
   const dayBefore = a.lastOf('day')?.n || 1;
   a.send({ t: 'interact' }); // sleep
   ok('sleep advances to a new day (A)', await a.waitFor(() => (a.lastOf('day')?.n || 0) > dayBefore, 3000));
   ok('sleep advances to a new day (B)', await b.waitFor(() => (b.lastOf('day')?.n || 0) > dayBefore, 3000));
-  ok('new day resets the rhythm', (a.lastOf('day')?.rhythm && Object.values(a.lastOf('day').rhythm).every(v => v === false)) === true);
+  ok('sleep does NOT wipe the day rhythm (A)', (a.lastOf('day')?.rhythm && Object.values(a.lastOf('day').rhythm).every(v => v === true)) === true, JSON.stringify(a.lastOf('day')?.rhythm));
+  ok('sleep does NOT wipe the day rhythm (B)', (b.lastOf('day')?.rhythm && Object.values(b.lastOf('day').rhythm).every(v => v === true)) === true, JSON.stringify(b.lastOf('day')?.rhythm));
+  ok('sleeper gets the personal slept effect', !!a.lastOf('slept'));
+  ok('partner does NOT get the personal slept effect', !b.msgs.some(m => m.t === 'slept'));
   const RUG = { x: 29*TILE+16, y: 21*TILE+16 };
   ok('walk to rug', await walkTo(a, RUG.x, RUG.y));
   a.send({ t: 'interact' }); // decorate
@@ -277,6 +332,9 @@ try {
   // ---------- 7. SIGNATURE: ruin opens when both stand on stones ----------
   console.log('ruin:');
   ok('A walks to stone A', await walkTo(a, STONE_A.x, STONE_A.y, 15000));
+  ok('B walks to the village path', await walkTo(b, PATH_W.x, PATH_W.y, 12000));
+  ok('B walks to the east bank', await walkTo(b, PATH_E.x, PATH_E.y, 12000));
+  ok('B walks onto the bridge', await walkTo(b, BRIDGE_E.x, BRIDGE_E.y, 8000));
   ok('B walks to stone B', await walkTo(b, STONE_B.x, STONE_B.y, 15000));
   ok('ruin-open fires for A', await a.waitFor(() => a.state.ruinOpen, 4000));
   ok('ruin-open fires for B (shared world event)', await b.waitFor(() => b.state.ruinOpen, 4000));
@@ -287,6 +345,9 @@ try {
   console.log('ending:');
   const GARDEN = { x: 20*TILE+16, y: 14*TILE+16 };
   ok('A walks to garden', await walkTo(a, GARDEN.x, GARDEN.y, 20000));
+  ok('B walks to the bridge', await walkTo(b, BRIDGE_E.x, BRIDGE_E.y, 15000));
+  ok('B walks to the east bank', await walkTo(b, PATH_E.x, PATH_E.y, 12000));
+  ok('B walks to the village path', await walkTo(b, PATH_W.x, PATH_W.y, 12000));
   ok('B walks to garden', await walkTo(b, GARDEN.x, GARDEN.y, 20000));
   ok('ending fires for A', await a.waitFor(() => a.msgs.some(m => m.t === 'ending'), 5000));
   ok('ending fires for B (shared ending)', await b.waitFor(() => b.msgs.some(m => m.t === 'ending'), 5000));
@@ -339,6 +400,14 @@ try {
   ok('room2 farm planted', room2Planted, d.state.farm[0]?.stage);
   ok('room1 farm unaffected (isolation)', room1Empty, a.state.farm[0]?.stage);
   ok('room2 does not see room1 players', d.state.players.size === 1 && ![...d.state.players.values()].some(p => p.name === 'Ariel'));
+
+  // ---------- 9c. disconnect -> partner sees "X left the village" ----------
+  console.log('leave toast:');
+  a.close();
+  const leave = await b.waitFor(() => b.msgs.some(m => m.t === 'leave'), 3000) ? b.lastOf('leave') : null;
+  ok('leave broadcast when a player disconnects', !!leave, 'no leave message received');
+  ok('leave names the departed player', !!leave && leave.name === 'Ariel', JSON.stringify(leave));
+  ok('departed player removed from partner view', await b.waitFor(() => ![...b.state.players.values()].some(p => p.name === 'Ariel'), 3000));
 
   // ---------- 9b. malformed packets don't kill the connection ----------
   console.log('malformed packets:');

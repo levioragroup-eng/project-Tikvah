@@ -233,7 +233,12 @@ function onMsg(m) {
       if (m.ending) showEnding('Two travelers. One village. A hope discovered together.');
       resize(); break;
     case 'join': players.set(m.p.id, m.p); toast(m.p.name + ' joined the village 🌿'); break;
-    case 'leave': players.delete(m.id); break;
+    case 'leave': {
+      const lp = players.get(m.id);
+      players.delete(m.id);
+      toast('🍂 ' + (m.name || (lp && lp.name) || 'A traveler') + ' left the village');
+      break;
+    }
     case 'tick': m.players.forEach(p => players.set(p.id, p)); if (m.npcs) m.npcs.forEach(n => npcs.set(n.name, n)); break;
     case 'player': players.set(m.p.id, m.p); break;
     case 'farm': farm = m.farm; break;
@@ -838,6 +843,7 @@ function baseTile(tx, ty) {
   return 'grass';
 }
 function isTree(tx, ty) {
+  if (tx === 11 && ty === 10) return false; // the farm gate stays open
   if (tx >= 1 && tx <= 5 && ty >= 4 && ty <= 24) return (tx*13 + ty*7) % 4 !== 3;
   if (tx >= 34 && tx <= 39 && ty >= 6 && ty <= 20) return (tx*11 + ty*5) % 5 !== 4;
   if ((tx*7 + ty*13) % 23 === 0 && baseTile(tx,ty) === 'grass' &&
