@@ -6,6 +6,12 @@
 <title>Tikvah — A place to grow, a story to live</title>
 <style>
   * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  /* beauty pass: one shared palette for every screen */
+  :root {
+    --gold:#ffd76e; --gold-deep:#f0a840; --cream:#fffbe8; --cream-warm:#fdf3da;
+    --brown:#7a4b1f; --brown-deep:#5d3a17; --ink:#3a2a12;
+  }
+  @keyframes cardRise { from { opacity:0; transform:translateY(14px) scale(.98); } to { opacity:1; transform:none; } }
   html, body { margin:0; padding:0; height:100%; overflow:hidden; background:#1a2b1e;
     font-family: "Trebuchet MS", Verdana, sans-serif; color:#fff; touch-action:none; }
   #wrap { position:fixed; inset:0; display:flex; align-items:center; justify-content:center; }
@@ -53,9 +59,9 @@
   #hud { position:absolute; top:0; left:0; right:0; display:none; justify-content:space-between; align-items:flex-start;
     padding:8px 12px; z-index:5; pointer-events:none; }
   #hudLeft { display:flex; flex-direction:column; gap:4px; }
-  #roomcode { background:rgba(0,0,0,.55); padding:6px 14px; border-radius:10px; font-size:18px; letter-spacing:3px; font-weight:bold; color:#ffe9a8; align-self:flex-start; }
-  #dayInfo { background:rgba(0,0,0,.45); padding:4px 10px; border-radius:8px; font-size:12px; color:#dff3d8; align-self:flex-start; }
-  #rhythm { display:flex; gap:4px; background:rgba(0,0,0,.45); padding:4px 8px; border-radius:8px; font-size:14px; align-self:flex-start; }
+  #roomcode { background:rgba(0,0,0,.55); padding:6px 14px; border-radius:10px; font-size:18px; letter-spacing:3px; font-weight:bold; color:#ffe9a8; align-self:flex-start; border:2px solid rgba(255,233,168,.55); }
+  #dayInfo { background:rgba(0,0,0,.45); padding:4px 10px; border-radius:10px; font-size:12px; color:#dff3d8; align-self:flex-start; border:2px solid rgba(255,233,168,.4); }
+  #rhythm { display:flex; gap:4px; background:rgba(0,0,0,.45); padding:4px 8px; border-radius:10px; font-size:14px; align-self:flex-start; border:2px solid rgba(255,233,168,.4); }
   #rhythm span { opacity:.28; filter:grayscale(1); }
   #rhythm span.done { opacity:1; filter:none; }
   #toast { position:absolute; top:76px; left:50%; transform:translateX(-50%); background:rgba(20,30,20,.85);
@@ -76,33 +82,39 @@
   #qcBtn { position:absolute; right:14px; top:212px; width:48px; height:48px; border-radius:50%; font-size:22px;
     background:rgba(0,0,0,.5); border:2px solid rgba(255,255,255,.4); display:none; z-index:7; }
   #qcPanel { position:absolute; right:70px; top:150px; display:none; z-index:8; background:#fffbe8;
-    border:3px solid #7a4b1f; border-radius:12px; padding:8px; width:min(240px,62vw); }
+    border:3px solid #7a4b1f; border-radius:12px; padding:8px; width:min(240px,62vw); animation:cardRise .25s ease-out; }
   #qcPanel button { display:block; width:100%; margin:4px 0; font-size:14px; padding:9px 10px; border-radius:10px;
-    border:2px solid #5d3a17; background:linear-gradient(#ffd76e,#f0a840); color:#4a2c0c; font-weight:bold; cursor:pointer; }
+    border:2px solid #5d3a17; background:linear-gradient(#ffd76e,#f0a840); color:#4a2c0c; font-weight:bold; cursor:pointer;
+    box-shadow:0 3px 0 #5d3a17; transition:transform .08s; }
+  #qcPanel button:active { transform:translateY(2px); box-shadow:0 1px 0 #5d3a17; }
   /* verse panel */
   #verse { position:absolute; inset:0; display:none; align-items:center; justify-content:center; z-index:20;
     background:rgba(10,15,10,.7); padding:20px; }
-  #verse .card { background:#fffbe8; color:#3a2a12; border-radius:16px; padding:28px; max-width:440px; text-align:center;
-    border:4px solid #7a4b1f; box-shadow:0 10px 40px rgba(0,0,0,.5); }
+  #verse .card, #panel .card, #ending .card {
+    background:linear-gradient(#fffdf4,#fdf3da); color:#3a2a12; border-radius:18px; padding:28px;
+    width:min(460px,92vw); max-width:460px; text-align:center;
+    border:3px solid #7a4b1f; box-shadow:0 10px 40px rgba(0,0,0,.5), inset 0 0 34px rgba(255,214,110,.22);
+    animation:cardRise .45s ease-out; }
   #verse .ref { font-weight:bold; font-size:20px; margin-bottom:12px; color:#7a4b1f; }
   #verse .text { font-style:italic; font-size:17px; line-height:1.6; }
   #verse button { margin-top:18px; }
   /* generic panel (cook menu etc.) */
   #panel { position:absolute; inset:0; display:none; align-items:center; justify-content:center; z-index:20;
     background:rgba(10,15,10,.55); padding:20px; }
-  #panel .card { background:#fffbe8; color:#3a2a12; border-radius:16px; padding:22px 24px; width:min(380px,92vw); text-align:center;
-    border:4px solid #7a4b1f; box-shadow:0 10px 40px rgba(0,0,0,.5); }
+  /* unified with #verse .card above (single card language) */
   #panel h3 { margin:0 0 4px; color:#7a4b1f; font-size:22px; }
   #panel .sub { font-size:13px; color:#8a7a5a; margin:0 0 14px; font-style:italic; }
   #panel .inv { font-size:14px; margin-bottom:12px; color:#5a4a2a; }
   #panel .btns { display:flex; flex-direction:column; gap:10px; }
   #panel .btns button { font-size:17px; padding:11px; border-radius:12px; border:2px solid #5d3a17; cursor:pointer;
-    background:linear-gradient(#ffd76e,#f0a840); color:#4a2c0c; font-weight:bold; }
+    background:linear-gradient(#ffd76e,#f0a840); color:#4a2c0c; font-weight:bold;
+    box-shadow:0 4px 0 #5d3a17; transition:transform .08s; }
+  #panel .btns button:active { transform:translateY(3px); box-shadow:0 1px 0 #5d3a17; }
   #panel .btns button.ghostb { background:rgba(0,0,0,.06); color:#5a4a2a; border-color:#b9a888; box-shadow:none; }
   /* dialogue */
+  /* dialogue joins the shared warmcard language (layout only here) */
   #dialogue { position:absolute; left:50%; bottom:110px; transform:translateX(-50%); display:none; z-index:18;
-    width:min(460px,92vw); background:#fffbe8; color:#3a2a12; border-radius:14px; border:3px solid #7a4b1f;
-    padding:14px 18px; box-shadow:0 8px 30px rgba(0,0,0,.45); }
+    width:min(460px,92vw); color:#3a2a12; padding:14px 18px; animation:cardIn .4s ease-out; }
   #dialogue .who { font-weight:bold; color:#7a4b1f; font-size:16px; margin-bottom:6px; }
   #dialogue .who .hearts { color:#e06a8a; font-size:14px; }
   #dialogue .line { font-size:15px; line-height:1.55; font-style:italic; }
@@ -112,8 +124,7 @@
   /* ending overlay */
   #ending { position:absolute; inset:0; display:none; align-items:center; justify-content:center; z-index:30;
     background:radial-gradient(ellipse at 50% 35%, rgba(90,140,90,.96) 0%, rgba(30,60,35,.97) 70%); padding:20px; }
-  #ending .card { text-align:center; max-width:480px; padding:36px 28px; border-radius:20px;
-    background:rgba(255,251,232,.96); color:#3a2a12; border:4px solid #ffe9a8; box-shadow:0 12px 60px rgba(0,0,0,.5); }
+  /* unified with #verse .card above (single card language) */
   #ending .stars { font-size:34px; margin-bottom:8px; }
   #ending h2 { margin:0 0 12px; color:#7a4b1f; font-size:30px; letter-spacing:2px; }
   #ending .msg { font-size:18px; line-height:1.7; font-style:italic; margin:0 0 8px; }
@@ -186,7 +197,7 @@
   #discover .nopath { font-style:italic; color:#8a7a5a; }
   #discover button { margin-top:8px; }
   #hannah { position:absolute; left:50%; bottom:110px; transform:translateX(-50%); z-index:19; display:none;
-    width:min(450px, 92vw); padding:16px 20px; animation:cardIn .5s ease-out; }
+    width:min(450px, 92vw); padding:16px 20px; animation:cardIn .5s ease-out, hannahGlow 3.2s ease-in-out .6s infinite; }
   @keyframes cardIn { from { opacity:0; transform:translate(-50%,12px); } to { opacity:1; transform:translate(-50%,0); } }
   #hannah .who { font-weight:bold; color:#7a4b1f; font-size:17px; margin-bottom:8px; }
   #hannah .line { font-size:15px; line-height:1.65; font-style:italic; margin-bottom:12px; }
@@ -204,7 +215,16 @@
     box-shadow:0 4px 16px rgba(0,0,0,.4); animation:promptIn .18s ease-out; }
   @keyframes promptIn { from { opacity:0; transform:translate(-50%,6px); } to { opacity:1; transform:translate(-50%,0); } }
   /* toast polish */
-  #toast { border:2px solid rgba(255,233,168,.55); box-shadow:0 4px 18px rgba(0,0,0,.45); }
+  #toast { border:2px solid rgba(255,233,168,.55); box-shadow:0 4px 18px rgba(0,0,0,.45); animation:toastIn .22s ease-out; }
+  @keyframes toastIn { from { opacity:0; transform:translate(-50%,-8px); } to { opacity:1; transform:translate(-50%,0); } }
+  /* hannah's storybook glow while her greeting is up */
+  @keyframes hannahGlow {
+    0%,100% { box-shadow:0 10px 40px rgba(0,0,0,.5), 0 0 0 rgba(255,214,110,0); }
+    50% { box-shadow:0 10px 40px rgba(0,0,0,.5), 0 0 34px rgba(255,214,110,.65); }
+  }
+  /* ending stars twinkle */
+  @keyframes twinkle { 0%,100% { opacity:.6; transform:scale(1); } 50% { opacity:1; transform:scale(1.12); } }
+  #ending .stars { animation:twinkle 2.4s ease-in-out infinite; }
   /* phone widths */
   @media (max-width:560px) {
     #titleScreen h1 { letter-spacing:5px; }
@@ -337,7 +357,7 @@
   <button id="qcBtn" title="Quick chat">💬</button>
   <div id="qcPanel"></div>
 
-  <div id="dialogue"><div class="who"><span id="dName"></span> <span class="hearts" id="dHearts"></span></div><div class="line" id="dText"></div><div class="next">Press E to continue</div></div>
+  <div id="dialogue" class="warmcard"><div class="who"><span id="dName"></span> <span class="hearts" id="dHearts"></span></div><div class="line" id="dText"></div><div class="next">Press E to continue</div></div>
 
   <div id="panel"><div class="card">
     <h3 id="pTitle"></h3>
@@ -589,7 +609,12 @@ function onMsg(m) {
     case 'farm': farm = m.farm; break;
     case 'fox': fox = m; break;
     case 'day': day = m; updateDayHud(); break;
-    case 'candle': candles = m.count; toast('🕯️ ' + m.by + ' lit a candle'); candleGlow(); break;
+    case 'candle': {
+      candles = m.count; toast('🕯️ ' + m.by + ' lit a candle'); candleGlow();
+      const litBy = playerByName(m.by);
+      if (litBy) sparkleAt(litBy.x, litBy.y, '255,200,90', 8);
+      break;
+    }
     case 'worship': worshipFlash = Date.now(); worshipChord(); toast('🙏 A moment of worship'); break;
     case 'garden-bloom':
       gardenBloomed = true; burst = 200;
@@ -794,7 +819,10 @@ function maybeHannah() {
     };
     choices.appendChild(b);
   });
-  box.style.display = 'block';
+  // stage her hello: the camera finds her first, then she speaks (storybook beat)
+  hannahFocusT = Date.now();
+  hannahGreetUntil = Date.now() + 9000;
+  setTimeout(() => { box.style.display = 'block'; }, 650);
   document.getElementById('hannahSkip').onclick = () => { box.style.display = 'none'; };
   doneBtn.onclick = () => { box.style.display = 'none'; };
 }
@@ -1060,7 +1088,7 @@ function toast(msg) {
 function playerByName(nm) { for (const p of players.values()) if (p.name === nm) return p; return null; }
 function sparkleAt(x, y, color, n) {
   for (let i = 0; i < n; i++) particles.push({ x: x + (Math.random()-0.5)*22, y: y - 8 - Math.random()*16,
-    vx: (Math.random()-0.5)*1.3, vy: -0.5 - Math.random()*1.2, life: 40 + Math.random()*30, c: color });
+    vx: (Math.random()-0.5)*1.3, vy: -0.5 - Math.random()*1.2, life: 40 + Math.random()*30, c: (i % 3 === 0) ? '255,255,255' : color });
 }
 function hideTutorial() { document.getElementById('tutorial').style.display = 'none'; }
 setTimeout(hideTutorial, 20000);
@@ -1361,7 +1389,15 @@ function drawWorld(g, now) {
       continue;
     }
     const b = baseTile(tx, ty);
-    if (b === 'water') g.drawImage(waterTile, x, y);
+    if (b === 'water') {
+      g.drawImage(waterTile, x, y);
+      // shimmer: light dancing on the river
+      const sh = Math.sin(now/450 + tx*2.1 + ty*3.7);
+      if (sh > 0.45) {
+        g.fillStyle = 'rgba(255,255,255,' + (0.5*(sh-0.45)).toFixed(2) + ')';
+        g.fillRect(x + ((now/70 + tx*17 + ty*5) % 26), y + ((now/110 + ty*13 + tx*7) % 26), 5, 2);
+      }
+    }
     else if (b === 'sand') g.drawImage(sandTile, x, y);
     else if (b === 'path') g.drawImage(pathTile, x, y);
     else if (b === 'plaza') g.drawImage(plazaTile, x, y);
@@ -1413,6 +1449,12 @@ function drawWorld(g, now) {
       g.fillStyle = 'rgba(190,228,255,.9)';
       const o = Math.sin(now/300)*2;
       g.fillRect(x+14, y+1+o, 2, 3); g.fillRect(x+18, y+3-o, 2, 3);
+      // fountainSparkle: droplets catching the light
+      if (Math.sin(now/700 + x) > 0.72) {
+        g.fillStyle = 'rgba(255,255,255,.85)';
+        g.fillRect(x+10+Math.sin(now/300)*4, y-2, 2, 2);
+        g.fillRect(x+20-Math.sin(now/340)*4, y+1, 2, 2);
+      }
     }
     // lamps
     for (const l of LAMPS) if (l.tx===tx && l.ty===ty) g.drawImage(lampTile, x, y-8);
@@ -1439,6 +1481,9 @@ function drawWorld(g, now) {
     g.fillStyle = `rgba(255,240,180,${0.10+0.05*Math.sin(now/500)})`;
     g.fillRect(18*TILE, 12*TILE, 5*TILE, 5*TILE);
   }
+  if (gardenBloomed && !inside) { // the garden glows softly once it has bloomed
+    drawGlow(g, 20*TILE, 14*TILE, 110, 'rgba(255,190,215,A)', now, 13, 0.5 + 0.12*Math.sin(now/600));
+  }
   if (worshipFlash && Date.now() - worshipFlash < 4000 && inside) {
     g.fillStyle = `rgba(255,236,170,${0.22 * (1 - (Date.now()-worshipFlash)/4000)})`;
     g.fillRect(14*TILE, 17*TILE, 13*TILE, 10*TILE);
@@ -1450,20 +1495,25 @@ function drawChurchInterior(g, tx, ty, x, y, now) {
   if (border) g.drawImage(churchWall, x, y);
   else g.drawImage(churchFloor, x, y);
   if ((tx===17||tx===23) && (ty===20||ty===22)) g.drawImage(pewTile, x, y);
-  if (tx===20 && ty===20) g.drawImage(altarTile, x, y);
+  if (tx===20 && ty===20) { g.drawImage(altarTile, x, y); drawGlow(g, x+16, y+12, 30, 'rgba(255,220,150,A)', now, 11, 0.55); drawDust(g, x+16, y+12, now); }
   if (tx===16 && ty===20) g.drawImage(standTile, x, y);
   if (tx===24 && ty===20) { // candle stand
     g.drawImage(churchFloor, x, y);
     g.fillStyle='#5d3a17'; g.fillRect(8,18,16,10); g.fillRect(13,10,6,10);
     g.fillStyle='#e8e0cc'; g.fillRect(6,8,20,4);
-    const n = Math.min(candles, 8);
+    const n = Math.min(candles, 12);
     for (let i=0;i<n;i++) {
-      const cx = 8 + i*2.2;
+      const cx = 5 + i*1.95;
       g.fillStyle='#fffbe8'; g.fillRect(cx, 4, 2, 5);
-      const fl = 2 + Math.sin(now/150 + i)*0.8;
+      const fl = 2 + Math.sin(now/150 + i*1.3)*0.9;
       g.fillStyle='#ffca55'; g.fillRect(cx, 2-fl, 2, 2+fl);
+      g.fillStyle='#fff3c4'; g.fillRect(cx, 2-fl, 2, 1);
     }
-    if (n>0) { const gr=g.createRadialGradient(x+16,y+8,2,x+16,y+8,30+6*Math.sin(now/130)); gr.addColorStop(0,'rgba(255,200,90,.38)'); gr.addColorStop(1,'rgba(255,200,90,0)'); g.fillStyle=gr; g.fillRect(x-16,y-24,64,64); }
+    if (n>0) {
+      drawGlow(g, x+16, y+8, 48, 'rgba(255,200,90,A)', now, 3);        // halo
+      drawGlow(g, x+16, y+6, 20, 'rgba(255,232,160,A)', now, 7, 0.8);  // hot core
+      drawDust(g, x+16, y+10, now);
+    }
   }
   if (tx===20 && ty===24) g.drawImage(doorMat, x, y);
 }
@@ -1483,7 +1533,8 @@ function drawHomeInterior(g, tx, ty, x, y, now) {
     const fl = Math.sin(now/120)*2;
     g.fillStyle='#ff8a3c'; g.fillRect(x+12, y+20+fl, 8, 6);
     g.fillStyle='#ffd76e'; g.fillRect(x+14, y+22+fl, 4, 4);
-    const gr=g.createRadialGradient(x+16,y+20,2,x+16,y+20,34); gr.addColorStop(0,'rgba(255,150,60,.30)'); gr.addColorStop(1,'rgba(255,150,60,0)'); g.fillStyle=gr; g.fillRect(x-18,y-14,68,68);
+    drawGlow(g, x+16, y+20, 44, 'rgba(255,150,60,A)', now, 5);
+    drawDust(g, x+16, y+16, now);
   }
   if (tx>=28 && tx<=29 && ty>=20 && ty<=21) g.drawImage(rugTiles[homeRug % 4], x, y); // rug (decorate)
   if (tx===32 && ty===21) g.drawImage(wardrobeTile, x, y);    // change clothes
@@ -1493,6 +1544,7 @@ function drawHomeInterior(g, tx, ty, x, y, now) {
     g.drawImage(homeWall, x, y);
     g.fillStyle='#3a3a3a'; g.fillRect(x+14,y+10,4,16);
     g.fillStyle='#ffd76e'; g.fillRect(x+11,y+4,10,8);
+    drawGlow(g, x+16, y+10, 30, 'rgba(255,205,110,A)', now, 9);
   }
   if (tx===32 && ty===24) g.drawImage(doorMat, x, y);          // exit
 }
@@ -1503,24 +1555,65 @@ const particles = [];
 // ---- smooth day/night lighting: the tint eases toward the phase target each
 // frame instead of snapping, so dawn/dusk transitions feel gradual ----
 const TINTS = {
-  morning: { r: 255, g: 214, b: 140, a: 0.10 },
+  morning: { r: 255, g: 196, b: 130, a: 0.14 },  // golden dawn
   day:     { r: 0,   g: 0,   b: 0,   a: 0    },
-  sunset:  { r: 255, g: 110, b: 60,  a: 0.16 },
-  night:   { r: 8,   g: 16,  b: 48,  a: 0.42 },
+  sunset:  { r: 255, g: 120, b: 55,  a: 0.20 },  // deep golden dusk
+  night:   { r: 6,   g: 12,  b: 42,  a: 0.45 },
 };
 const tintCur = { r: 0, g: 0, b: 0, a: 0 };
 let nightF = 0; // 0 = day, 1 = full night — drives stars, lamp glow, fireflies
+let goldF = 0;  // 0 = none, 1 = full golden-hour wash — dawn & dusk glow
 function updateTint() {
   const t = TINTS[day.phase] || TINTS.day;
   tintCur.r += (t.r - tintCur.r) * 0.05;
   tintCur.g += (t.g - tintCur.g) * 0.05;
   tintCur.b += (t.b - tintCur.b) * 0.05;
   tintCur.a += (t.a - tintCur.a) * 0.05;
-  nightF = Math.min(1, tintCur.a / 0.42);
+  nightF = Math.min(1, tintCur.a / 0.45);
+  const goldT = day.phase === 'sunset' ? 1 : (day.phase === 'morning' ? 0.55 : 0);
+  goldF += (goldT - goldF) * 0.04;
 }
 // night fireflies (screen space, gentle drift)
+const NIGHT_FLIES = 40;
 const nightFlies = [];
-for (let i = 0; i < 24; i++) nightFlies.push({ bx: Math.random(), by: Math.random(), ph: Math.random()*7, sp: 0.3 + Math.random()*0.7 });
+for (let i = 0; i < NIGHT_FLIES; i++) nightFlies.push({ bx: Math.random(), by: Math.random(), ph: Math.random()*7, sp: 0.3 + Math.random()*0.7 });
+
+// ================= Beauty pass: shared light & atmosphere helpers =================
+// candleHalo: soft flickering radial light pools (world space). The color uses
+// an 'A' placeholder for the peak alpha so one call serves every warm light.
+function drawGlow(g, x, y, r, color, now, seed, scale) {
+  const s = (scale === undefined ? 1 : scale);
+  if (s <= 0.02) return;
+  const fl = 1 + 0.12*Math.sin(now/130 + (seed||0)) + 0.06*Math.sin(now/47 + (seed||0)*2);
+  const gr = g.createRadialGradient(x, y, 2, x, y, r*fl);
+  gr.addColorStop(0, color.replace('A', (0.42*s).toFixed(3)));
+  gr.addColorStop(1, color.replace('A', '0'));
+  g.fillStyle = gr;
+  g.fillRect(x-r*fl, y-r*fl, r*fl*2, r*fl*2);
+}
+// dust motes drifting in warm light shafts (world space)
+const dustMotes = [];
+for (let i = 0; i < 14; i++) dustMotes.push({ ox: (Math.random()-0.5)*44, oy: (Math.random()-0.5)*44, ph: Math.random()*7, sp: 0.4+Math.random()*0.6 });
+function drawDust(g, cx, cy, now) {
+  for (const d of dustMotes) {
+    const dx = cx + d.ox + Math.sin(now/1400*d.sp + d.ph)*6;
+    const dy = cy + d.oy - ((now/1700*d.sp + d.ph) % 22);
+    const a = 0.10 + 0.10*Math.abs(Math.sin(now/800 + d.ph));
+    g.fillStyle = 'rgba(255,240,200,' + a.toFixed(3) + ')';
+    g.fillRect(dx, dy, 2, 2);
+  }
+}
+// falling leaves drifting through the village (world space)
+const LEAF_COLORS = ['#8ac96a','#d9c26a','#c9a24a','#7cc165','#e8b93c'];
+const leaves = [];
+for (let i = 0; i < 18; i++) leaves.push({ x: Math.random()*WW*TILE, y: Math.random()*WH*TILE, ph: Math.random()*7, sp: 0.5+Math.random()*0.8, c: LEAF_COLORS[i % LEAF_COLORS.length] });
+// warm windows + church door, glowing at night (world tiles)
+const WINDOW_GLOWS = [{tx:18,ty:3},{tx:22,ty:3},{tx:10,ty:15},{tx:20,ty:5}];
+// smoothed fox position (render-only; the server stays authoritative)
+let foxSm = null, foxFace = 1;
+// Hannah's hello, staged like a storybook moment
+let hannahFocusT = 0, hannahGreetUntil = 0;
+const hannahBoxEl = document.getElementById('hannah');
 const spriteCache = new Map();
 function spriteFor(lk) {
   const k = JSON.stringify(lk || {});
@@ -1556,6 +1649,14 @@ function loop(now) {
     }
     camX = Math.max(0, Math.min(WW*TILE - vw, me.x - vw/2 + biasX));
     camY = Math.max(0, Math.min(WH*TILE - vh, me.y - vh/2));
+    // Hannah's hello, staged: ease the camera so she is in frame while she speaks
+    if (hannahFocusT && !me.inside && Date.now() - hannahFocusT < 8000 && hannahBoxEl.style.display === 'block') {
+      const hn = npcs.get('Hannah');
+      if (hn) {
+        const wantX = Math.max(0, Math.min(WW*TILE - vw, hn.x - vw*0.62));
+        camX += (wantX - camX) * 0.05;
+      }
+    }
     if (wasInside !== null && me.inside !== wasInside) roomFade();
     wasInside = me.inside;
   }
@@ -1566,21 +1667,48 @@ function loop(now) {
   const night = day.phase === 'night' || day.phase === 'sunset';
 
   if (!inside) {
-    // fox
+    // fox — smoothed, hops when it trots, faces its direction of travel
+    if (!foxSm) foxSm = { x: fox.x, y: fox.y };
+    foxSm.x += (fox.x - foxSm.x) * 0.2;
+    foxSm.y += (fox.y - foxSm.y) * 0.2;
+    const foxD = Math.hypot(fox.x - foxSm.x, fox.y - foxSm.y);
+    const foxHop = foxD > 2 ? Math.abs(Math.sin(now/180))*3 : Math.sin(now/1100)*0.8;
+    if (fox.x - foxSm.x > 2) foxFace = 1; else if (foxSm.x - fox.x > 2) foxFace = -1;
     ctx.fillStyle = 'rgba(0,0,0,.16)';
-    ctx.beginPath(); ctx.ellipse(Math.round(fox.x), Math.round(fox.y+1), 7, 3, 0, 0, 7); ctx.fill();
-    ctx.drawImage(foxSprite, Math.round(fox.x-8), Math.round(fox.y-10+Math.sin(now/600)*1));
-    // villagers
+    ctx.beginPath(); ctx.ellipse(Math.round(foxSm.x), Math.round(foxSm.y+1), 7, 3, 0, 0, 7); ctx.fill();
+    ctx.save();
+    ctx.translate(Math.round(foxSm.x), Math.round(foxSm.y-10+foxHop));
+    ctx.scale(foxFace, 1);
+    ctx.drawImage(foxSprite, -8, 0);
+    ctx.restore();
+    // villagers — gentle idle sway, happy hop while chatting
     for (const n of npcs.values()) {
-      const bob = Math.sin(now/500 + n.x)*1;
+      const nBob = Math.sin(now/650 + n.x*0.5)*1.2 + Math.sin(now/1300 + n.y)*0.5;
+      const nDrift = Math.sin(now/800 + n.x)*1.2;
+      const chatting = sayFlash && sayFlash.name === n.name && Date.now() < sayFlash.until;
+      const nHop = chatting ? Math.abs(Math.sin(now/140))*2.5 : 0;
+      // Hannah's storybook spotlight while her greeting is up
+      if (n.name === 'Hannah' && Date.now() < hannahGreetUntil) {
+        ctx.fillStyle = 'rgba(255,225,150,' + (0.32 + 0.14*Math.sin(now/300)).toFixed(2) + ')';
+        ctx.beginPath(); ctx.ellipse(Math.round(n.x), Math.round(n.y+1), 15, 6, 0, 0, 7); ctx.fill();
+      }
       ctx.fillStyle = 'rgba(0,0,0,.16)';
       ctx.beginPath(); ctx.ellipse(Math.round(n.x), Math.round(n.y+1), 7, 3, 0, 0, 7); ctx.fill();
-      ctx.drawImage(npcSprite(n.name), Math.round(n.x-8), Math.round(n.y-22+bob));
+      ctx.drawImage(npcSprite(n.name), Math.round(n.x-8+nDrift), Math.round(n.y-22+nBob-nHop));
       drawNameTag(ctx, n.x, n.y, n.name, '#ffe9a8');
-      if (sayFlash && sayFlash.name === n.name && Date.now() < sayFlash.until) {
+      if (chatting) {
         ctx.font = '16px monospace'; ctx.textAlign = 'center';
         ctx.fillStyle = '#fff'; ctx.fillText('💬', n.x, n.y - 44 + Math.sin(now/300)*2);
       }
+    }
+    // falling leaves drifting through the village
+    for (const l of leaves) {
+      l.x += (0.22 + 0.3*Math.sin(now/1600 + l.ph)) * l.sp;
+      l.y += (0.16 + 0.14*Math.sin(now/900 + l.ph*2)) * l.sp;
+      if (l.x > WW*TILE) l.x = 0;
+      if (l.y > WH*TILE) l.y = 0;
+      ctx.fillStyle = l.c;
+      ctx.fillRect(l.x + Math.sin(now/500 + l.ph)*4, l.y, 3, 2);
     }
   }
   // players sorted by y
@@ -1590,8 +1718,12 @@ function loop(now) {
     // soft grounding shadow + smoother two-step walk bounce
     ctx.fillStyle = 'rgba(0,0,0,.18)';
     ctx.beginPath(); ctx.ellipse(Math.round(p.x), Math.round(p.y+1), 7, 3, 0, 0, 7); ctx.fill();
-    const bob = p.moving ? Math.abs(Math.sin(now/150))*2.5 : Math.sin(now/900 + p.x)*0.6;
-    ctx.drawImage(spr, Math.round(p.x-8), Math.round(p.y-22+bob));
+    // stride + bob walk cycle; a slow breath-like sway when idle
+    const stridePhase = now/150 + p.x*0.01;
+    const strideX = p.moving ? Math.sin(stridePhase)*1.8 : 0;
+    const idleSway = Math.sin(now/1400 + p.x*0.02)*0.8;
+    const bob = p.moving ? Math.abs(Math.sin(stridePhase))*2.2 : idleSway;
+    ctx.drawImage(spr, Math.round(p.x-8+strideX), Math.round(p.y-22+bob));
     drawNameTag(ctx, p.x, p.y, p.name);
     if (p.fishing) {
       ctx.font = '14px monospace'; ctx.textAlign = 'center';
@@ -1623,8 +1755,9 @@ function loop(now) {
     for (let i=0;i<4;i++) particles.push({x:20*TILE+(Math.random()-0.5)*5*TILE, y:14*TILE+(Math.random()-0.5)*5*TILE, vx:(Math.random()-0.5)*1.5, vy:-Math.random()*1.5-0.3, life:60+Math.random()*40, c:'255,220,120'});
     burst -= 4;
   }
-  if (gardenBloomed && !inside && Math.random() < 0.15) {
-    particles.push({x:(18+Math.random()*5)*TILE, y:(12+Math.random()*5)*TILE, vx:(Math.random()-0.5)*0.4, vy:-0.3-Math.random()*0.4, life:80+Math.random()*40, c:'255,158,196'});
+  // petals drift over the bloomed garden (capped so phones stay smooth)
+  if (gardenBloomed && !inside && particles.length < 320 && Math.random() < 0.12) {
+    particles.push({x:(18+Math.random()*5)*TILE, y:(12+Math.random()*5)*TILE+16, vx:(Math.random()-0.5)*0.5, vy:-0.4-Math.random()*0.5, life:90+Math.random()*50, c:['255,158,196','255,255,255','255,214,120'][(Math.random()*3)|0]});
   }
   for (let i=particles.length-1;i>=0;i--) {
     const pt = particles[i];
@@ -1633,15 +1766,10 @@ function loop(now) {
     ctx.fillStyle = `rgba(${pt.c},${Math.min(1, pt.life/100)})`;
     ctx.fillRect(pt.x, pt.y, 3, 3);
   }
-  // lamp glow at night (world space), fading in with the night
+  // lamp + window glow at night (world space), flickering in with the night
   if (nightF > 0.02 && !inside) {
-    for (const l of LAMPS) {
-      const lx = l.tx*TILE+16, ly = l.ty*TILE+8;
-      const gr = ctx.createRadialGradient(lx, ly, 4, lx, ly, 46);
-      gr.addColorStop(0, 'rgba(255,205,100,' + (0.30*nightF).toFixed(2) + ')'); gr.addColorStop(1, 'rgba(255,205,100,0)');
-      ctx.fillStyle = gr;
-      ctx.fillRect(lx-46, ly-46, 92, 92);
-    }
+    for (const l of LAMPS) drawGlow(ctx, l.tx*TILE+16, l.ty*TILE+8, 46, 'rgba(255,205,100,A)', now, l.tx*2, nightF);
+    for (const wg of WINDOW_GLOWS) drawGlow(ctx, wg.tx*TILE+16, wg.ty*TILE+16, 34, 'rgba(255,205,120,A)', now, wg.tx, nightF);
   }
   ctx.restore();
   updateTint(); // ease the day/night tint toward its phase target
@@ -1674,6 +1802,19 @@ function loop(now) {
   // ---- screen-space atmosphere: smooth day/night tint + night fireflies ----
   ctx.fillStyle = 'rgba(' + (tintCur.r|0) + ',' + (tintCur.g|0) + ',' + (tintCur.b|0) + ',' + tintCur.a.toFixed(3) + ')';
   ctx.fillRect(0, 0, vw, vh);
+  // golden-hour wash for dawn & dusk
+  if (goldF > 0.02) {
+    const gg = ctx.createRadialGradient(vw/2, vh*0.22, 10, vw/2, vh*0.22, vh*0.95);
+    gg.addColorStop(0, 'rgba(255,208,135,' + (0.10*goldF).toFixed(3) + ')');
+    gg.addColorStop(1, 'rgba(255,150,80,0)');
+    ctx.fillStyle = gg;
+    ctx.fillRect(0, 0, vw, vh);
+  }
+  // interiorGlow: warm lamplight wash inside home & church
+  if (inside) {
+    ctx.fillStyle = ((me && me.place) === 'home') ? 'rgba(255,178,105,0.10)' : 'rgba(255,198,130,0.09)';
+    ctx.fillRect(0, 0, vw, vh);
+  }
   if (nightF > 0.35) {
     const sa = Math.min(1, (nightF - 0.35) / 0.4);
     ctx.fillStyle = 'rgba(255,255,255,' + (0.8*sa).toFixed(2) + ')';

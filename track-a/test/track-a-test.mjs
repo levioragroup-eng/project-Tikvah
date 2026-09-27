@@ -89,6 +89,34 @@ const pageChecks = [
 ];
 for (const [label, needle] of pageChecks) ok('page contains ' + label, pageHtml.includes(needle));
 
+// ---------- Beauty pass: lighting / particles / animation / UI / staging ----------
+console.log('beauty pass (static page):');
+const beautyChecks = [
+  ['css palette variables', '--gold:'],
+  ['unified card rise animation', 'cardRise'],
+  ['toast entrance', 'toastIn'],
+  ['ending star twinkle', 'twinkle'],
+  ['hannah card glow', 'hannahGlow'],
+  ['flickering candle halo', 'candleHalo'],
+  ['12 candle flames', 'Math.min(candles, 12)'],
+  ['warm interior wash', 'interiorGlow'],
+  ['golden dawn/dusk wash', 'goldF'],
+  ['denser fireflies constant', 'NIGHT_FLIES = 40'],
+  ['falling leaves', 'leaves'],
+  ['water shimmer', 'shimmer'],
+  ['dust motes helper', 'drawDust'],
+  ['shared glow helper', 'drawGlow'],
+  ['stride walk cycle', 'stridePhase'],
+  ['idle sway', 'idleSway'],
+  ['smoothed fox motion', 'foxSm'],
+  ['window glows at night', 'WINDOW_GLOWS'],
+  ['garden petal drift', 'petals drift'],
+  ['fountain sparkle', 'fountainSparkle'],
+  ['hannah camera framing', 'hannahFocusT'],
+  ['hannah spotlight', 'hannahGreetUntil'],
+];
+for (const [label, needle] of beautyChecks) ok('page contains ' + label, pageHtml.includes(needle));
+
 // ---------- client helper ----------
 class C {
   constructor(name) { this.name = name; this.msgs = []; this.state = { players: new Map(), farm: [], ruinOpen: false, you: null, code: null }; }
