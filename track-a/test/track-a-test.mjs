@@ -61,6 +61,11 @@ ok('GET /assets/intro.mp4 returns 200', rMp4.status === 200);
 ok('intro.mp4 content-type is video/mp4', rMp4.headers.get('content-type') === 'video/mp4', String(rMp4.headers.get('content-type')));
 const mp4Bytes = await rMp4.arrayBuffer();
 ok('intro.mp4 has a body', mp4Bytes.byteLength > 100000, String(mp4Bytes.byteLength));
+// ---------- Batch 5: title banner asset serving ----------
+const rTitle = await fetch(`http://127.0.0.1:${PORT}/assets/title-bg.jpg`);
+ok('GET /assets/title-bg.jpg returns 200', rTitle.status === 200);
+const titleBytes = await rTitle.arrayBuffer();
+ok('title-bg.jpg has a body', titleBytes.byteLength > 20000, String(titleBytes.byteLength));
 
 // ---------- System 1: title screen + first-60-seconds polish ----------
 console.log('system1 polish (static page):');
@@ -277,6 +282,47 @@ const b4Checks = [
   ['day/night tint hook kept', 'tintCur'],
 ];
 for (const [label, needle] of b4Checks) ok('art contains ' + label, pageHtml.includes(needle));
+
+// ---------- Batch 5: board-idiom UI (static page) ----------
+console.log('batch5 ui idiom (static page):');
+const b5Checks = [
+  ['batch5 marker', 'BATCH5: board-idiom UI'],
+  ['batch5 js marker', 'TIKVAH-BATCH5-UI-IDIOM'],
+  ['navy palette var', '--navy:#1a2340'],
+  ['board gold palette var', '--gold-board:#d4a940'],
+  ['cream board palette var', '--cream-board:#f5eeda'],
+  ['title banner img element', 'id="titleBgImg"'],
+  ['title banner asset ref', 'src="assets/title-bg.jpg"'],
+  ['title scrim overlay', 'id="titleScrim"'],
+  ['title canvas hidden by css', '#titleBg { display:none; }'],
+  ['title canvas js hook kept', "getElementById('titleBg')"],
+  ['startTitleBg hook kept', 'window.startTitleBg'],
+  ['board footer flavor', 'LIVE. EXPLORE. CREATE. BELONG.'],
+  ['jeremiah footer verse', 'Jeremiah 29:11 (KJV)'],
+  ['board creator quote', 'You are more than what is behind you.'],
+  ['gold Begin button', 'id="creatorOk">Begin'],
+  ['panel navy card', '#panel .card { background:linear-gradient(#212c52, #1a2340)'],
+  ['small-caps gold headings', 'font-variant:small-caps'],
+  ['dialogue navy name tag', '#dialogue .who #dName'],
+  ['dialogue heart row', '#dialogue .who .hearts'],
+  ['hannah navy name tag', '#hannah .who'],
+  ['toast navy/gold', '#toast { background:rgba(26,35,64,.95)'],
+  ['verse navy card', '#verse .card { background:linear-gradient(#212c52, #1a2340)'],
+  ['quick-chat navy panel', '#qcPanel { background:#1a2340'],
+  ['discovery navy panel', '#discover { background:linear-gradient(#212c52, #1a2340)'],
+  ['prompt navy pill', '#prompt { background:rgba(26,35,64,.92)'],
+  ['tutorial navy panel', '#tutorial { background:rgba(26,35,64,.9)'],
+  ['creator parchment', '#f7f0dd'],
+  ['hud chips navy', '#roomcode { background:rgba(26,35,64,.8)'],
+  ['openPanel hook kept', 'function openPanel(title, sub, invHtml, buttons)'],
+  ['showDialogue hook kept', 'function showDialogue(name, text, hearts)'],
+  ['toast hook kept', 'function toast(msg)'],
+  ['showVerse hook kept', 'function showVerse(ref, text)'],
+  ['buildQcPanel hook kept', 'function buildQcPanel()'],
+  ['buildCreator hook kept', 'function buildCreator()'],
+  ['showPanel hook kept', 'function showPanel(id)'],
+];
+for (const [label, needle] of b5Checks) ok('ui contains ' + label, pageHtml.includes(needle));
 
 // ---------- Beauty pass: lighting / particles / animation / UI / staging ----------
 console.log('beauty pass (static page):');

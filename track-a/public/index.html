@@ -10,6 +10,8 @@
   :root {
     --gold:#ffd76e; --gold-deep:#f0a840; --cream:#fffbe8; --cream-warm:#fdf3da;
     --brown:#7a4b1f; --brown-deep:#5d3a17; --ink:#3a2a12;
+    /* TIKVAH-BATCH5-UI-IDIOM: board-idiom UI (canonical UI colors from DESIGN-BOARD-2026-09-27) */
+    --navy:#1a2340; --navy-deep:#121a30; --gold-board:#d4a940; --cream-board:#f5eeda; --parchment:#f7f0dd;
   }
   @keyframes cardRise { from { opacity:0; transform:translateY(14px) scale(.98); } to { opacity:1; transform:none; } }
   html, body { margin:0; padding:0; height:100%; overflow:hidden; background:#1a2b1e;
@@ -18,7 +20,7 @@
   canvas#game { image-rendering: pixelated; background:#5da24a; display:none; }
   /* landing */
   #menu { position:absolute; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:flex-start;
-    background: radial-gradient(ellipse at 50% 30%, #3f7a52 0%, #274d33 60%, #1a2b1e 100%); z-index:10; padding:20px 16px;
+    background:#141b33; z-index:10; padding:20px 16px;
     text-align:center; overflow-y:auto; }
   #menu h1 { font-size:52px; margin:6px 0 4px; letter-spacing:6px; color:#ffe9a8; text-shadow:3px 3px 0 #7a4b1f, 6px 6px 0 rgba(0,0,0,.35); }
   #menu p.sub { color:#dff3d8; margin:0 0 14px; font-style:italic; }
@@ -136,19 +138,34 @@
   #err { color:#ffb3a7; min-height:22px; margin-top:8px; font-size:15px; }
 
   /* ================= System 1: title screen + onboarding ================= */
-  #titleBg { position:absolute; inset:0; width:100%; height:100%; image-rendering:pixelated; z-index:0; }
+  /* BATCH5: animated canvas retired in favor of the board banner; the JS hook
+     (#titleBg) stays intact and is simply hidden. */
+  #titleBg { display:none; }
+  #titleBgImg { position:absolute; inset:0; width:100%; height:100%; object-fit:cover; z-index:0; }
+  #titleScrim { position:absolute; inset:0; z-index:0; pointer-events:none;
+    background:linear-gradient(to bottom, rgba(26,35,64,.30) 0%, rgba(26,35,64,.04) 32%,
+      rgba(26,35,64,.30) 62%, rgba(16,23,44,.82) 100%); }
   #titleScreen, #roomPanel, #howPanel, #creatorScreen { position:relative; z-index:1; }
   #titleScreen { display:flex; flex-direction:column; align-items:center; justify-content:center;
     min-height:100%; width:100%; padding:24px 16px 44px; text-align:center; }
-  #titleScreen h1 { font-size:clamp(58px, 15vw, 100px); margin:0; letter-spacing:10px; color:#ffe9a8;
-    text-shadow:3px 3px 0 #7a4b1f, 7px 7px 0 rgba(0,0,0,.35); animation:titleFloat 5s ease-in-out infinite; }
+  #titleScreen h1 { font-size:clamp(58px, 15vw, 100px); margin:0; letter-spacing:10px; color:#f5eeda;
+    text-shadow:2px 2px 0 #1a2340, 5px 5px 0 rgba(0,0,0,.35); animation:titleFloat 5s ease-in-out infinite; }
   @keyframes titleFloat { 0%,100% { transform:translateY(0); } 50% { transform:translateY(-6px); } }
-  #titleScreen .tagline { color:#fffbe8; font-size:clamp(16px, 4.2vw, 23px); font-style:italic; margin:8px 0 32px;
-    text-shadow:2px 2px 0 rgba(60,30,10,.75); letter-spacing:1px; }
-  #titleScreen .hint { margin-top:26px; }
+  #titleScreen .tagline { color:#f5eeda; font-size:clamp(16px, 4.2vw, 23px); font-style:italic; margin:8px 0 32px;
+    text-shadow:1px 1px 0 #1a2340, 2px 2px 0 rgba(0,0,0,.45); letter-spacing:1px; }
+  #titleScreen .boardfoot { margin-top:30px; font-variant:small-caps; letter-spacing:6px; font-size:15px;
+    color:#d4a940; text-shadow:1px 1px 0 #1a2340; font-weight:bold; }
+  #titleScreen .boardverse { margin-top:10px; font-size:12.5px; font-style:italic; color:#e9dfc2; max-width:440px;
+    line-height:1.6; text-shadow:1px 1px 0 rgba(26,35,64,.9); }
+  #titleScreen .hint, #titleScreen .pnote { color:#e9dfc2; text-shadow:1px 1px 0 rgba(26,35,64,.9); }
+  #roomPanel h2, #howPanel h2, #creatorScreen h2 { color:#f5eeda;
+    text-shadow:2px 2px 0 #1a2340, 4px 4px 0 rgba(0,0,0,.3); }
+  #roomPanel .sub, #creatorScreen .sub, #roomPanel .hint { color:#e9dfc2; text-shadow:1px 1px 0 rgba(26,35,64,.9); }
+  #menu input { background:#f5eeda; }
+  .backlink { color:#f5eeda; text-shadow:1px 1px 0 rgba(26,35,64,.9); }
   .tbtns { display:flex; flex-direction:column; gap:14px; width:min(340px, 86vw); }
   .tbtn { width:100%; font-size:21px; padding:14px 20px; letter-spacing:1px; }
-  button.big.tbtn.ghost { background:rgba(20,32,22,.62); border:3px solid #ffe9a8; color:#ffe9a8;
+  button.big.tbtn.ghost { background:rgba(26,35,64,.78); border:2px solid #d4a940; color:#f5eeda;
     box-shadow:0 4px 0 rgba(0,0,0,.4); }
   #roomPanel, #howPanel, #creatorScreen { display:flex; flex-direction:column; align-items:center;
     width:100%; padding:20px 16px 44px; text-align:center; }
@@ -227,6 +244,91 @@
   /* ending stars twinkle */
   @keyframes twinkle { 0%,100% { opacity:.6; transform:scale(1); } 50% { opacity:1; transform:scale(1.12); } }
   #ending .stars { animation:twinkle 2.4s ease-in-out infinite; }
+  /* ================= BATCH5: board-idiom UI =================
+     Dark navy (#1a2340) rounded panels, thin gold (#d4a940) borders,
+     cream (#f5eeda) text, small-caps gold headings — the board's UI language. */
+  #panel .card { background:linear-gradient(#212c52, #1a2340); color:#f5eeda;
+    border:1.5px solid #d4a940; border-radius:16px;
+    box-shadow:0 10px 40px rgba(0,0,0,.55), inset 0 0 26px rgba(212,169,64,.07); }
+  #panel h3 { margin:0 0 4px; color:#d4a940; font-size:20px; font-variant:small-caps;
+    letter-spacing:3px; }
+  #panel .sub { font-size:13px; color:#c9b98e; margin:0 0 14px; font-style:italic; }
+  #panel .inv { font-size:14px; margin-bottom:12px; color:#f5eeda; }
+  #panel .btns { display:flex; flex-direction:column; gap:10px; }
+  #panel .btns button { font-size:16px; padding:11px; border-radius:12px; cursor:pointer;
+    background:rgba(212,169,64,.07); border:1.5px solid #d4a940; color:#f5eeda;
+    font-variant:small-caps; letter-spacing:1.5px; box-shadow:none; transition:transform .08s, background .12s; }
+  #panel .btns button:hover { background:rgba(212,169,64,.16); }
+  #panel .btns button:active { transform:translateY(2px); background:rgba(212,169,64,.22); }
+  #panel .btns button.ghostb { background:transparent; border-color:rgba(212,169,64,.45);
+    color:#c9b98e; box-shadow:none; }
+  /* verse display: same navy/gold language */
+  #verse .card { background:linear-gradient(#212c52, #1a2340); color:#f5eeda;
+    border:1.5px solid #d4a940; border-radius:18px;
+    box-shadow:0 10px 40px rgba(0,0,0,.5), inset 0 0 34px rgba(212,169,64,.08); }
+  #verse .ref { font-weight:bold; font-size:20px; margin-bottom:12px; color:#d4a940;
+    font-variant:small-caps; letter-spacing:2px; }
+  #verse .text { font-style:italic; font-size:17px; line-height:1.6; }
+  /* dialogue: cream/parchment card, navy name tag, heart row */
+  #dialogue { background:linear-gradient(#fdf8e7, #f5eeda); color:#3a2a12;
+    border:1.5px solid #d4a940; border-radius:14px;
+    box-shadow:0 10px 34px rgba(0,0,0,.55); padding:16px 18px; }
+  #dialogue .who { margin-bottom:6px; }
+  #dialogue .who #dName { display:inline-block; background:#1a2340; color:#f5eeda;
+    border:1px solid #d4a940; border-radius:999px; padding:3px 14px;
+    font-size:14px; font-weight:bold; letter-spacing:1px; font-variant:small-caps; }
+  #dialogue .who .hearts { display:block; margin-top:7px; color:#c9486b;
+    font-size:15px; letter-spacing:3px; }
+  #dialogue .line { font-size:15px; line-height:1.55; font-style:italic; }
+  #dialogue .next { font-size:11px; color:#8a7a5a; margin-top:8px; text-align:right; }
+  /* hannah's greeting: board's cream card + navy name tag */
+  #hannah { background:linear-gradient(#fdf8e7, #f5eeda); border:1.5px solid #d4a940; }
+  #hannah .who { display:inline-block; background:#1a2340; color:#f5eeda;
+    border:1px solid #d4a940; border-radius:999px; padding:4px 16px;
+    font-size:16px; font-weight:bold; letter-spacing:1px; font-variant:small-caps;
+    margin-bottom:8px; }
+  #hannah .line { color:#3a2a12; }
+  /* discovery / welcome panels: navy/gold */
+  #discover { background:linear-gradient(#212c52, #1a2340); color:#f5eeda;
+    border:1.5px solid #d4a940; border-radius:16px;
+    box-shadow:0 10px 40px rgba(0,0,0,.55); }
+  #discover h3 { margin:0 0 8px; color:#d4a940; font-size:19px;
+    font-variant:small-caps; letter-spacing:2px; }
+  #discover p { color:#f5eeda; }
+  #discover .nopath { font-style:italic; color:#c9b98e; }
+  /* toast: navy/gold */
+  #toast { background:rgba(26,35,64,.95); border:1.5px solid #d4a940; color:#f5eeda;
+    border-radius:12px; }
+  /* contextual prompt: navy pill, gold rim */
+  #prompt { background:rgba(26,35,64,.92); border:1.5px solid #d4a940;
+    color:#f5eeda; }
+  /* tutorial: navy/gold */
+  #tutorial { background:rgba(26,35,64,.9); border:1.5px solid #d4a940; color:#f5eeda; }
+  #tutorial b { color:#ffd76e; }
+  /* quick-chat panel: navy/gold */
+  #qcPanel { background:#1a2340; border:1.5px solid #d4a940; border-radius:12px; }
+  #qcPanel button { background:rgba(212,169,64,.08); border:1.5px solid #d4a940;
+    color:#f5eeda; box-shadow:none; font-weight:normal; letter-spacing:.5px; }
+  #qcPanel button:hover { background:rgba(212,169,64,.18); }
+  #qcPanel button:active { transform:translateY(2px); box-shadow:none; }
+  /* character creator: parchment tones + board quote + gold Begin */
+  #creatorScreen { position:relative; z-index:1; }
+  #creatorWrap { background:linear-gradient(#fdf8e7, #f7f0dd); color:#5d4226;
+    border:1.5px solid #d4a940; border-radius:16px;
+    box-shadow:0 10px 34px rgba(0,0,0,.5), inset 0 0 40px rgba(212,169,64,.12); }
+  .crow > span { color:#5d4226; }
+  #preview { border:3px solid #d4a940; }
+  .sw.sel { border-color:#5d4226; box-shadow:0 0 0 3px #d4a940; }
+  #creatorWrap .creator-quote { margin:14px 6px 0; font-style:italic; font-size:14.5px;
+    line-height:1.6; color:#7a5c38; }
+  #creatorOk { background:linear-gradient(#e5b952, #d4a940); border:3px solid #5d4226;
+    color:#3a2a12; box-shadow:0 4px 0 #5d4226; }
+  #creatorOk:active { transform:translateY(3px); box-shadow:0 1px 0 #5d4226; }
+  /* hud chips: navy/gold to match */
+  #roomcode { background:rgba(26,35,64,.8); border:1.5px solid rgba(212,169,64,.6); color:#f5eeda; }
+  #dayInfo { background:rgba(26,35,64,.7); border:1.5px solid rgba(212,169,64,.45); color:#e9dfc2; }
+  #rhythm { background:rgba(26,35,64,.7); border:1.5px solid rgba(212,169,64,.45); }
+
   /* phone widths */
   @media (max-width:560px) {
     #titleScreen h1 { letter-spacing:5px; }
@@ -264,6 +366,8 @@
   </div>
 
   <div id="menu">
+    <img id="titleBgImg" src="assets/title-bg.jpg" alt="Tikvah — a painted village under a sunrise sky">
+    <div id="titleScrim"></div>
     <canvas id="titleBg" width="320" height="180"></canvas>
 
     <div id="titleScreen">
@@ -277,6 +381,8 @@
       </div>
       <div class="hint">Up to ten travelers, one village.<br>No accounts, no downloads.</div>
       <div class="pnote">🏡 The village persists while the server runs — a server restart resets it.</div>
+      <div class="boardfoot">LIVE. EXPLORE. CREATE. BELONG.</div>
+      <div class="boardverse">“For I know the plans I have for you...”<br>Jeremiah 29:11 (KJV)</div>
     </div>
 
     <div id="roomPanel" style="display:none">
@@ -326,8 +432,9 @@
             <div class="crow"><span>Accessory</span><div class="swatches" id="swAcc"></div></div>
           </div>
         </div>
+        <p class="creator-quote">“You are more than what is behind you.”</p>
       </div>
-      <button class="big" id="creatorOk">✔ Looks good</button>
+      <button class="big" id="creatorOk">Begin</button>
       <button class="backlink" data-back>← Back to title</button>
     </div>
   </div>
@@ -387,6 +494,7 @@
 
 <!-- BATCH1: board-palette terrain art (canonical colors from DESIGN-BOARD-2026-09-27) -->
 <!-- BATCH2: board-style buildings art (canonical buildings from DESIGN-BOARD-2026-09-27) -->
+<!-- BATCH5: board-idiom UI (navy/gold/cream from DESIGN-BOARD-2026-09-27) -->
 <script>
 /* TIKVAH-BATCH1-BOARD-ART: board-palette terrain/vegetation foundation */
 /* TIKVAH-BATCH2-BUILDINGS-ART: church spire crown, cottage, cafe, stalls, fountain, ruin stonework, waterfall + ruin arch painters */
