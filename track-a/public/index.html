@@ -383,7 +383,10 @@
   </div></div>
 </div>
 
+<!-- BATCH1: board-palette terrain art (canonical colors from DESIGN-BOARD-2026-09-27) -->
 <script>
+/* TIKVAH-BATCH1-BOARD-ART: board-palette terrain/vegetation foundation */
+
 'use strict';
 // ================= Intro video overlay =================
 // Plays /assets/intro.mp4 full-screen once per session, before the landing screen.
@@ -1185,74 +1188,259 @@ function npcSprite(name) {
 }
 
 // ---- terrain tiles ----
+// Batch 1: board-palette art foundation (canonical colors from DESIGN-BOARD-2026-09-27)
+const BOARD_PALETTE = {
+  grassBase:'#4a8f3c', grassDark:'#3a7230', grassLight:'#6ab04c',
+  waterAzure:'#2e9fd8', waterDeep:'#1e7fc0',
+  sand:'#e0c088', stone:'#b8a888',
+  blossom:'#f0a0c0', blossomDeep:'#e87aa0',
+  canopyDeep:'#2f6b2f',
+  roofTerracotta:'#b06030', spireBlue:'#5a7a9a',
+  uiNavy:'#1a2340', gold:'#d4a940',
+};
 function grassTile(variant) {
   return px(TILE, TILE, (g) => {
-    g.fillStyle = '#6db354'; g.fillRect(0,0,TILE,TILE);
-    g.fillStyle = '#63a84c';
-    for (let i=0;i<8;i++) g.fillRect(rnd(TILE), rnd(TILE), 3, 3);
-    g.fillStyle = '#7cc165';
-    for (let i=0;i<5;i++) g.fillRect(rnd(TILE), rnd(TILE), 2, 4);
-    if (variant === 1) {
-      g.fillStyle = '#ff9ec4';
-      for (let i=0;i<3;i++){ const x=rnd(24)+4, y=rnd(24)+4;
-        g.fillRect(x,y,3,3); g.fillStyle='#ffe066'; g.fillRect(x+1,y+1,1,1); g.fillStyle='#ff9ec4'; }
+    const P = BOARD_PALETTE;
+    g.fillStyle = P.grassBase; g.fillRect(0,0,TILE,TILE);
+    // darker mottling
+    g.fillStyle = P.grassDark;
+    for (let i=0;i<10;i++) g.fillRect(rnd(TILE), rnd(TILE), 4, 3);
+    g.fillStyle = '#35702c';
+    for (let i=0;i<7;i++) g.fillRect(rnd(TILE), rnd(TILE), 3, 3);
+    // light highlights
+    g.fillStyle = P.grassLight;
+    for (let i=0;i<9;i++) g.fillRect(rnd(TILE), rnd(TILE), 2, 2);
+    g.fillStyle = '#7cc465';
+    for (let i=0;i<4;i++) g.fillRect(rnd(TILE), rnd(TILE), 2, 1);
+    // tiny meadow flowers (pink, white, yellow) like the board's meadows
+    const cols = ['#f0a0c0','#ffffff','#ffe066'];
+    const n = variant === 1 ? 5 : 2;
+    for (let i=0;i<n;i++) {
+      const x = 3+rnd(26), y = 3+rnd(26);
+      g.fillStyle = cols[rnd(3)]; g.fillRect(x, y, 2, 2);
+      g.fillStyle = '#fff8d8'; g.fillRect(x, y, 1, 1);
+    }
+    if (variant === 1) { // blooming meadow: extra petals + blades
+      for (let i=0;i<6;i++) { g.fillStyle = '#3a7230'; g.fillRect(rnd(TILE), rnd(TILE), 1, 3); }
+      for (let i=0;i<3;i++) { const x=3+rnd(26), y=3+rnd(26);
+        g.fillStyle = '#ff9ec4'; g.fillRect(x,y,2,2); g.fillStyle = '#ffe066'; g.fillRect(x,y,1,1); }
     }
   });
 }
 const grassA = grassTile(0), grassB = grassTile(1);
-const pathTile = px(TILE,TILE,(g)=>{ g.fillStyle='#d9b978'; g.fillRect(0,0,TILE,TILE); g.fillStyle='#c9a866'; for(let i=0;i<6;i++) g.fillRect(rnd(TILE),rnd(TILE),4,3); });
-const plazaTile = px(TILE,TILE,(g)=>{ g.fillStyle='#cfc39a'; g.fillRect(0,0,TILE,TILE); g.fillStyle='#bfb489'; for(let x=0;x<TILE;x+=8) for(let y=0;y<TILE;y+=8) g.fillRect(x+3,y+3,2,2); });
-const waterTile = px(TILE,TILE,(g)=>{ g.fillStyle='#4a9ed6'; g.fillRect(0,0,TILE,TILE); g.fillStyle='#6db8e8'; for(let i=0;i<4;i++) g.fillRect(rnd(TILE),rnd(TILE),8,2); });
-const sandTile = px(TILE,TILE,(g)=>{ g.fillStyle='#e8d49a'; g.fillRect(0,0,TILE,TILE); g.fillStyle='#dcc484'; for(let i=0;i<5;i++) g.fillRect(rnd(TILE),rnd(TILE),3,3); });
-const bridgeTile = px(TILE,TILE,(g)=>{ g.fillStyle='#4a9ed6'; g.fillRect(0,0,TILE,TILE); g.fillStyle='#8a5a2b'; g.fillRect(0,6,TILE,20); g.fillStyle='#a06a35'; for(let x=0;x<TILE;x+=8) g.fillRect(x,6,5,20); g.fillStyle='#5d3a17'; g.fillRect(0,6,TILE,3); g.fillRect(0,23,TILE,3); });
+const pathTile = px(TILE,TILE,(g)=>{
+  // winding warm-gray stone pavers with darker grout (tileable, 8px vertical period)
+  g.fillStyle = '#8a7f6e'; g.fillRect(0,0,TILE,TILE);
+  const shades = ['#b8a888','#b2a180','#beae90','#ac9c7c'];
+  for (let row=0; row<4; row++) {
+    const y = row*8, off = (row%2)*8;
+    for (let x=-1; x<3; x++) {
+      const sx = x*16 + off;
+      g.fillStyle = shades[rnd(4)]; g.fillRect(sx, y, 14, 6);
+      g.fillStyle = 'rgba(255,255,255,.20)'; g.fillRect(sx, y, 14, 1);
+      g.fillStyle = 'rgba(0,0,0,.14)'; g.fillRect(sx, y+5, 14, 1);
+    }
+  }
+});
+const plazaTile = px(TILE,TILE,(g)=>{
+  // denser circular-paver pattern, warmer tone (tileable)
+  g.fillStyle = '#a0865f'; g.fillRect(0,0,TILE,TILE);
+  const shades = ['#c9a878','#d0b082','#c2a070','#d8b98c'];
+  for (let cy=4; cy<TILE; cy+=8) for (let cx=4; cx<TILE; cx+=8) {
+    const x = cx + ((cy/8)%2)*4;
+    g.fillStyle = shades[rnd(4)];
+    g.beginPath(); g.arc(x > TILE ? x-TILE : x, cy, 3, 0, 7); g.fill();
+    g.fillStyle = 'rgba(255,255,255,.22)';
+    g.beginPath(); g.arc(x > TILE ? x-TILE : x, cy-1, 1.5, 0, 7); g.fill();
+  }
+});
+const waterTile = px(TILE,TILE,(g)=>{
+  // bright azure board-blue with white sparkle streaks (tileable)
+  const P = BOARD_PALETTE;
+  g.fillStyle = P.waterAzure; g.fillRect(0,0,TILE,TILE);
+  g.fillStyle = P.waterDeep;
+  for (let i=0;i<3;i++) g.fillRect(rnd(24), rnd(TILE), 8, 3);
+  g.fillStyle = '#5fb8e8';
+  for (let i=0;i<3;i++) g.fillRect(rnd(26), rnd(TILE), 6, 2);
+  g.fillStyle = 'rgba(255,255,255,.55)';
+  for (let i=0;i<4;i++) g.fillRect(rnd(27), rnd(30), 4, 1);
+  g.fillStyle = 'rgba(255,255,255,.9)';
+  for (let i=0;i<3;i++) g.fillRect(rnd(30), rnd(30), 2, 2);
+});
+const sandTile = px(TILE,TILE,(g)=>{
+  const P = BOARD_PALETTE;
+  g.fillStyle = P.sand; g.fillRect(0,0,TILE,TILE);
+  g.fillStyle = '#cfa86e';
+  for (let i=0;i<7;i++) g.fillRect(rnd(TILE), rnd(TILE), 3, 3);
+  g.fillStyle = '#f0d8a0';
+  for (let i=0;i<5;i++) g.fillRect(rnd(TILE), rnd(TILE), 2, 2);
+});
+const bridgeTile = px(TILE,TILE,(g)=>{
+  // warm stone arch bridge deck, top-down read (deck spans horizontally)
+  const P = BOARD_PALETTE;
+  g.fillStyle = '#8a7a5e'; g.fillRect(0,0,TILE,TILE);
+  g.fillStyle = P.stone; g.fillRect(0,3,TILE,26);
+  g.fillStyle = '#a08a66';
+  for (let y=3;y<29;y+=6) g.fillRect(0,y,TILE,1);
+  for (let x=8;x<TILE;x+=16) g.fillRect(x,3,1,26);
+  g.fillStyle = '#c4b492'; g.fillRect(0,13,TILE,6);          // center walkway
+  g.fillStyle = 'rgba(255,255,255,.18)'; g.fillRect(0,13,TILE,1);
+  // arch rib beneath: curved band arcing across the deck
+  g.strokeStyle = '#8a7658'; g.lineWidth = 2;
+  g.beginPath(); g.arc(16, 42, 24, Math.PI*1.28, Math.PI*1.72); g.stroke();
+  g.fillStyle = '#7a6248'; g.fillRect(0,0,TILE,4); g.fillRect(0,28,TILE,4);   // rails
+  g.fillStyle = '#9a8468'; g.fillRect(0,0,TILE,1); g.fillRect(0,28,TILE,1);
+  g.fillStyle = '#5f4c36';
+  for (let x=2;x<TILE;x+=8){ g.fillRect(x,0,3,4); g.fillRect(x,28,3,4); }      // rail posts
+});
 const dockTile = px(TILE,TILE,(g)=>{ g.fillStyle='#8a5a2b'; g.fillRect(0,0,TILE,TILE); g.fillStyle='#a06a35'; for(let y=0;y<TILE;y+=8) g.fillRect(0,y,TILE,6); g.fillStyle='#5d3a17'; for(let y=0;y<TILE;y+=8) g.fillRect(0,y+6,TILE,2); });
-const soilTile = px(TILE,TILE,(g)=>{ g.fillStyle='#7a4f28'; g.fillRect(0,0,TILE,TILE); g.fillStyle='#5f3d1f'; for(let y=4;y<TILE;y+=8) g.fillRect(2,y,TILE-4,3); });
+const soilTile = px(TILE,TILE,(g)=>{
+  g.fillStyle = '#4a2f18'; g.fillRect(0,0,TILE,TILE);      // darker rich soil
+  g.fillStyle = '#38220f';
+  for (let y=4;y<TILE;y+=8) g.fillRect(2,y,TILE-4,3);      // furrow shadows
+  g.fillStyle = '#5f3d22';
+  for (let y=0;y<TILE;y+=8) g.fillRect(2,y,TILE-4,1);      // ridge highlights
+  g.fillStyle = '#6b4a2a';
+  for (let i=0;i<5;i++) g.fillRect(rnd(TILE), rnd(TILE), 2, 2); // clods
+});
 const cropTiles = {
-  planted: px(TILE,TILE,(g)=>{ g.drawImage(soilTile,0,0); g.fillStyle='#4d8a3a'; for(let i=0;i<6;i++){const x=4+rnd(20),y=6+rnd(16); g.fillRect(x,y,2,4);} }),
-  growing: px(TILE,TILE,(g)=>{ g.drawImage(soilTile,0,0); g.fillStyle='#5da244'; for(let i=0;i<5;i++){const x=4+rnd(20),y=4+rnd(14); g.fillRect(x,y,3,7); g.fillRect(x-2,y+2,7,2);} }),
-  ready: px(TILE,TILE,(g)=>{ g.drawImage(soilTile,0,0); g.fillStyle='#e8b93c'; for(let i=0;i<5;i++){const x=4+rnd(20),y=4+rnd(12); g.fillRect(x,y,4,6); g.fillStyle='#c9922a'; g.fillRect(x+1,y+2,2,2); g.fillStyle='#e8b93c';} }),
+  planted: px(TILE,TILE,(g)=>{
+    g.drawImage(soilTile,0,0);
+    for (let row=0; row<3; row++) { const y = 5+row*9;
+      for (let x=3; x<TILE-2; x+=6) {
+        g.fillStyle = '#4a8f3c'; g.fillRect(x,y,2,4);       // sprout
+        g.fillStyle = '#3a7230'; g.fillRect(x-1,y+1,1,1); g.fillRect(x+2,y+1,1,1); // leaf pair
+        g.fillStyle = '#6ab04c'; g.fillRect(x,y,1,1);       // light tip
+      }
+    }
+  }),
+  growing: px(TILE,TILE,(g)=>{
+    g.drawImage(soilTile,0,0);
+    for (let row=0; row<3; row++) { const y = 3+row*9;
+      for (let x=4; x<TILE-3; x+=7) {
+        g.fillStyle = '#3a7230'; g.fillRect(x,y+2,2,6);     // stem
+        g.fillStyle = '#6ab04c'; g.fillRect(x-2,y+3,6,2);   // leaves
+        g.fillStyle = '#4a8f3c'; g.fillRect(x-1,y+5,4,2);
+        g.fillStyle = '#7cc465'; g.fillRect(x,y,2,2);       // light tip
+      }
+    }
+  }),
+  ready: px(TILE,TILE,(g)=>{
+    g.drawImage(soilTile,0,0);
+    for (let row=0; row<3; row++) { const y = 2+row*9;
+      for (let x=4; x<TILE-3; x+=7) {
+        g.fillStyle = '#c9922a'; g.fillRect(x+1,y+5,2,6);   // stalk
+        g.fillStyle = '#e8b93c'; g.fillRect(x,y,4,6);       // golden head
+        g.fillStyle = '#ffd76e'; g.fillRect(x,y,1,6);       // light edge
+        g.fillStyle = '#a87a22'; g.fillRect(x+3,y+2,1,4);   // deep edge
+      }
+    }
+  }),
 };
 const stoneTile = px(TILE,TILE,(g)=>{
   g.clearRect(0,0,TILE,TILE);
-  g.fillStyle='#9a9aa5'; g.fillRect(8,6,16,22); g.fillStyle='#7c7c88'; g.fillRect(8,6,4,22);
-  g.fillStyle='#b5b5c0'; g.fillRect(11,9,4,4); g.fillRect(16,15,5,3);
+  g.fillStyle='#9a9aa5'; g.fillRect(8,6,16,22);            // standing stone
+  g.fillStyle='#7c7c88'; g.fillRect(8,6,4,22);             // left shadow
+  g.fillStyle='#b5b5c0'; g.fillRect(20,6,4,22);            // right light
+  g.fillStyle='#c9c9d4'; g.fillRect(8,6,16,3);             // top cap
+  g.fillStyle='#5a5a62'; g.fillRect(13,12,2,8); g.fillRect(16,18,3,2); // cracks
+  g.fillStyle='#4a8f3c';                                   // moss in the board's meadow green
+  for (let i=0;i<4;i++) g.fillRect(9+rnd(13), 8+rnd(18), 2, 2);
+  g.fillStyle='#6ab04c';
+  for (let i=0;i<3;i++) g.fillRect(9+rnd(13), 8+rnd(18), 1, 1);
 });
 const stoneGlow = px(TILE,TILE,(g)=>{ g.drawImage(stoneTile,0,0);
   g.fillStyle='rgba(255,230,120,0.55)'; g.fillRect(6,4,20,26); g.drawImage(stoneTile,0,0); });
 const gardenTile = px(TILE,TILE,(g)=>{
-  g.fillStyle='#6db354'; g.fillRect(0,0,TILE,TILE);
-  const cols=['#ff9ec4','#ff6b8a','#ffe066','#ffffff','#c49aff'];
-  for(let i=0;i<7;i++){ const x=rnd(26)+3,y=rnd(26)+3; g.fillStyle=cols[rnd(cols.length)]; g.fillRect(x,y,4,4); g.fillStyle='#3f7a2e'; g.fillRect(x+1,y+4,2,3); }
+  g.drawImage(grassA,0,0);
+  const cols=['#f0a0c0','#ff6b8a','#ffe066','#ffffff','#c49aff'];
+  for(let i=0;i<10;i++){ const x=rnd(26)+3,y=rnd(22)+3;
+    g.fillStyle='#3f7a2e'; g.fillRect(x+1,y+4,2,4);                 // stem
+    g.fillStyle='#4a8f3c'; g.fillRect(x-1,y+3,6,2);                 // leaves
+    g.fillStyle=cols[rnd(cols.length)]; g.fillRect(x,y,4,4);        // bloom
+    g.fillStyle='rgba(255,255,255,.7)'; g.fillRect(x+1,y+1,2,2);    // light
+  }
 });
 const bloomTile = px(TILE,TILE,(g)=>{
-  g.fillStyle='#79bd5e'; g.fillRect(0,0,TILE,TILE);
-  const cols=['#ff9ec4','#ff6b8a','#ffe066','#ffffff','#c49aff','#ffb347'];
-  for(let i=0;i<12;i++){ const x=rnd(26)+3,y=rnd(24)+3; g.fillStyle=cols[rnd(cols.length)]; g.fillRect(x,y,4,4); g.fillStyle='#ffe066'; g.fillRect(x+1,y+1,2,2); g.fillStyle='#3f7a2e'; g.fillRect(x+1,y+4,2,4); }
+  g.drawImage(grassA,0,0);
+  const cols=['#f0a0c0','#ff6b8a','#ffe066','#ffffff','#c49aff','#ffb347'];
+  for(let i=0;i<16;i++){ const x=rnd(24)+4,y=rnd(20)+4;
+    g.fillStyle='#3f7a2e'; g.fillRect(x+2,y+6,2,5);                 // stem
+    g.fillStyle='#4a8f3c'; g.fillRect(x,y+5,7,2);                  // leaves
+    g.fillStyle=cols[rnd(cols.length)]; g.fillRect(x,y,6,6);        // full bloom
+    g.fillStyle='rgba(255,255,255,.75)'; g.fillRect(x+1,y+1,2,2);   // petal light
+    g.fillStyle='#ffe066'; g.fillRect(x+2,y+2,2,2);                // golden heart
+  }
 });
 
 // ---- decor sprites ----
+// v: 0 = dense pine, 1 = dense round canopy, 2 = cherry blossom, 3 = tall pine
 function treeTile(v) {
   return px(TILE, TILE, (g) => {
     g.clearRect(0,0,TILE,TILE);
-    g.fillStyle = '#5d3a17'; g.fillRect(14,22,4,10);
-    if (v === 0) { // pine
-      g.fillStyle = '#2e6b34'; g.fillRect(8,14,16,9); g.fillRect(10,7,12,9); g.fillRect(13,1,6,8);
-      g.fillStyle = '#3f8a3e'; g.fillRect(10,9,4,4); g.fillRect(13,3,3,4);
-    } else { // round
-      g.fillStyle = '#2e6b34'; g.fillRect(7,8,18,14); g.fillRect(10,4,12,8);
-      g.fillStyle = '#4d9a4a'; g.fillRect(10,9,6,5); g.fillRect(12,5,5,4);
-      g.fillStyle = '#ff9ec4'; g.fillRect(9,12,2,2); g.fillRect(20,10,2,2);
+    const P = BOARD_PALETTE;
+    // dither scatter: n pixels of color inside a rect
+    const dith = (n, color, x0, y0, w, h) => {
+      g.fillStyle = color;
+      for (let i=0;i<n;i++) g.fillRect(x0+rnd(w), y0+rnd(h), 1, 1);
+    };
+    if (v === 0 || v === 3) { // pine / tall pine: dense layered conifer
+      const top = v === 3 ? 0 : 3;
+      const layers = v === 3
+        ? [[7,18,18,7],[9,11,14,8],[11,5,10,7],[13,0,6,6]]
+        : [[6,16,20,8],[9,9,14,9],[12,3,8,8],[14,top,4,4]];
+      const ty = v === 3 ? 20 : 22;
+      g.fillStyle = '#5d3a17'; g.fillRect(14,ty,4,32-ty);
+      g.fillStyle = '#7a4f28'; g.fillRect(14,ty,1,32-ty);
+      for (const [lx,ly,lw,lh] of layers) {
+        g.fillStyle = P.canopyDeep; g.fillRect(lx,ly,lw,lh);
+        g.fillStyle = '#3a7230'; g.fillRect(lx,ly+lh-2,lw,2);       // layer shadow band
+        g.fillStyle = '#4a8f3c'; g.fillRect(lx,ly,3,lh);            // left light edge
+        dith(14, '#6ab04c', lx, ly, Math.max(lw-4,2), lh);          // highlight dither
+        dith(18, '#1f4d1f', lx+lw-6, ly, 6, lh);                    // shadow dither right
+        dith(10, '#244d24', lx+2, ly+lh-3, lw-4, 3);               // deep under-layer
+      }
+      dith(8, '#7cc465', 12, 2, 8, 4);                             // sunlit tip
+    } else { // round canopy: dense blob (v=1 green) or cherry blossom (v=2)
+      const bl = v === 2;
+      g.fillStyle = bl ? '#4a2c14' : '#5d3a17'; g.fillRect(14,22,4,10);
+      g.fillStyle = bl ? '#6b4423' : '#7a4f28'; g.fillRect(14,22,1,10);
+      const base = bl ? P.blossom : P.canopyDeep;
+      const dark = bl ? P.blossomDeep : '#244d24';
+      const deep = bl ? '#d45a8a' : '#1f4d1f';
+      const mid  = bl ? '#f7b8d0' : '#3a7230';
+      const lite = bl ? '#ffd4e4' : '#6ab04c';
+      g.fillStyle = base; g.fillRect(6,10,20,12);                  // canopy body
+      g.fillStyle = base; g.fillRect(9,5,14,7);
+      g.fillStyle = base; g.fillRect(11,2,10,5);
+      g.fillStyle = dark; g.fillRect(6,18,20,4);                   // shadow belly
+      g.fillStyle = dark; g.fillRect(22,10,4,12);                  // right shadow
+      g.fillStyle = mid;  g.fillRect(6,10,20,3);                   // top mid band
+      dith(60, lite, 6, 2, 20, 20);                                // highlight dither
+      dith(50, deep, 12, 12, 14, 10);                              // shadow dither
+      dith(24, mid, 8, 6, 16, 12);                                 // midtone texture
+      g.fillStyle = lite; g.fillRect(10,4,5,3);                    // sunlit crown
+      if (bl) dith(20, '#fff0f6', 8, 4, 16, 12);                   // blossom sparkle
     }
   });
 }
 const treeA = treeTile(0), treeB = treeTile(1);
+const treeBlossom = treeTile(2), treeTallPine = treeTile(3);
 const flowerTile = px(TILE,TILE,(g)=>{ g.clearRect(0,0,TILE,TILE);
   const cols=['#ff9ec4','#ffe066','#ffffff','#ff6b8a'];
   for(let i=0;i<5;i++){ const x=4+rnd(22),y=8+rnd(16); g.fillStyle='#3f7a2e'; g.fillRect(x+1,y+3,2,5); g.fillStyle=cols[rnd(4)]; g.fillRect(x,y,4,4); }
 });
 const fenceTile = px(TILE,TILE,(g)=>{ g.clearRect(0,0,TILE,TILE);
-  g.fillStyle='#8a5a2b'; g.fillRect(2,10,TILE-4,4); g.fillRect(4,6,4,20); g.fillRect(TILE-8,6,4,20);
-  g.fillStyle='#a06a35'; g.fillRect(2,10,TILE-4,1);
+  // warm wooden fence, board style: two rails + posts with caps
+  g.fillStyle='#6b4423'; g.fillRect(2,10,TILE-4,4); g.fillRect(2,19,TILE-4,4);  // rail shadows
+  g.fillStyle='#a06a35'; g.fillRect(2,9,TILE-4,4); g.fillRect(2,18,TILE-4,4);   // rails
+  g.fillStyle='#c98d4e'; g.fillRect(2,9,TILE-4,1); g.fillRect(2,18,TILE-4,1);   // rail tops
+  g.fillStyle='#7a4f28';
+  for (let x=4;x<TILE-4;x+=6){ g.fillRect(x,10,1,3); g.fillRect(x,19,1,3); }    // grain
+  g.fillStyle='#7a4f28'; g.fillRect(4,6,4,22); g.fillRect(TILE-8,6,4,22);       // posts
+  g.fillStyle='#a06a35'; g.fillRect(5,6,2,22); g.fillRect(TILE-7,6,2,22);
+  g.fillStyle='#c98d4e'; g.fillRect(4,4,4,3); g.fillRect(TILE-8,4,4,3);         // post caps
+  g.fillStyle='#5f3d1f'; g.fillRect(4,6,4,1); g.fillRect(TILE-8,6,4,1);         // cap shadow
 });
 const lampTile = px(TILE,TILE,(g)=>{ g.clearRect(0,0,TILE,TILE);
   g.fillStyle='#3a3a3a'; g.fillRect(14,10,4,20); g.fillRect(10,28,12,3);

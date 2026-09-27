@@ -89,6 +89,33 @@ const pageChecks = [
 ];
 for (const [label, needle] of pageChecks) ok('page contains ' + label, pageHtml.includes(needle));
 
+// ---------- Batch 1: board-palette art foundation (static page) ----------
+console.log('batch1 art (static page):');
+const artChecks = [
+  ['board palette const', 'const BOARD_PALETTE'],
+  ['grass green', '#4a8f3c'], ['grass dark', '#3a7230'], ['grass light', '#6ab04c'],
+  ['water azure', '#2e9fd8'], ['water deep', '#1e7fc0'],
+  ['sand tan', '#e0c088'], ['stone warm', '#b8a888'],
+  ['blossom pink', '#f0a0c0'], ['blossom deep', '#e87aa0'],
+  ['deep canopy', '#2f6b2f'],
+  ['terracotta', '#b06030'], ['spire blue', '#5a7a9a'],
+  ['ui navy', '#1a2340'], ['ui gold', '#d4a940'],
+  ['grass painter', 'function grassTile(variant)'],
+  ['grass variants', 'const grassA = grassTile(0), grassB = grassTile(1)'],
+  ['path painter', 'const pathTile'], ['plaza painter', 'const plazaTile'],
+  ['water painter', 'const waterTile'], ['sand painter', 'const sandTile'],
+  ['bridge painter', 'const bridgeTile'],
+  ['soil painter', 'const soilTile'], ['crop painters', 'const cropTiles'],
+  ['stone painter', 'const stoneTile'], ['garden painter', 'const gardenTile'],
+  ['bloom painter', 'const bloomTile'], ['fence painter', 'const fenceTile'],
+  ['tree painter', 'function treeTile(v)'],
+  ['tree alternates', 'const treeA = treeTile(0), treeB = treeTile(1)'],
+  ['cherry blossom variant', 'treeBlossom = treeTile(2)'],
+  ['tall pine variant', 'treeTallPine = treeTile(3)'],
+  ['batch1 marker', 'BATCH1: board-palette terrain art'],
+];
+for (const [label, needle] of artChecks) ok('art contains ' + label, pageHtml.includes(needle));
+
 // ---------- Beauty pass: lighting / particles / animation / UI / staging ----------
 console.log('beauty pass (static page):');
 const beautyChecks = [
