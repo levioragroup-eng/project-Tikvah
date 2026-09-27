@@ -1,5 +1,5 @@
 // Track A headless integration test.
-// Spawns the server on a test port, drives 2 WebSocket clients through the
+// Spawns the server on a test port, drives WebSocket clients through the
 // full competition flow, plus negative tests. Run: node test/track-a-test.mjs
 import { spawn } from 'child_process';
 import { setTimeout as sleep } from 'timers/promises';
@@ -65,6 +65,7 @@ class C {
       if (m.t === 'leave') this.state.players.delete(m.id);
       if (m.t === 'farm') this.state.farm = m.farm;
       if (m.t === 'ruin-open') this.state.ruinOpen = true;
+      if (m.t === 'reset') { this.state.ruinOpen = false; this.state.farm = m.farm; }
     });
   }
   send(m) { this.ws.send(JSON.stringify(m)); }
@@ -154,8 +155,14 @@ try {
   a.send({ t: 'input', x: 0, y: 0 });
   await sleep(200);
   const treePush = await walkTo(a, 14*TILE+16, 21*TILE+16, 3500);
-  ok('trees are solid', treePush === false && a.me().y < 19*TILE, `y=${a.me()?.y?.toFixed(0)}`);
-  ok('walk north of the farm', await walkTo(a, 11*TILE+16, 7*TILE+16, 12000));
+  // the blocking tree is at ty=19 (y 608..640): the player must be stopped by
+  // it, i.e. never reach the target south of it. Bound is 20*TILE, not 19*TILE:
+  // a blocked player rests just above y=608 and Math.round can land on 608.
+  ok('trees are solid', treePush === false && a.me().y < 20*TILE, `y=${a.me()?.y?.toFixed(0)}`);
+  // route east of the farm first: a straight line from the tree grazes the
+  // fence corner and the axis slide can stall there under load
+  ok('walk east of the farm', await walkTo(a, 13*TILE+16, 7*TILE+16, 12000));
+  ok('walk north of the farm', await walkTo(a, 11*TILE+16, 7*TILE+16, 8000));
   ok('walk to the church front', await walkTo(a, 20*TILE+16, 7*TILE+16, 8000));
   const wallPush = await walkTo(a, 20*TILE+16, 3*TILE+16, 3500);
   ok('church walls are solid', wallPush === false && a.me().y >= 4*TILE - 1, `y=${a.me()?.y?.toFixed(0)}`);
@@ -371,13 +378,76 @@ try {
   ok('reset clears inventories', rd.players.every(p => p.inv.produce === 0 && p.inv.fish === 0 && p.inv.meals === 0));
   ok('villagers still present after reset', rd.npcs.length === 3, rd.npcs.map(n=>n.name).join(','));
 
+  // ---------- 7c. ENDING with 3 players: only 2 in the garden ----------
+  // Mini-MMO: the ending needs 2+ outside players in the garden plaza,
+  // not every player — a 3rd player elsewhere must not block it.
+  console.log('ending (3 players, 2 in garden):');
+  const k = new C('Third'); await k.connect();
+  k.send({ t: 'join', name: 'Third', code });
+  ok('third player joins (room cap 10)', await k.waitFor(() => k.state.players.size === 3, 3000));
+  ok('A walks to stone A again', await walkTo(a, STONE_A.x, STONE_A.y, 20000));
+  // B must cross via the east bank: the ty=14 row is blocked by the cafe
+  // building (tx 25-27), and a straight line to stone B hits the river —
+  // walkTo steers straight, so route via the village path waypoints instead.
+  ok('B walks to the village path again', await walkTo(b, 20*TILE+16, 18*TILE+16, 15000));
+  ok('B walks east along the path', await walkTo(b, 27*TILE+16, 18*TILE+16, 15000));
+  ok('B walks to the east bank again', await walkTo(b, PATH_E.x, PATH_E.y, 15000));
+  ok('B walks onto the bridge again', await walkTo(b, BRIDGE_E.x, BRIDGE_E.y, 15000));
+  ok('B walks to stone B again', await walkTo(b, STONE_B.x, STONE_B.y, 15000));
+  ok('ruin re-opens with 3 players', await b.waitFor(() => b.msgs.filter(m => m.t === 'ruin-open').length >= 2, 4000));
+  const AWAY = { x: 24*TILE+16, y: 18*TILE+16 }; // cafe path: outside the garden plaza
+  ok('Third walks away from the garden', await walkTo(k, AWAY.x, AWAY.y, 20000));
+  ok('A walks back to garden', await walkTo(a, GARDEN.x, GARDEN.y, 20000));
+  ok('B walks back onto the bridge', await walkTo(b, BRIDGE_E.x, BRIDGE_E.y, 15000));
+  ok('B walks back to the east bank', await walkTo(b, PATH_E.x, PATH_E.y, 15000));
+  ok('B walks back west along the path', await walkTo(b, 20*TILE+16, 18*TILE+16, 15000));
+  ok('B walks back to garden', await walkTo(b, GARDEN.x, GARDEN.y, 20000));
+  ok('ending fires for A (3 players, only 2 in garden)', await a.waitFor(() => a.msgs.filter(m => m.t === 'ending').length >= 2, 5000));
+  ok('ending fires for B', await b.waitFor(() => b.msgs.filter(m => m.t === 'ending').length >= 2, 5000));
+  ok('ending fires for the player outside the garden', await k.waitFor(() => k.msgs.some(m => m.t === 'ending'), 5000));
+  const kme = k.me();
+  const kInGarden = !!kme && kme.x >= 18*TILE && kme.x < 23*TILE && kme.y >= 12*TILE && kme.y < 17*TILE;
+  ok('third player was NOT in the garden plaza', !kInGarden, `k at ${kme?.x?.toFixed(0)},${kme?.y?.toFixed(0)}`);
+
   // ---------- 8. negative: invalid room codes + room cap ----------
   console.log('negative tests:');
-  const e = new C('Third'); await e.connect();
-  e.send({ t: 'join', name: 'Third', code });
+  // room currently holds a, b, k (3 players) — fill to the 10-player cap
+  const fillers = [];
+  for (let i = 0; i < 7; i++) {
+    const fc = new C('Guest' + i); await fc.connect();
+    fc.send({ t: 'join', name: 'Guest' + i, code });
+    fillers.push(fc);
+  }
+  const last = fillers[fillers.length - 1];
+  ok('10 players can join one room', await last.waitFor(() => last.state.players.size === 10, 5000), 'saw ' + last.state.players.size);
+  ok('all 10 players visible to the host', await b.waitFor(() => b.state.players.size === 10, 5000), 'saw ' + b.state.players.size);
+  const e = new C('Eleventh'); await e.connect();
+  e.send({ t: 'join', name: 'Eleventh', code });
   const eFull = await e.waitFor(() => e.msgs.some(m => m.t === 'error'), 2000) ? e.lastOf('error') : null;
-  ok('third player rejected (room cap 2)', !!eFull && eFull.code === 'room-full', eFull?.code);
+  ok('11th player rejected (room cap 10)', !!eFull && eFull.code === 'room-full', eFull?.code);
   e.close();
+
+  // ---------- 8b. quick-chat (preset phrases, no free text) ----------
+  console.log('quick-chat:');
+  a.send({ t: 'quickchat', id: 'follow' });
+  const qc1 = await b.waitFor(() => b.msgs.some(m => m.t === 'quickchat'), 2000) ? b.lastOf('quickchat') : null;
+  ok('valid quick-chat broadcasts to the room', !!qc1 && qc1.id === 'follow', qc1?.id);
+  ok('quick-chat text is exactly the preset', !!qc1 && qc1.text === 'Follow me!', JSON.stringify(qc1?.text));
+  await sleep(2200); // cooldown clears
+  a.send({ t: 'quickchat', id: 'hello', text: 'HACKED <script>alert(1)</script>' });
+  const qc2 = await b.waitFor(() => b.msgs.filter(m => m.t === 'quickchat').length >= 2, 2000) ? b.lastOf('quickchat') : null;
+  ok('injected text ignored — preset text used', !!qc2 && qc2.text === 'Hello! 👋', JSON.stringify(qc2?.text));
+  await sleep(2200); // cooldown clears
+  const qcBefore = b.msgs.filter(m => m.t === 'quickchat').length;
+  a.send({ t: 'quickchat', id: 'thanks' });
+  a.send({ t: 'quickchat', id: 'thanks' }); // rapid double-send
+  await sleep(600);
+  const qcAfter = b.msgs.filter(m => m.t === 'quickchat').length;
+  ok('cooldown: rapid double-send broadcasts once', qcAfter === qcBefore + 1, `${qcBefore} -> ${qcAfter}`);
+  ok('cooldown error reported to sender', a.msgs.some(m => m.t === 'error' && m.code === 'quickchat-cooldown'));
+  await sleep(2200); // cooldown clears
+  a.send({ t: 'quickchat', id: 'not-a-phrase' });
+  ok('invalid quick-chat id rejected', await a.waitFor(() => a.msgs.some(m => m.t === 'error' && m.code === 'bad-quickchat'), 2000));
   const c = new C('Stranger'); await c.connect();
   c.send({ t: 'join', name: 'Stranger', code: 'ZZZZ' });
   const e1 = await c.waitFor(() => c.msgs.some(m => m.t === 'error'), 2000) ? c.lastOf('error') : null;
@@ -432,7 +502,7 @@ try {
   for (let i = 0; i < 200; i++) f.send({ t: 'input', x: 1, y: 0 });
   ok('message flood gets disconnected', await f.waitFor(() => closed, 4000));
 
-  [a, b, c, d].forEach(x => x.close());
+  [a, b, c, d, k, ...fillers].forEach(x => x.close());
 } finally {
   srv.kill('SIGTERM');
 }

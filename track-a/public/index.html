@@ -63,6 +63,13 @@
   #emotes { position:absolute; right:14px; top:100px; display:none; flex-direction:column; gap:8px; z-index:7; }
   #emotes button { width:48px; height:48px; border-radius:50%; font-size:22px; background:rgba(0,0,0,.5);
     border:2px solid rgba(255,255,255,.4); }
+  /* quick chat */
+  #qcBtn { position:absolute; right:14px; top:212px; width:48px; height:48px; border-radius:50%; font-size:22px;
+    background:rgba(0,0,0,.5); border:2px solid rgba(255,255,255,.4); display:none; z-index:7; }
+  #qcPanel { position:absolute; right:70px; top:150px; display:none; z-index:8; background:#fffbe8;
+    border:3px solid #7a4b1f; border-radius:12px; padding:8px; width:min(240px,62vw); }
+  #qcPanel button { display:block; width:100%; margin:4px 0; font-size:14px; padding:9px 10px; border-radius:10px;
+    border:2px solid #5d3a17; background:linear-gradient(#ffd76e,#f0a840); color:#4a2c0c; font-weight:bold; cursor:pointer; }
   /* verse panel */
   #verse { position:absolute; inset:0; display:none; align-items:center; justify-content:center; z-index:20;
     background:rgba(10,15,10,.7); padding:20px; }
@@ -155,12 +162,14 @@
       <button class="big" id="btnJoin">Join</button>
     </div>
     <div id="err"></div>
-    <div class="hint">Two players, one village. Each day, live the rhythm — tend the farm, catch a fish, cook a meal, greet a friend, light a candle — and the Garden of Hope will bloom. No accounts, no downloads.</div>
+    <div class="hint">Up to ten travelers, one village. Each day, live the rhythm — tend the farm, catch a fish, cook a meal, greet a friend, light a candle — and the Garden of Hope will bloom. No accounts, no downloads.</div>
   </div>
 
   <div id="joy"><div id="stick"></div></div>
   <button id="btnE">E</button>
   <div id="emotes"><button data-e="wave">👋</button><button data-e="heart">❤️</button></div>
+  <button id="qcBtn" title="Quick chat">💬</button>
+  <div id="qcPanel"></div>
 
   <div id="dialogue"><div class="who"><span id="dName"></span> <span class="hearts" id="dHearts"></span></div><div class="line" id="dText"></div><div class="next">Press E to continue</div></div>
 
@@ -199,6 +208,30 @@ let day = { n: 1, phase: 'morning', label: 'Morning', rhythm: { farm:false, fish
 let candles = 0, gardenBloomed = false, homeRug = 0;
 let sayFlash = null;       // {name, until} — dialogue bubble over NPC
 let worshipFlash = 0;
+// quick chat: preset phrases only (mirrors the server's QUICK_CHAT list)
+const QUICK_CHAT = [
+  { id: 'hello',  text: 'Hello! 👋' },
+  { id: 'follow', text: 'Follow me!' },
+  { id: 'stone',  text: 'Stand on the other stone ✨' },
+  { id: 'cook',   text: "Let's cook together! 🍲" },
+  { id: 'thanks', text: 'Thank you! 🙏' },
+  { id: 'bloom',  text: 'The garden blooms! 🌸' },
+];
+const qcBubbles = new Map(); // playerId -> {text, until} — speech bubbles, ~4 s
+function buildQcPanel() {
+  const el = document.getElementById('qcPanel');
+  el.innerHTML = '';
+  QUICK_CHAT.forEach(q => {
+    const b = document.createElement('button');
+    b.textContent = q.text;
+    b.onclick = () => { send({ t: 'quickchat', id: q.id }); el.style.display = 'none'; hideTutorial(); };
+    el.appendChild(b);
+  });
+}
+document.getElementById('qcBtn').addEventListener('click', () => {
+  const el = document.getElementById('qcPanel');
+  el.style.display = el.style.display === 'block' ? 'none' : 'block';
+});
 
 function connect() {
   ws = new WebSocket(WS_URL);
@@ -230,6 +263,8 @@ function onMsg(m) {
         document.getElementById('tutorial').innerHTML = 'Walk with the <b>joystick</b> · Tap <b>E</b> to interact<br>Live the village rhythm — <b>farm, fish, cook, greet, light a candle</b> —<br>and the <b>Garden of Hope</b> will bloom 🌸<br>Find the <b>ancient ruin</b> with a friend ✨';
       }
       updateMuteIcon();
+      document.getElementById('qcBtn').style.display = 'block';
+      buildQcPanel();
       if (m.ending) showEnding('Two travelers. One village. A hope discovered together.');
       resize(); break;
     case 'join': players.set(m.p.id, m.p); toast(m.p.name + ' joined the village 🌿'); break;
@@ -254,6 +289,7 @@ function onMsg(m) {
     case 'bite': if (m.player === myId) { biteFlash = Date.now(); toast('❗ TAP E NOW!'); } break;
     case 'pet': toast('🦊 ' + m.by + ' petted the fox'); break;
     case 'say': sayFlash = { name: m.name, until: Date.now() + 6000 }; showDialogue(m.name, m.text, m.hearts); break;
+    case 'quickchat': qcBubbles.set(m.byId, { text: m.text, until: Date.now() + 4000 }); tone(660, 0, 0.2, 'sine', 0.06); break;
     case 'menu': if (m.kind === 'cook') openCookPanel(); else if (m.kind === 'creator') openCreator(); break;
     case 'cooked': toast('🍲 ' + m.by + ' cooked Harvest Stew!'); chime(); break;
     case 'ate': toast('😋 ' + m.by + ' enjoyed a warm meal'); break;
@@ -287,6 +323,7 @@ function onMsg(m) {
       document.getElementById('panel').style.display = 'none';
       document.getElementById('dialogue').style.display = 'none';
       burst = 0; particles.length = 0;
+      qcBubbles.clear(); document.getElementById('qcPanel').style.display = 'none';
       toast('🌱 A new beginning — the village awaits.');
       break;
     case 'error': document.getElementById('err').textContent = m.message; break;
@@ -1085,7 +1122,23 @@ function loop(now) {
       ctx.font = '18px monospace'; ctx.textAlign = 'center';
       ctx.fillText(EMOJI[p.emote], p.x, p.y-44 + Math.sin(now/300)*2);
     }
+    // quick-chat speech bubble (preset text from the server, ~4 s)
+    const qb = qcBubbles.get(p.id);
+    if (qb && Date.now() < qb.until) {
+      ctx.font = '11px sans-serif'; ctx.textAlign = 'center';
+      const tw = ctx.measureText(qb.text).width + 16;
+      const bx = p.x, by = p.y - 78;
+      ctx.fillStyle = 'rgba(255,251,232,.96)';
+      ctx.fillRect(bx - tw/2, by - 14, tw, 18);
+      ctx.strokeStyle = '#7a4b1f'; ctx.lineWidth = 2;
+      ctx.strokeRect(bx - tw/2, by - 14, tw, 18);
+      ctx.beginPath();
+      ctx.moveTo(bx - 6, by + 4); ctx.lineTo(bx + 6, by + 4); ctx.lineTo(bx, by + 12);
+      ctx.closePath(); ctx.fill();
+      ctx.fillStyle = '#3a2a12'; ctx.fillText(qb.text, bx, by);
+    }
   });
+  for (const [id, qb] of qcBubbles) if (Date.now() >= qb.until) qcBubbles.delete(id);
   // celebration particles
   if (burst > 0) {
     for (let i=0;i<4;i++) particles.push({x:20*TILE+(Math.random()-0.5)*5*TILE, y:14*TILE+(Math.random()-0.5)*5*TILE, vx:(Math.random()-0.5)*1.5, vy:-Math.random()*1.5-0.3, life:60+Math.random()*40, c:'255,220,120'});
@@ -1112,6 +1165,31 @@ function loop(now) {
     }
   }
   ctx.restore();
+
+  // ---- off-screen player indicators: arrow + name at the screen edge ----
+  const meEdge = players.get(myId);
+  if (meEdge && !meEdge.inside) {
+    for (const p of players.values()) {
+      if (p.id === myId || p.inside) continue;
+      const sx = p.x - camX, sy = p.y - camY;
+      if (sx >= -8 && sx <= vw + 8 && sy >= -8 && sy <= vh + 8) continue; // on screen
+      const ex = Math.max(30, Math.min(vw - 30, sx));
+      const ey = Math.max(30, Math.min(vh - 30, sy));
+      const ang = Math.atan2(sy - ey, sx - ex);
+      ctx.save();
+      ctx.translate(ex, ey);
+      ctx.rotate(ang);
+      ctx.fillStyle = 'rgba(255,233,168,.95)';
+      ctx.beginPath(); ctx.moveTo(15, 0); ctx.lineTo(3, -9); ctx.lineTo(3, 9); ctx.closePath(); ctx.fill();
+      ctx.strokeStyle = 'rgba(90,60,20,.8)'; ctx.lineWidth = 2; ctx.stroke();
+      ctx.restore();
+      const nm = p.name.slice(0, 12);
+      ctx.font = '10px monospace'; ctx.textAlign = 'center';
+      const nw = ctx.measureText(nm).width + 8;
+      ctx.fillStyle = 'rgba(0,0,0,.6)'; ctx.fillRect(ex - nw/2, ey - 28, nw, 12);
+      ctx.fillStyle = '#ffe9a8'; ctx.fillText(nm, ex, ey - 19);
+    }
+  }
 
   // ---- screen-space atmosphere ----
   const phase = day.phase;

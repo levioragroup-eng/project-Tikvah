@@ -62,7 +62,7 @@ Append new entries below in the same format (D6, D7, …).
 - **Decision:** Server rejects a 3rd joiner with `room-full`. Competition entry is a 2-player co-op game; QA plan A4 expected rejection at 3rd player.
 - **Rationale:** Matches the Handshake × OpenAI mission spec ("two players", room-code co-op). Larger rooms are a Track B concern.
 - **Decided by:** polish worker, per Ariel's 2-player competition mandate
-- **Status:** Active — test asserts `room-full` (track-a-test.mjs)
+- **Status:** Superseded by D9 (2026-09-27) — room cap is now 10
 
 ---
 
@@ -81,5 +81,14 @@ Append new entries below in the same format (D6, D7, …).
 - **Rationale:** Keeps the build dependency-free and license-clean; competition judging rewards polish without asset risk.
 - **Decided by:** polish worker, per "no external assets" constraint
 - **Status:** Active — manual device listening check still pending
+
+---
+
+## D9 — Room cap raised to 10: mini-MMO milestone M1 (supersedes D6)
+- **Date:** 2026-09-27
+- **Decision:** `ROOM_CAP = 10` for ALL rooms. Private 4-letter room creation (newCode) and the create/join flow are EXACTLY as before — 4-letter codes, no logins. Ending trigger changed from "every outside player in the garden plaza" to "2 or more outside players in the garden plaza" (ruin-stones simultaneous-occupancy logic already generalizes to N players — untouched). Quick-chat added: 6 preset phrases only ("Hello! 👋", "Follow me!", "Stand on the other stone ✨", "Let's cook together! 🍲", "Thank you! 🙏", "The garden blooms! 🌸") — no free text (no moderation burden); server validates `id` against the preset list, rejects anything else, 2 s per-player cooldown; broadcasts `{t:'quickchat', by, id, text}` with server-side preset text (no injection possible). Client: 💬 button + touch-friendly phrase panel, incoming phrases show as speech bubbles above the sender for ~4 s; off-screen players get an edge arrow + name tag.
+- **Rationale:** Ariel's 2026-09-27 directive — build TIKVAH into a mini-MMO by Friday, October 2, 2026: persistent public village, up to 10 players per room, persistent identity via localStorage + server UUID, NO logins, private 4-letter rooms keep working exactly as now. M1 = bigger rooms first; M2 = persistent village; M3 = identity; M4 = polish fold-in. Competition entry remains playable: ending needs only 2 in the garden, so 2-player co-op on a public-style room still completes the arc.
+- **Decided by:** Ariel (explicit mini-MMO mandate), implemented by M1 worker
+- **Status:** Active — tests assert 10 players join, 11th rejected `room-full`; quickchat valid/invalid/cooldown/injection asserts; ending fires with 3 players where only 2 are in the garden (track-a-test.mjs)
 
 ---

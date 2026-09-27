@@ -21,6 +21,21 @@ export const MAX_SPEED = 150;                      // px/sec, enforced server-si
 export const INTERACT_RANGE = 56;                  // px
 export const RUIN_STONE_RADIUS = 40;               // px
 export const MAX_NAME_LEN = 16;
+// ---------- Mini-MMO (M1): rooms hold up to 10 players ----------
+// Private 4-letter room codes and the create/join flow are unchanged —
+// no logins, no accounts. (D9 supersedes D6's room cap of 2.)
+export const ROOM_CAP = 10;
+
+// Quick chat: preset phrases only — no free text, no moderation burden.
+export const QUICK_CHAT = [
+  { id: 'hello',  text: 'Hello! 👋' },
+  { id: 'follow', text: 'Follow me!' },
+  { id: 'stone',  text: 'Stand on the other stone ✨' },
+  { id: 'cook',   text: "Let's cook together! 🍲" },
+  { id: 'thanks', text: 'Thank you! 🙏' },
+  { id: 'bloom',  text: 'The garden blooms! 🌸' },
+];
+export const QUICK_CHAT_COOLDOWN_MS = 2000;
 
 // Village layout (tile coords)
 export const FARM_PLOTS = [ {tx:6,ty:9}, {tx:8,ty:9}, {tx:10,ty:9}, {tx:6,ty:11}, {tx:8,ty:11}, {tx:10,ty:11} ];
@@ -266,6 +281,7 @@ function addPlayer(room, ws, name, look) {
     inside: false,                       // inside any interior
     place: null,                         // 'church' | 'home' | null
     fishing: null,                       // {state:'cast', biteAt, windowUntil} | null
+    qcAt: 0,                           // last quick-chat time (2 s anti-spam cooldown)
     inv: { produce: 0, fish: 0, meals: 0 },
   };
   room.players.set(ws, p);
@@ -581,11 +597,12 @@ function tickRoom(room) {
       broadcast(room, {t:'ruin-open', message: 'Hope lives here — discovered together.'});
     }
   }
-  // ending: once the ruin is open, both players step into the garden together
+  // ending: once the ruin is open, 2 or more travelers step into the garden
+  // together — the rest of the village may be anywhere (mini-MMO: up to 10).
   if (room.ruin.open && !room.ending.done) {
     const ps = [...room.players.values()].filter(p => !p.inside);
     const inGarden = (p) => p.x >= 18*TILE && p.x < 23*TILE && p.y >= 12*TILE && p.y < 17*TILE;
-    if (ps.length >= 2 && ps.every(inGarden)) {
+    if (ps.filter(inGarden).length >= 2) {
       room.ending.done = true;
       broadcast(room, {t:'ending',
         title: 'The Garden of Hope',
@@ -668,7 +685,7 @@ wss.on('connection', (ws, req) => {
           if (!name.trim()) { err(ws, 'bad-name', 'Name required'); return; }
           if (ws.room) { err(ws, 'in-room', 'Already in a room'); return; }
           const room = rooms.get(code);
-          if (room.players.size >= 2) { err(ws, 'room-full', 'Room is full'); return; }
+          if (room.players.size >= ROOM_CAP) { err(ws, 'room-full', 'Room is full'); return; }
           const p = addPlayer(room, ws, name, m.look);
           ws.room = room;
           send(ws, joinedPayload(room, p, code));
@@ -718,6 +735,20 @@ wss.on('connection', (ws, req) => {
           if (id !== 'wave' && id !== 'heart') { err(ws, 'bad-emote', 'Unknown emote'); return; }
           p.emote = id; p.emoteAt = Date.now();
           broadcast(ws.room, {t:'player', p: playerPublic(p)});
+          break;
+        }
+        case 'quickchat': {
+          if (!ws.room) return;
+          const p = ws.room.players.get(ws);
+          if (!p) return;
+          // validate id against the preset list first: anything else is rejected,
+          // and the client-supplied text (if any) is never used — the server
+          // always broadcasts the exact preset text (no injection possible).
+          const preset = QUICK_CHAT.find(q => q.id === String(m.id || ''));
+          if (!preset) { err(ws, 'bad-quickchat', 'Unknown quick-chat phrase'); return; }
+          if (now - p.qcAt < QUICK_CHAT_COOLDOWN_MS) { err(ws, 'quickchat-cooldown', 'Slow down a little'); return; }
+          p.qcAt = now;
+          broadcast(ws.room, { t: 'quickchat', by: p.name, byId: p.id, id: preset.id, text: preset.text });
           break;
         }
         case 'play-again': {
