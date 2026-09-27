@@ -47,20 +47,20 @@ export const QUICK_CHAT_COOLDOWN_MS = 2000;
 export const PUBLIC_CODE = 'TIKVAH';
 const REAP_MS = parseInt(process.env.REAP_MS || '60000', 10); // empty private-room grace
 
-// Village layout (tile coords)
-export const FARM_PLOTS = [ {tx:6,ty:9}, {tx:8,ty:9}, {tx:10,ty:9}, {tx:6,ty:11}, {tx:8,ty:11}, {tx:10,ty:11} ];
-export const DOCK = { tx: 33, ty: 20 };            // fishing spot
-export const CHURCH_DOOR = { tx: 20, ty: 5 };      // press E near door -> enter
-export const CHURCH_EXIT = { tx: 20, ty: 24 };     // interior exit spot
-export const PRAY_SPOT = { tx: 20, ty: 20 };       // interior: pray / worship
-export const VERSE_STAND = { tx: 16, ty: 20 };     // interior: read one verse
-export const CANDLE_STAND = { tx: 24, ty: 20 };    // interior: light a candle
-export const STONE_A = { tx: 4, ty: 22 };
-export const STONE_B = { tx: 35, ty: 3 };
-export const SPAWN = { tx: 13, ty: 18 };       // lane just east of home: first view looks
-                                                // down the lane toward the plaza, garden, and river
+// Village layout (tile coords) — BATCH6b board composition
+export const FARM_PLOTS = [ {tx:6,ty:15}, {tx:8,ty:15}, {tx:10,ty:15}, {tx:6,ty:17}, {tx:8,ty:17}, {tx:10,ty:17} ];
+export const DOCK = { tx: 17, ty: 20 };            // fishing spot (sand bank by the river)
+export const CHURCH_DOOR = { tx: 30, ty: 15 };    // press E near door -> enter
+export const CHURCH_EXIT = { tx: 20, ty: 24 };    // interior exit spot
+export const PRAY_SPOT = { tx: 20, ty: 20 };      // interior: pray / worship
+export const VERSE_STAND = { tx: 16, ty: 20 };    // interior: read one verse
+export const CANDLE_STAND = { tx: 24, ty: 20 };   // interior: light a candle
+export const STONE_A = { tx: 6, ty: 5 };          // forest clearing
+export const STONE_B = { tx: 34, ty: 5 };         // ruins clearing
+export const SPAWN = { tx: 13, ty: 14 };       // west lane just east of home: first view looks
+                                                // east down the market lane toward the plaza
 // Home (exterior)
-export const HOME_DOOR = { tx: 11, ty: 17 };       // press E near door -> enter home
+export const HOME_DOOR = { tx: 8, ty: 12 };       // press E near door -> enter home
 // Home interior (separate tile region, drawn instead of the world).
 // Spots are on a 3-tile grid so their 56px interact zones never overlap.
 // (walkTo stops within 30px of a target; 96px spacing keeps every stop unambiguous.)
@@ -72,32 +72,35 @@ export const RUG_SPOT = { tx: 29, ty: 21 };        // decorate: cycle rug color
 export const SIT_SPOT = { tx: 35, ty: 21 };        // sit
 export const PRAY_NOOK = { tx: 32, ty: 18 };       // pray at home
 // Cafe (exterior cook spot)
-export const CAFE_COUNTER = { tx: 26, ty: 17 };
+export const CAFE_COUNTER = { tx: 24, ty: 16 };
 
 // ---------- Collision (server-authoritative) ----------
 // The client renders server positions (no client-side prediction), so the server
 // is the single decider: a player's center may never enter a solid tile.
 // Tile predicates mirror the client's drawing layout (baseTile/isTree/isFence)
 // so what looks solid is solid.
-const FARM_RECT = { x0: 5, y0: 8, x1: 11, y1: 12 };    // matches client fence rect
-const CHURCH_RECT = { x0: 17, y0: 1, x1: 23, y1: 4 };  // building incl. roof row
-const HOME_RECT = { x0: 10, y0: 14, x1: 12, y1: 16 };
-const CAFE_RECT = { x0: 25, y0: 14, x1: 27, y1: 16 };
-const STALL_TILES = [ {tx:24,ty:10}, {tx:26,ty:10}, {tx:28,ty:10} ];
-const FOUNTAIN_TILE = { tx: 24, ty: 13 };
+const FARM_RECT = { x0: 5, y0: 14, x1: 11, y1: 18 };    // matches client fence rect
+const CHURCH_RECT = { x0: 28, y0: 9, x1: 32, y1: 14 };  // building incl. roof row
+const HOME_RECT = { x0: 7, y0: 9, x1: 10, y1: 11 };
+const CAFE_RECT = { x0: 23, y0: 13, x1: 25, y1: 15 };
+const STALL_TILES = [ {tx:14,ty:10}, {tx:16,ty:10}, {tx:18,ty:10} ];
+const FOUNTAIN_TILE = { tx: 20, ty: 15 };
 
 function inRect(tx, ty, r) { return tx >= r.x0 && tx <= r.x1 && ty >= r.y0 && ty <= r.y1; }
 
 function baseKind(tx, ty) {   // mirrors client baseTile()
-  if (tx === 30 || tx === 31) return (ty === 14) ? 'bridge' : 'water';
-  if (tx === 29 || tx === 32) return 'sand';
-  if (ty === 14 && tx >= 11 && tx <= 32) return 'path';
-  if (tx === 20 && ty >= 6 && ty <= 14) return 'path';
-  if (tx >= 29 && tx <= 33 && ty === 20) return 'path';
-  if (tx === 11 && ty >= 14 && ty <= 18) return 'path';
-  if (ty === 18 && tx >= 11 && tx <= 27) return 'path';
-  if (tx === 26 && ty >= 14 && ty <= 18) return 'path';
-  if (tx >= 18 && tx <= 22 && ty >= 12 && ty <= 16) return 'plaza';
+  // BATCH6a: river along the bottom rows (board composition), stone bridge crossing
+  if (ty >= 21 && ty <= 24) return (tx >= 19 && tx <= 21) ? 'bridge' : 'water';
+  if (ty === 20 || ty === 25) return (tx >= 19 && tx <= 21) ? 'bridge' : 'sand';
+  if (tx >= 17 && tx <= 22 && ty >= 13 && ty <= 17) return 'plaza';
+  if (ty === 12 && tx >= 6 && tx <= 33) return 'path';
+  if (tx === 13 && ty >= 8 && ty <= 18) return 'path';
+  if (tx === 19 && ty >= 6 && ty <= 12) return 'path';
+  if (tx === 20 && ty >= 18 && ty <= 19) return 'path';
+  if (ty === 18 && tx >= 13 && tx <= 28) return 'path';
+  if (tx === 27 && ty >= 12 && ty <= 18) return 'path';
+  if (tx === 33 && ty >= 6 && ty <= 12) return 'path';
+  if (ty === 8 && tx >= 19 && tx <= 33) return 'path';
   return 'grass';
 }
 
@@ -110,12 +113,15 @@ function nearStoneClearing(tx, ty) {
 
 function isTreeTile(tx, ty) {   // mirrors client isTree(), minus the ruin clearings
   if (nearStoneClearing(tx, ty)) return false;
-  if (tx === FARM_RECT.x1 && ty === 10) return false;  // the farm gate stays open
-  if (tx >= 1 && tx <= 5 && ty >= 4 && ty <= 24) return (tx*13 + ty*7) % 4 !== 3;
-  if (tx >= 34 && tx <= 39 && ty >= 6 && ty <= 20) return (tx*11 + ty*5) % 5 !== 4;
+  if (tx === 8 && ty === 14) return false;  // the farm gate stays open (north side)
+  if ((tx === 3 && (ty === 0 || ty === 1)) || (tx === 36 && (ty === 0 || ty === 1))) return false; // waterfalls
+  if (tx >= 31 && tx <= 32 && ty >= 3 && ty <= 4) return false; // ruin arch
+  if (tx >= 0 && tx <= 4 && ty >= 0 && ty <= 24) return (tx*13 + ty*7) % 4 !== 3;
+  if (tx >= 35 && tx <= 39 && ty >= 0 && ty <= 20) return (tx*11 + ty*5) % 5 !== 4;
   if ((tx*7 + ty*13) % 23 === 0 && baseKind(tx,ty) === 'grass' &&
-      !(tx>=17&&tx<=23&&ty<=6) && !(tx>=10&&tx<=12&&ty>=14&&ty<=18) &&
-      !(tx>=25&&tx<=27&&ty>=14&&ty<=19) && !(tx>=24&&tx<=28&&ty>=9&&ty<=11))
+      !(tx>=28&&tx<=32&&ty>=9&&ty<=15) && !(tx>=7&&tx<=10&&ty>=9&&ty<=12) &&
+      !(tx>=23&&tx<=25&&ty>=12&&ty<=16) && !(tx>=14&&tx<=18&&ty>=9&&ty<=11) &&
+      !(tx>=5&&tx<=11&&ty>=13&&ty<=19))
     return true;
   return false;
 }
@@ -124,7 +130,7 @@ function isFenceTile(tx, ty) {   // mirrors client isFence()
   const onH = (ty === FARM_RECT.y0 || ty === FARM_RECT.y1) && tx >= FARM_RECT.x0 && tx <= FARM_RECT.x1;
   const onV = (tx === FARM_RECT.x0 || tx === FARM_RECT.x1) && ty >= FARM_RECT.y0 && ty <= FARM_RECT.y1;
   if (!onH && !onV) return false;
-  if (tx === FARM_RECT.x1 && ty === 10) return false;  // east gate stays open
+  if (ty === FARM_RECT.y0 && tx === 8) return false;  // north gate stays open
   return true;
 }
 
@@ -197,19 +203,19 @@ function sanitizeLook(l) { return validLook(l) ? { skin: l.skin, hair: l.hair, h
 
 // ---------- Villagers ----------
 export const NPC_DEFS = [
-  { name: 'Hannah', hx: 20, hy: 11, r: 2.5, lines: [
+  { name: 'Hannah', hx: 21, hy: 12, r: 2.5, lines: [
     "It's always good to see you around. The town feels brighter when you're here.",
     'I planted marigolds by the plaza this morning. Small things grow, you know.',
     'If you ever need a quiet moment, the church candles are always lit for you.',
     'I dreamt the garden bloomed again last night. Maybe today is the day.',
     'You have a kind way about you. This village is lucky to have you.',
   ]},
-  { name: 'Elias', hx: 26, hy: 9, r: 2, lines: [
+  { name: 'Elias', hx: 16, hy: 11, r: 2, lines: [
     "Fresh bread, friend! Well — the bread is imaginary, but the welcome is real.",
     'A village is just people who keep showing up for each other.',
     "Take your time browsing. Nobody's in a hurry in Tikvah.",
   ]},
-  { name: 'Miriam', hx: 23, hy: 16, r: 2, lines: [
+  { name: 'Miriam', hx: 23, hy: 17, r: 2, lines: [
     "I saved you a seat by the window. The light is lovely at this hour.",
     'Cooking for someone is my favorite way to say I care.',
     'Evening settles soft here. Stay a while.',
@@ -647,7 +653,7 @@ function tickRoom(room) {
   // together — the rest of the village may be anywhere (mini-MMO: up to 10).
   if (room.ruin.open && !room.ending.done) {
     const ps = [...room.players.values()].filter(p => !p.inside);
-    const inGarden = (p) => p.x >= 18*TILE && p.x < 23*TILE && p.y >= 12*TILE && p.y < 17*TILE;
+    const inGarden = (p) => p.x >= 17*TILE && p.x < 23*TILE && p.y >= 13*TILE && p.y < 18*TILE;
     if (ps.filter(inGarden).length >= 2) {
       room.ending.done = true;
       broadcast(room, {t:'ending',

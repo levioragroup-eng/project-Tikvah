@@ -13,11 +13,11 @@ const PORT = 18787;
 const URL = `ws://127.0.0.1:${PORT}`;
 
 const TILE = 32;
-const STONE_A = { x: 4*TILE+TILE/2, y: 22*TILE+TILE/2 };
-const STONE_B = { x: 35*TILE+TILE/2, y: 3*TILE+TILE/2 };
-const PLOT0 = { x: 6*TILE+TILE/2, y: 9*TILE+TILE/2 };
-const DOCK = { x: 33*TILE+TILE/2, y: 20*TILE+TILE/2 };
-const CHURCH_DOOR = { x: 20*TILE+TILE/2, y: 5*TILE+TILE/2 };
+const STONE_A = { x: 6*TILE+TILE/2, y: 5*TILE+TILE/2 };
+const STONE_B = { x: 34*TILE+TILE/2, y: 5*TILE+TILE/2 };
+const PLOT0 = { x: 6*TILE+TILE/2, y: 15*TILE+TILE/2 };
+const DOCK = { x: 17*TILE+TILE/2, y: 20*TILE+TILE/2 };
+const CHURCH_DOOR = { x: 30*TILE+TILE/2, y: 15*TILE+TILE/2 };
 
 const VERSE_TEXTS = new Set([
   'For I know the thoughts that I think toward you, saith the LORD, thoughts of peace, and not of evil, to give you an expected end.',
@@ -410,7 +410,7 @@ try {
 
   // ---------- 1a. System 1: spawn near home, facing the village ----------
   console.log('system1 spawn:');
-  const SPAWN_X = 13*TILE+16, SPAWN_Y = 18*TILE+16; // lane just east of home
+  const SPAWN_X = 13*TILE+16, SPAWN_Y = 14*TILE+16; // west lane just east of home
   ok('spawn is on the home lane', a.state.you.x === SPAWN_X && a.state.you.y === SPAWN_Y,
      `got ${a.state.you.x},${a.state.you.y}`);
   ok('spawn faces the village (east)', a.state.you.dir === 'right', a.state.you.dir);
@@ -443,17 +443,15 @@ try {
 
   // ---------- 2b. server-authoritative collision ----------
   console.log('collision:');
-  const BRIDGE_E = { x: 31*TILE+16, y: 14*TILE+16 }; // east bridge tile: fully across the water
-  const PATH_E = { x: 29*TILE+16, y: 18*TILE+16 };    // east bank, south of the river
-  const PATH_W = { x: 20*TILE+16, y: 18*TILE+16 };    // village path row
-  ok('walk south along the cafe to the village path', await walkTo(a, 24*TILE+16, 18*TILE+16, 12000));
-  ok('walk east to the east bank', await walkTo(a, PATH_E.x, PATH_E.y, 12000));
-  ok('reach the bridge', await walkTo(a, BRIDGE_E.x, BRIDGE_E.y, 8000));
-  const waterPush = await walkTo(a, BRIDGE_E.x, 18*TILE+16, 3500);
-  ok('river is solid (cannot walk on water)', waterPush === false && a.me().y < 15*TILE, `y=${a.me()?.y?.toFixed(0)}`);
-  ok('walk back west to the farm', await walkTo(a, 6*TILE+16, 10*TILE+16, 14000));
-  ok('exit the farm via the east gate', await walkTo(a, 13*TILE+16, 10*TILE+16, 8000));
-  ok('walk to the lone tree', await walkTo(a, 14*TILE+16, 17*TILE+16, 12000));
+  ok('walk south down the west lane', await walkTo(a, 13*TILE+16, 18*TILE+16, 12000));
+  ok('walk east on the south lane', await walkTo(a, 20*TILE+16, 18*TILE+16, 12000));
+  ok('walk south to the bridge', await walkTo(a, 20*TILE+16, 20*TILE+16, 8000));
+  ok('step onto the stone bridge', await walkTo(a, 20*TILE+16, 23*TILE+16, 8000));
+  const waterPush = await walkTo(a, 17*TILE+16, 23*TILE+16, 3500);
+  ok('river is solid (cannot leave the bridge into water)', waterPush === false && a.me().x > 19*TILE, `x=${a.me()?.x?.toFixed(0)}`);
+  ok('cross to the south bank', await walkTo(a, 20*TILE+16, 26*TILE+16, 8000));
+  ok('walk back north across the bridge', await walkTo(a, 20*TILE+16, 18*TILE+16, 12000));
+  ok('walk west to the lone tree', await walkTo(a, 14*TILE+16, 18*TILE+16, 8000));
   // align precisely with the trunk (walkTo stops within 30px; the tree needs x in 448..480)
   for (let i = 0; i < 30; i++) {
     const p = a.me(); if (!p) break;
@@ -464,21 +462,25 @@ try {
   a.send({ t: 'input', x: 0, y: 0 });
   await sleep(200);
   const treePush = await walkTo(a, 14*TILE+16, 21*TILE+16, 3500);
-  // the blocking tree is at ty=19 (y 608..640): the player must be stopped by
-  // it, i.e. never reach the target south of it. Bound is 20*TILE, not 19*TILE:
-  // a blocked player rests just above y=608 and Math.round can land on 608.
+  // the blocking tree is at (14,19) (y 608..640): the player must be stopped by
+  // it, i.e. never reach the sand south of it.
   ok('trees are solid', treePush === false && a.me().y < 20*TILE, `y=${a.me()?.y?.toFixed(0)}`);
-  // route east of the farm first: a straight line from the tree grazes the
-  // fence corner and the axis slide can stall there under load
-  ok('walk east of the farm', await walkTo(a, 13*TILE+16, 7*TILE+16, 12000));
-  ok('walk north of the farm', await walkTo(a, 11*TILE+16, 7*TILE+16, 8000));
-  ok('walk to the church front', await walkTo(a, 20*TILE+16, 7*TILE+16, 8000));
-  const wallPush = await walkTo(a, 20*TILE+16, 3*TILE+16, 3500);
-  ok('church walls are solid', wallPush === false && a.me().y >= 4*TILE - 1, `y=${a.me()?.y?.toFixed(0)}`);
+  ok('walk west to the west lane', await walkTo(a, 13*TILE+16, 18*TILE+16, 8000));
+  ok('walk north up the west lane', await walkTo(a, 13*TILE+16, 14*TILE+16, 8000));
+  ok('walk north to the market lane', await walkTo(a, 13*TILE+16, 12*TILE+16, 8000));
+  ok('walk west on the market lane', await walkTo(a, 8*TILE+16, 12*TILE+16, 8000));
+  ok('walk south to the farm gate', await walkTo(a, 8*TILE+16, 14*TILE+16, 8000));
+  ok('walk south into the farm', await walkTo(a, 8*TILE+16, 16*TILE+16, 8000));
+  const fencePush = await walkTo(a, 13*TILE+16, 16*TILE+16, 3500);
+  ok('farm fences are solid', fencePush === false && a.me().x < 11*TILE, `x=${a.me()?.x?.toFixed(0)}`);
 
   // ---------- 3. out-of-range interaction rejected ----------
   console.log('interaction validation:');
-  await walkTo(a, 19*TILE+16, 18*TILE+16); // village path, far from the farm
+  await walkTo(a, 8*TILE+16, 14*TILE+16); // exit via the north gate
+  await walkTo(a, 8*TILE+16, 12*TILE+16); // north to the market lane
+  await walkTo(a, 13*TILE+16, 12*TILE+16); // east to the west lane
+  await walkTo(a, 13*TILE+16, 18*TILE+16); // south down the lane
+  await walkTo(a, 19*TILE+16, 18*TILE+16); // east on the south lane, far from the farm
   const farmBefore = JSON.stringify(a.state.farm);
   a.send({ t: 'interact' });
   await sleep(400);
@@ -487,7 +489,12 @@ try {
 
   // ---------- 4. farm cycle (plant -> water -> grow -> harvest) ----------
   console.log('farm:');
-  ok('walk to plot', await walkTo(a, PLOT0.x, PLOT0.y));
+  ok('walk back to the west lane', await walkTo(a, 13*TILE+16, 18*TILE+16, 12000));
+  ok('walk north to the market lane', await walkTo(a, 13*TILE+16, 12*TILE+16, 12000));
+  ok('walk west on the market lane', await walkTo(a, 8*TILE+16, 12*TILE+16, 8000));
+  ok('walk south to the farm gate', await walkTo(a, 8*TILE+16, 14*TILE+16, 8000));
+  ok('walk south into the farm', await walkTo(a, 8*TILE+16, 16*TILE+16, 8000));
+  ok('walk to plot', await walkTo(a, PLOT0.x, PLOT0.y, 8000));
   a.send({ t: 'interact' }); // plant
   ok('plant -> planted', await a.waitFor(() => a.state.farm[0]?.stage === 'planted', 2000), JSON.stringify(a.state.farm[0]));
   a.send({ t: 'interact' }); // water
@@ -498,13 +505,11 @@ try {
 
   // ---------- 5. fishing (cast -> bite -> catch) ----------
   console.log('fishing:');
-  // B starts at the new spawn (lane east of home); route via the village path
-  // first — a straight line from spawn to the gate runs into the house wall.
-  ok('B walks to the village path', await walkTo(b, PATH_W.x, PATH_W.y, 12000));
-  ok('B walks to the farm gate', await walkTo(b, 11*TILE+16, 10*TILE+16, 12000));
-  ok('B walks to the east bank', await walkTo(b, PATH_E.x, PATH_E.y, 12000));
-  ok('B walks onto the bridge', await walkTo(b, BRIDGE_E.x, BRIDGE_E.y, 8000));
-  ok('walk to dock', await walkTo(b, DOCK.x - 16, DOCK.y, 12000));
+  // B starts at the new spawn (west lane); route via the south lane to the dock.
+  // The dock sits on the sand bank above the river; the bridge is just east.
+  ok('B walks south down the west lane', await walkTo(b, 13*TILE+16, 18*TILE+16, 12000));
+  ok('B walks east on the south lane', await walkTo(b, 17*TILE+16, 18*TILE+16, 8000));
+  ok('walk to dock', await walkTo(b, DOCK.x, DOCK.y, 8000));
   b.send({ t: 'interact' }); // cast
   ok('cast accepted', await b.waitFor(() => b.me()?.fishing === 'cast', 2000));
   ok('bite event fires', await b.waitFor(() => b.msgs.some(m => m.t === 'bite'), 5000));
@@ -513,8 +518,12 @@ try {
 
   // ---------- 6. church: enter, pray, read verse, exit ----------
   console.log('church:');
-  ok('A exits the farm via the east gate', await walkTo(a, 11*TILE+16, 10*TILE+16, 12000));
-  ok('walk to church door', await walkTo(a, CHURCH_DOOR.x, CHURCH_DOOR.y + 8));
+  ok('A exits the farm via the north gate', await walkTo(a, 8*TILE+16, 14*TILE+16, 12000));
+  ok('A walks north to the market lane', await walkTo(a, 8*TILE+16, 12*TILE+16, 8000));
+  ok('walk east on the market lane', await walkTo(a, 13*TILE+16, 12*TILE+16, 8000));
+  ok('walk east on the market lane to the east lane', await walkTo(a, 27*TILE+16, 12*TILE+16, 15000));
+  ok('walk south down the east lane', await walkTo(a, 27*TILE+16, 15*TILE+16, 8000));
+  ok('walk to church door', await walkTo(a, CHURCH_DOOR.x, CHURCH_DOOR.y + 8, 8000));
   a.send({ t: 'interact' }); // enter
   ok('enter church interior', await a.waitFor(() => a.me()?.inside === true, 2000));
   // collision inside the church: interior walls + pews
@@ -542,6 +551,8 @@ try {
   // drifted into a solid tile the player stops adjacent, still in talk range.
   console.log('villagers:');
   let say = null;
+  // route via the plaza: a straight line from the cafe clips the cafe wall
+  await walkTo(a, 21*TILE+16, 17*TILE+16, 8000);
   for (let attempt = 0; attempt < 3 && !say; attempt++) {
     const h = a.state.npcs.get('Hannah');
     ok('Hannah is in the village', !!h);
@@ -556,13 +567,14 @@ try {
 
   // ---------- 6c. cooking (B farms a second plot, cooks at the cafe, gives to A) ----------
   console.log('cooking:');
-  const PLOT1 = { x: 10*TILE+16, y: 9*TILE+16 };   // FARM_PLOTS[2]
-  ok('B walks back to the bridge', await walkTo(b, BRIDGE_E.x, BRIDGE_E.y, 15000));
-  ok('B crosses to the west bank', await walkTo(b, 29*TILE+16, 14*TILE+16, 8000));
-  ok('B walks to the east bank', await walkTo(b, PATH_E.x, PATH_E.y, 12000));
-  ok('B walks to the village path', await walkTo(b, PATH_W.x, PATH_W.y, 12000));
-  ok('B walks to the farm gate', await walkTo(b, 11*TILE+16, 10*TILE+16, 12000));
-  ok('B walks to plot 2', await walkTo(b, PLOT1.x, PLOT1.y, 15000));
+  const PLOT1 = { x: 10*TILE+16, y: 15*TILE+16 };   // FARM_PLOTS[2]
+  ok('B walks north to the south lane', await walkTo(b, 17*TILE+16, 18*TILE+16, 8000));
+  ok('B walks west to the west lane', await walkTo(b, 13*TILE+16, 18*TILE+16, 8000));
+  ok('B walks north to the market lane', await walkTo(b, 13*TILE+16, 12*TILE+16, 12000));
+  ok('B walks west on the market lane', await walkTo(b, 8*TILE+16, 12*TILE+16, 8000));
+  ok('B walks south to the farm gate', await walkTo(b, 8*TILE+16, 14*TILE+16, 8000));
+  ok('B walks south into the farm', await walkTo(b, 8*TILE+16, 16*TILE+16, 8000));
+  ok('B walks to plot 2', await walkTo(b, PLOT1.x, PLOT1.y, 8000));
   b.send({ t: 'interact' }); // plant
   ok('B plants', await b.waitFor(() => b.state.farm[2]?.stage === 'planted', 2000));
   b.send({ t: 'interact' }); // water
@@ -570,15 +582,21 @@ try {
   ok('B crop grows', await b.waitFor(() => b.state.farm[2]?.stage === 'ready', 8000));
   b.send({ t: 'interact' }); // harvest -> produce
   ok('B harvests produce', await b.waitFor(() => b.me()?.inv?.produce >= 1, 3000));
-  const CAFE = { x: 26*TILE+16, y: 17*TILE+16 };
-  ok('B walks to cafe counter', await walkTo(b, CAFE.x, CAFE.y, 15000));
+  const CAFE = { x: 24*TILE+16, y: 16*TILE+16 };
+  ok('B exits the farm', await walkTo(b, 8*TILE+16, 14*TILE+16, 8000));
+  ok('B walks north to the market lane', await walkTo(b, 8*TILE+16, 12*TILE+16, 8000));
+  ok('B walks east on the market lane', await walkTo(b, 13*TILE+16, 12*TILE+16, 8000));
+  ok('B walks east to the east lane', await walkTo(b, 27*TILE+16, 12*TILE+16, 12000));
+  ok('B walks south down the east lane', await walkTo(b, 27*TILE+16, 16*TILE+16, 8000));
+  ok('B walks to cafe counter', await walkTo(b, CAFE.x, CAFE.y, 8000));
   b.send({ t: 'interact' }); // -> cook menu offered
   ok('cook menu offered near cafe', await b.waitFor(() => b.msgs.some(m => m.t === 'menu' && m.kind === 'cook'), 2000));
   b.send({ t: 'cook', action: 'cook' });
   const cooked = await b.waitFor(() => b.msgs.some(m => m.t === 'cooked'), 2000) ? b.lastOf('cooked') : null;
   ok('cook turns produce+fish into a meal', !!cooked && b.me()?.inv?.meals === 1, cooked?.meal);
   ok('cooking counts toward the day rhythm', await b.waitFor(() => b.lastOf('day')?.rhythm?.cook === true, 3000));
-  ok('A walks to cafe', await walkTo(a, CAFE.x, CAFE.y + 32, 15000));
+  ok('A walks southwest to the east lane', await walkTo(a, 27*TILE+16, 16*TILE+16, 8000));
+  ok('A walks to cafe', await walkTo(a, CAFE.x, CAFE.y + 32, 8000));
   b.send({ t: 'cook', action: 'give' });
   const gift = await a.waitFor(() => a.msgs.some(m => m.t === 'gift'), 3000) ? a.lastOf('gift') : null;
   ok('give shares the meal with the nearby player', !!gift && gift.from === 'Friend' && gift.to === 'Ariel', JSON.stringify(gift));
@@ -610,9 +628,10 @@ try {
   ok('walk to church exit', await walkTo(a, 20*TILE+16, 24*TILE+16));
   a.send({ t: 'interact' });
   ok('exit church', await a.waitFor(() => a.me()?.inside === false, 2000));
-  const HOME_DOOR = { x: 11*TILE+16, y: 17*TILE+16 };
-  ok('walk to the village path', await walkTo(a, 20*TILE+16, 18*TILE+16, 12000));
-  ok('walk to home door', await walkTo(a, HOME_DOOR.x, HOME_DOOR.y + 24, 15000));
+  const HOME_DOOR = { x: 8*TILE+16, y: 12*TILE+16 };
+  ok('walk west on the south lane', await walkTo(a, 13*TILE+16, 18*TILE+16, 12000));
+  ok('walk north up the west lane to the market lane', await walkTo(a, 13*TILE+16, 12*TILE+16, 8000));
+  ok('walk west to the home door', await walkTo(a, HOME_DOOR.x, HOME_DOOR.y, 8000));
   a.send({ t: 'interact' }); // enter home
   ok('enter home interior', await a.waitFor(() => a.me()?.inside === true && a.me()?.place === 'home', 2000));
   const wallPushHome = await walkTo(a, 32*TILE+16, 10*TILE+16, 3500);
@@ -649,11 +668,16 @@ try {
 
   // ---------- 7. SIGNATURE: ruin opens when both stand on stones ----------
   console.log('ruin:');
-  ok('A walks to stone A', await walkTo(a, STONE_A.x, STONE_A.y, 15000));
-  ok('B walks to the village path', await walkTo(b, PATH_W.x, PATH_W.y, 12000));
-  ok('B walks to the east bank', await walkTo(b, PATH_E.x, PATH_E.y, 12000));
-  ok('B walks onto the bridge', await walkTo(b, BRIDGE_E.x, BRIDGE_E.y, 8000));
-  ok('B walks to stone B', await walkTo(b, STONE_B.x, STONE_B.y, 15000));
+  ok('A walks west on the market lane', await walkTo(a, 6*TILE+16, 12*TILE+16, 8000));
+  ok('A walks north to the forest', await walkTo(a, 6*TILE+16, 8*TILE+16, 8000));
+  ok('A walks to stone A', await walkTo(a, STONE_A.x, STONE_A.y, 8000));
+  ok('B walks east to the east lane', await walkTo(b, 27*TILE+16, 17*TILE+16, 8000));
+  ok('B walks north to the market lane', await walkTo(b, 27*TILE+16, 12*TILE+16, 8000));
+  // the church (tx 28-32) sits on the market lane; route around its south side
+  ok('B walks south down the east lane', await walkTo(b, 27*TILE+16, 16*TILE+16, 8000));
+  ok('B walks east below the church', await walkTo(b, 33*TILE+16, 16*TILE+16, 8000));
+  ok('B walks north up the ruins lane', await walkTo(b, 33*TILE+16, 8*TILE+16, 12000));
+  ok('B walks to stone B', await walkTo(b, STONE_B.x, STONE_B.y, 8000));
   ok('ruin-open fires for A', await a.waitFor(() => a.state.ruinOpen, 4000));
   ok('ruin-open fires for B (shared world event)', await b.waitFor(() => b.state.ruinOpen, 4000));
   const ro = a.lastOf('ruin-open');
@@ -661,13 +685,16 @@ try {
 
   // ---------- 7b. ENDING: both enter the garden together -> shared ending -> play again resets ----------
   console.log('ending:');
-  const GARDEN = { x: 20*TILE+16, y: 14*TILE+16 };
-  const SPAWN = { x: 13*TILE+16, y: 18*TILE+16 }; // lane east of home (System 1)
-  ok('A walks to garden', await walkTo(a, GARDEN.x, GARDEN.y, 20000));
-  ok('B walks to the bridge', await walkTo(b, BRIDGE_E.x, BRIDGE_E.y, 15000));
-  ok('B walks to the east bank', await walkTo(b, PATH_E.x, PATH_E.y, 12000));
-  ok('B walks to the village path', await walkTo(b, PATH_W.x, PATH_W.y, 12000));
-  ok('B walks to garden', await walkTo(b, GARDEN.x, GARDEN.y, 20000));
+  const GARDEN = { x: 19*TILE+16, y: 15*TILE+16 };
+  const GARDEN_B = { x: 21*TILE+16, y: 15*TILE+16 };
+  const SPAWN = { x: 13*TILE+16, y: 14*TILE+16 }; // west lane east of home (System 1)
+  ok('A walks south to the market lane', await walkTo(a, 6*TILE+16, 12*TILE+16, 12000));
+  ok('A walks east on the market lane', await walkTo(a, 13*TILE+16, 12*TILE+16, 12000));
+  ok('A walks east to the north lane', await walkTo(a, 19*TILE+16, 12*TILE+16, 12000));
+  ok('A walks south to the garden', await walkTo(a, GARDEN.x, GARDEN.y, 12000));
+  ok('B walks south down the ruins lane', await walkTo(b, 33*TILE+16, 16*TILE+16, 15000));
+  ok('B walks west below the church', await walkTo(b, 21*TILE+16, 16*TILE+16, 12000));
+  ok('B walks north to the garden', await walkTo(b, GARDEN_B.x, GARDEN_B.y, 12000));
   ok('ending fires for A', await a.waitFor(() => a.msgs.some(m => m.t === 'ending'), 5000));
   ok('ending fires for B (shared ending)', await b.waitFor(() => b.msgs.some(m => m.t === 'ending'), 5000));
   const endMsg = a.lastOf('ending');
@@ -697,28 +724,32 @@ try {
   const k = new C('Third'); await k.connect();
   k.send({ t: 'join', name: 'Third', code });
   ok('third player joins (room cap 10)', await k.waitFor(() => k.state.players.size === 3, 3000));
-  ok('A walks to stone A again', await walkTo(a, STONE_A.x, STONE_A.y, 20000));
-  // B must cross via the east bank: the ty=14 row is blocked by the cafe
-  // building (tx 25-27), and a straight line to stone B hits the river —
-  // walkTo steers straight, so route via the village path waypoints instead.
-  ok('B walks to the village path again', await walkTo(b, 20*TILE+16, 18*TILE+16, 15000));
-  ok('B walks east along the path', await walkTo(b, 27*TILE+16, 18*TILE+16, 15000));
-  ok('B walks to the east bank again', await walkTo(b, PATH_E.x, PATH_E.y, 15000));
-  ok('B walks onto the bridge again', await walkTo(b, BRIDGE_E.x, BRIDGE_E.y, 15000));
-  ok('B walks to stone B again', await walkTo(b, STONE_B.x, STONE_B.y, 15000));
+  ok('A walks north up the west lane', await walkTo(a, 13*TILE+16, 8*TILE+16, 20000));
+  ok('A walks west toward the forest', await walkTo(a, 6*TILE+16, 8*TILE+16, 12000));
+  ok('A walks to stone A again', await walkTo(a, STONE_A.x, STONE_A.y, 12000));
+  // B routes via lanes: market lane east, ruins lane north.
+  ok('B walks north to the market lane', await walkTo(b, 13*TILE+16, 12*TILE+16, 15000));
+  // the church (tx 28-32) sits on the market lane; route around its south side
+  ok('B walks east to the east lane', await walkTo(b, 27*TILE+16, 12*TILE+16, 15000));
+  ok('B walks south down the east lane', await walkTo(b, 27*TILE+16, 16*TILE+16, 8000));
+  ok('B walks east below the church', await walkTo(b, 33*TILE+16, 16*TILE+16, 8000));
+  ok('B walks north up the ruins lane', await walkTo(b, 33*TILE+16, 8*TILE+16, 12000));
+  ok('B walks to stone B again', await walkTo(b, STONE_B.x, STONE_B.y, 12000));
   ok('ruin re-opens with 3 players', await b.waitFor(() => b.msgs.filter(m => m.t === 'ruin-open').length >= 2, 4000));
-  const AWAY = { x: 24*TILE+16, y: 18*TILE+16 }; // cafe path: outside the garden plaza
+  const AWAY = { x: 24*TILE+16, y: 18*TILE+16 }; // south lane: outside the garden plaza
   ok('Third walks away from the garden', await walkTo(k, AWAY.x, AWAY.y, 20000));
-  ok('A walks back to garden', await walkTo(a, GARDEN.x, GARDEN.y, 20000));
-  ok('B walks back onto the bridge', await walkTo(b, BRIDGE_E.x, BRIDGE_E.y, 15000));
-  ok('B walks back to the east bank', await walkTo(b, PATH_E.x, PATH_E.y, 15000));
-  ok('B walks back west along the path', await walkTo(b, 20*TILE+16, 18*TILE+16, 15000));
-  ok('B walks back to garden', await walkTo(b, GARDEN.x, GARDEN.y, 20000));
+  ok('A walks south to the market lane', await walkTo(a, 6*TILE+16, 12*TILE+16, 12000));
+  ok('A walks east on the market lane', await walkTo(a, 13*TILE+16, 12*TILE+16, 12000));
+  ok('A walks east to the north lane', await walkTo(a, 19*TILE+16, 12*TILE+16, 12000));
+  ok('A walks back to garden', await walkTo(a, GARDEN.x, GARDEN.y, 12000));
+  ok('B walks south down the ruins lane', await walkTo(b, 33*TILE+16, 16*TILE+16, 15000));
+  ok('B walks west below the church', await walkTo(b, 21*TILE+16, 16*TILE+16, 12000));
+  ok('B walks back to garden', await walkTo(b, GARDEN_B.x, GARDEN_B.y, 12000));
   ok('ending fires for A (3 players, only 2 in garden)', await a.waitFor(() => a.msgs.filter(m => m.t === 'ending').length >= 2, 5000));
   ok('ending fires for B', await b.waitFor(() => b.msgs.filter(m => m.t === 'ending').length >= 2, 5000));
   ok('ending fires for the player outside the garden', await k.waitFor(() => k.msgs.some(m => m.t === 'ending'), 5000));
   const kme = k.me();
-  const kInGarden = !!kme && kme.x >= 18*TILE && kme.x < 23*TILE && kme.y >= 12*TILE && kme.y < 17*TILE;
+  const kInGarden = !!kme && kme.x >= 17*TILE && kme.x < 23*TILE && kme.y >= 13*TILE && kme.y < 18*TILE;
   ok('third player was NOT in the garden plaza', !kInGarden, `k at ${kme?.x?.toFixed(0)},${kme?.y?.toFixed(0)}`);
 
   // ---------- 8. negative: invalid room codes + room cap ----------
@@ -829,8 +860,10 @@ try {
   ok('join TIKVAH -> joined the public village', await v1.waitFor(() => v1.state.code === 'TIKVAH', 3000), 'code=' + v1.state.code);
   // v1 tends a plot, then leaves the village EMPTY — the public room must
   // keep its world state (and must not be reaped).
-  ok('v1 walks to the village path', await walkTo(v1, 20*TILE+16, 18*TILE+16, 12000));
-  ok('v1 walks to the farm gate', await walkTo(v1, 11*TILE+16, 10*TILE+16, 12000));
+  ok('v1 walks south to the south lane', await walkTo(v1, 13*TILE+16, 18*TILE+16, 12000));
+  ok('v1 walks north to the market lane', await walkTo(v1, 13*TILE+16, 12*TILE+16, 12000));
+  ok('v1 walks west on the market lane', await walkTo(v1, 8*TILE+16, 12*TILE+16, 8000));
+  ok('v1 walks south to the farm gate', await walkTo(v1, 8*TILE+16, 14*TILE+16, 8000));
   ok('v1 walks to plot 1', await walkTo(v1, PLOT0.x, PLOT0.y, 12000));
   v1.send({ t: 'interact' }); // plant (not watered: stays 'planted')
   ok('v1 plants a crop', await v1.waitFor(() => v1.state.farm[0]?.stage === 'planted', 3000));
@@ -861,9 +894,12 @@ try {
   v3.send({ t: 'join', name: 'Villager3', code: 'TIKVAH' });
   ok('observer joins the public village', await v3.waitFor(() => v3.state.code === 'TIKVAH', 3000));
   // v2 farms plot 3 for a real inventory before the personal reset
-  const PLOT2 = { x: 10*TILE+16, y: 9*TILE+16 };
-  ok('v2 walks to the village path', await walkTo(v2, 20*TILE+16, 18*TILE+16, 12000));
-  ok('v2 walks to the farm gate', await walkTo(v2, 11*TILE+16, 10*TILE+16, 12000));
+  const PLOT2 = { x: 10*TILE+16, y: 15*TILE+16 };
+  ok('v2 walks south to the south lane', await walkTo(v2, 13*TILE+16, 18*TILE+16, 12000));
+  ok('v2 walks north to the market lane', await walkTo(v2, 13*TILE+16, 12*TILE+16, 12000));
+  ok('v2 walks west on the market lane', await walkTo(v2, 8*TILE+16, 12*TILE+16, 8000));
+  ok('v2 walks south to the farm gate', await walkTo(v2, 8*TILE+16, 14*TILE+16, 8000));
+  ok('v2 walks south into the farm', await walkTo(v2, 8*TILE+16, 16*TILE+16, 8000));
   ok('v2 walks to plot 3', await walkTo(v2, PLOT2.x, PLOT2.y, 12000));
   v2.send({ t: 'interact' }); // plant
   ok('v2 plants plot 3', await v2.waitFor(() => v2.state.farm[2]?.stage === 'planted', 3000));
@@ -918,8 +954,11 @@ try {
   i1.send({ t: 'join', name: 'Ident1', code: 'TIKVAH', uuid: ID });
   ok('join TIKVAH with a uuid -> joined', await i1.waitFor(() => i1.state.code === 'TIKVAH', 3000));
   ok('server echoes the client uuid', i1.lastOf('joined')?.uuid === ID, i1.lastOf('joined')?.uuid);
-  ok('i1 walks to the village path', await walkTo(i1, 20*TILE+16, 18*TILE+16, 12000));
-  ok('i1 walks to the farm gate', await walkTo(i1, 11*TILE+16, 10*TILE+16, 12000));
+  ok('i1 walks south to the south lane', await walkTo(i1, 13*TILE+16, 18*TILE+16, 12000));
+  ok('i1 walks north to the market lane', await walkTo(i1, 13*TILE+16, 12*TILE+16, 12000));
+  ok('i1 walks west on the market lane', await walkTo(i1, 8*TILE+16, 12*TILE+16, 8000));
+  ok('i1 walks south to the farm gate', await walkTo(i1, 8*TILE+16, 14*TILE+16, 8000));
+  ok('i1 walks south into the farm', await walkTo(i1, 8*TILE+16, 16*TILE+16, 8000));
   ok('i1 walks to plot 3', await walkTo(i1, PLOT2.x, PLOT2.y, 12000));
   i1.send({ t: 'interact' }); // plant
   ok('i1 plants plot 3', await i1.waitFor(() => i1.state.farm[2]?.stage === 'planted', 3000));

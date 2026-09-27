@@ -977,7 +977,7 @@ const CH_EXIT = { tx: 20, ty: 24 }, CH_PRAY = { tx: 20, ty: 20 },
 const HM_EXIT = { tx: 32, ty: 24 }, HM_SLEEP = { tx: 29, ty: 18 }, HM_HEARTH = { tx: 35, ty: 18 },
       HM_WARD = { tx: 32, ty: 21 }, HM_RUG = { tx: 29, ty: 21 }, HM_SIT = { tx: 35, ty: 21 },
       HM_NOOK = { tx: 32, ty: 18 };
-const DOCK_T = { tx: 33, ty: 20 };
+const DOCK_T = { tx: 17, ty: 20 };
 function tDist(ax, ay, tx, ty) { return Math.hypot(ax - (tx*TILE+16), ay - (ty*TILE+16)); }
 function promptFor(me) {
   if (me.inside && me.place === 'church') {
@@ -2283,44 +2283,55 @@ const foxSprite = px(16, 12, (g) => {
 
 
 // ================= Map layout =================
-const FARM_RECT = { x0:5, y0:8, x1:11, y1:12 };
-const CHURCH = {x0:17, y0:2, x1:23, y1:4, door:{tx:20,ty:5}};
-const HOME = {x0:10, y0:15, x1:12, y1:16, door:{tx:11,ty:17}};
-const CAFE = {x0:25, y0:15, x1:27, y1:16, counter:{tx:26,ty:17}};
-const STONES = [{tx:4,ty:22},{tx:35,ty:3}];
-const LAMPS = [{tx:18,ty:12},{tx:22,ty:16},{tx:19,ty:7},{tx:11,ty:18},{tx:26,ty:18}];
-const STALLS = [{tx:24,ty:10,s:stallA},{tx:26,ty:10,s:stallB},{tx:28,ty:10,s:stallC}];
-const FLOWERS = [[13,12],[16,17],[23,11],[28,15],[12,22],[7,15],[33,8],[3,25],[15,5],[29,22]];
+// BATCH6b: board composition — house+farms west, market/plaza center,
+// cafe+church east, ruins NE, forest NW, river along the bottom.
+const FARM_RECT = { x0:5, y0:14, x1:11, y1:18 };
+const CHURCH = {x0:28, y0:10, x1:32, y1:14, door:{tx:30,ty:15}};
+const HOME = {x0:7, y0:9, x1:10, y1:11, door:{tx:8,ty:12}};
+const CAFE = {x0:23, y0:13, x1:25, y1:15, counter:{tx:24,ty:16}};
+const FOUNTAIN = {tx:20, ty:15};
+const STONES = [{tx:6,ty:5},{tx:34,ty:5}];
+const LAMPS = [{tx:17,ty:12},{tx:22,ty:12},{tx:19,ty:17},{tx:27,ty:14},{tx:13,ty:16},{tx:20,ty:19}];
+const STALLS = [{tx:14,ty:10,s:stallA},{tx:16,ty:10,s:stallB},{tx:18,ty:10,s:stallC}];
+const WATERFALLS = [{tx:3,ty:0},{tx:36,ty:0}];   // 1 wide x 2 tall
+const RUIN_ARCH = {tx:31, ty:3};                  // 2 wide x 2 tall
+const FLOWERS = [[14,12],[16,17],[23,11],[28,15],[12,22],[7,15],[33,8],[3,25],[15,5],[29,22]];
 const ZONE_LABELS = [
-  {tx:11, ty:13, text:'Your House'}, {tx:8, ty:7, text:'Farms'},
-  {tx:26, ty:8, text:'Market'}, {tx:26, ty:13, text:'Café'},
-  {tx:20, ty:6, text:'Church'}, {tx:3, ty:3, text:'Forest'},
-  {tx:4, ty:20, text:'Ruins'}, {tx:35, ty:5, text:'Ruins'},
-  {tx:30, ty:18, text:'River'},
+  {tx:8, ty:10, text:'Your House'}, {tx:8, ty:19, text:'Farms'},
+  {tx:16, ty:9, text:'Market'}, {tx:24, ty:12, text:'Café'},
+  {tx:30, ty:9, text:'Church'}, {tx:3, ty:4, text:'Forest'},
+  {tx:34, ty:3, text:'Ruins'}, {tx:10, ty:23, text:'River'},
 ];
 
 function baseTile(tx, ty) {
-  // river band
-  if (tx === 30 || tx === 31) return (ty === 14) ? 'bridge' : 'water';
-  if (tx === 29 || tx === 32) return 'sand';
-  // paths
-  if (ty === 14 && tx >= 11 && tx <= 32) return 'path';
-  if (tx === 20 && ty >= 6 && ty <= 14) return 'path';
-  if (tx >= 29 && tx <= 33 && ty === 20) return 'path';
-  if (tx === 11 && ty >= 14 && ty <= 18) return 'path';
-  if (ty === 18 && tx >= 11 && tx <= 27) return 'path';
-  if (tx === 26 && ty >= 14 && ty <= 18) return 'path';
-  // plaza
-  if (tx >= 18 && tx <= 22 && ty >= 12 && ty <= 16) return 'plaza';
+  // BATCH6a: river along the bottom rows (board composition), stone bridge crossing
+  if (ty >= 21 && ty <= 24) return (tx >= 19 && tx <= 21) ? 'bridge' : 'water';
+  if (ty === 20 || ty === 25) return (tx >= 19 && tx <= 21) ? 'bridge' : 'sand';
+  // central plaza
+  if (tx >= 17 && tx <= 22 && ty >= 13 && ty <= 17) return 'plaza';
+  // winding stone paths
+  if (ty === 12 && tx >= 6 && tx <= 33) return 'path';  // market lane
+  if (tx === 13 && ty >= 8 && ty <= 18) return 'path';  // west lane
+  if (tx === 19 && ty >= 6 && ty <= 12) return 'path';  // north lane
+  if (tx === 20 && ty >= 18 && ty <= 19) return 'path'; // plaza to bridge
+  if (ty === 18 && tx >= 13 && tx <= 28) return 'path'; // south lane
+  if (tx === 27 && ty >= 12 && ty <= 18) return 'path'; // east lane
+  if (tx === 33 && ty >= 6 && ty <= 12) return 'path';  // ruins lane
+  if (ty === 8 && tx >= 19 && tx <= 33) return 'path';   // upper lane
   return 'grass';
 }
 function isTree(tx, ty) {
-  if (tx === 11 && ty === 10) return false; // the farm gate stays open
-  if (tx >= 1 && tx <= 5 && ty >= 4 && ty <= 24) return (tx*13 + ty*7) % 4 !== 3;
-  if (tx >= 34 && tx <= 39 && ty >= 6 && ty <= 20) return (tx*11 + ty*5) % 5 !== 4;
+  if (tx === 8 && ty === 14) return false; // the farm gate stays open (north side)
+  for (const w of WATERFALLS) if (tx === w.tx && (ty === w.ty || ty === w.ty + 1)) return false;
+  if (tx >= RUIN_ARCH.tx && tx <= RUIN_ARCH.tx + 1 && ty >= RUIN_ARCH.ty && ty <= RUIN_ARCH.ty + 1) return false;
+  for (const s of STONES) if (Math.abs(tx - s.tx) <= 1 && Math.abs(ty - s.ty) <= 1) return false;
+  // dense pine forest bands (board edges)
+  if (tx >= 0 && tx <= 4 && ty >= 0 && ty <= 24) return (tx*13 + ty*7) % 4 !== 3;
+  if (tx >= 35 && tx <= 39 && ty >= 0 && ty <= 20) return (tx*11 + ty*5) % 5 !== 4;
   if ((tx*7 + ty*13) % 23 === 0 && baseTile(tx,ty) === 'grass' &&
-      !(tx>=17&&tx<=23&&ty<=6) && !(tx>=10&&tx<=12&&ty>=14&&ty<=18) &&
-      !(tx>=25&&tx<=27&&ty>=14&&ty<=19) && !(tx>=24&&tx<=28&&ty>=9&&ty<=11))
+      !(tx>=28&&tx<=32&&ty>=9&&ty<=15) && !(tx>=7&&tx<=10&&ty>=9&&ty<=12) &&
+      !(tx>=23&&tx<=25&&ty>=12&&ty<=16) && !(tx>=14&&tx<=18&&ty>=9&&ty<=11) &&
+      !(tx>=5&&tx<=11&&ty>=13&&ty<=19))
     return true;
   return false;
 }
@@ -2328,8 +2339,8 @@ function isFence(tx, ty) {
   const onH = (ty === FARM_RECT.y0 || ty === FARM_RECT.y1) && tx >= FARM_RECT.x0 && tx <= FARM_RECT.x1;
   const onV = (tx === FARM_RECT.x0 || tx === FARM_RECT.x1) && ty >= FARM_RECT.y0 && ty <= FARM_RECT.y1;
   if (!onH && !onV) return false;
-  // gate on the east side
-  if (tx === FARM_RECT.x1 && (ty === 10)) return false;
+  // gate on the north side
+  if (ty === FARM_RECT.y0 && tx === 8) return false;
   return true;
 }
 
@@ -2369,7 +2380,7 @@ function drawWorld(g, now) {
     else if (b === 'bridge') g.drawImage(bridgeTile, x, y);
     else g.drawImage(((tx*7+ty*13)%5===0) ? grassB : grassA, x, y);
     // garden: ruin-open reveal, fuller bloom after the day rhythm completes
-    if (tx>=18 && tx<=22 && ty>=12 && ty<=16 && !(tx===20&&ty===14)) {
+    if (tx>=17 && tx<=22 && ty>=13 && ty<=17 && !(tx===FOUNTAIN.tx&&ty===FOUNTAIN.ty)) {
       if (gardenBloomed) g.drawImage(bloomTile, x, y);
       else if (ruinOpen && (tx+ty)%2===0) g.drawImage(gardenTile, x, y);
     }
@@ -2380,13 +2391,19 @@ function drawWorld(g, now) {
       else g.drawImage(cropTiles[f.stage] || soilTile, x, y);
     }
     if (isFence(tx,ty)) g.drawImage(fenceTile, x, y);
-    if (isTree(tx,ty)) g.drawImage(((tx+ty)%2===0) ? treeA : treeB, x, y-8);
+    if (isTree(tx,ty)) {
+      // pines in the forest bands, cherry blossoms scattered along the lanes
+      let tv = ((tx+ty)%2===0) ? treeA : treeB;
+      if (tx <= 4 || tx >= 35) tv = treeTallPine;
+      else if ((tx*3 + ty*5) % 7 === 0) tv = treeBlossom;
+      g.drawImage(tv, x, y-8);
+    }
     // church building
     if (tx>=CHURCH.x0 && tx<=CHURCH.x1 && ty>=CHURCH.y0-1 && ty<=CHURCH.y1) {
       if (ty===CHURCH.y0-1) g.drawImage(churchRoof, x, y);
       else {
         g.drawImage(churchWall, x, y);
-        if (night && (tx===18||tx===22) && ty===3) { g.fillStyle='rgba(255,214,120,.85)'; g.fillRect(x+9,y+9,14,14); }
+        if (night && (tx===29||tx===31) && ty===11) { g.fillStyle='rgba(255,214,120,.85)'; g.fillRect(x+9,y+9,14,14); }
       }
     }
     if (tx===CHURCH.door.tx && ty===CHURCH.door.ty) { g.drawImage(pathTile,x,y); g.drawImage(doorMat,x,y); }
@@ -2395,7 +2412,7 @@ function drawWorld(g, now) {
       if (ty===HOME.y0-1) g.drawImage(houseRoof, x, y);
       else {
         g.drawImage(houseWall, x, y);
-        if (night && tx===10 && ty===15) g.drawImage(windowTile, x, y);
+        if (night && tx===8 && ty===12) g.drawImage(windowTile, x, y);
       }
     }
     if (tx===HOME.door.tx && ty===HOME.door.ty) { g.drawImage(pathTile,x,y); g.drawImage(doorTileH,x,y); }
@@ -2405,11 +2422,11 @@ function drawWorld(g, now) {
       else g.drawImage(cafeWall, x, y);
     }
     if (tx===CAFE.counter.tx && ty===CAFE.counter.ty) g.drawImage(counterTile, x, y);
-    if ((tx===25||tx===27) && ty===19) g.drawImage(tableTile, x, y);
+    if ((tx===23||tx===25) && ty===17) g.drawImage(tableTile, x, y);
     // market stalls
     for (const s of STALLS) if (s.tx===tx && s.ty===ty) g.drawImage(s.s, x, y);
     // fountain
-    if (tx===24 && ty===13) {
+    if (tx===FOUNTAIN.tx && ty===FOUNTAIN.ty) {
       g.drawImage(fountainTile, x, y);
       g.fillStyle = 'rgba(190,228,255,.9)';
       const o = Math.sin(now/300)*2;
@@ -2424,11 +2441,11 @@ function drawWorld(g, now) {
     // lamps
     for (const l of LAMPS) if (l.tx===tx && l.ty===ty) g.drawImage(lampTile, x, y-8);
     // dock
-    if (tx===33 && ty===20) g.drawImage(dockTile, x, y);
+    if (tx===17 && ty===20) g.drawImage(dockTile, x, y);
     // flowers
     for (const fl of FLOWERS) if (fl[0]===tx && fl[1]===ty) g.drawImage(flowerTile, x, y);
-    // ruin pillars + stones
-    if ((tx===3 && ty===20) || (tx===36 && ty===4)) g.drawImage(pillarTile, x, y);
+    // ruin pillars flanking the arch (waterfalls + arch draw after the tile loop)
+    if ((tx===30 && ty===4) || (tx===33 && ty===4)) g.drawImage(pillarTile, x, y);
     for (const s of STONES) if (s.tx===tx && s.ty===ty) {
       g.drawImage(ruinOpen ? stoneGlow : stoneTile, x, y);
       if (!ruinOpen) {
@@ -2439,15 +2456,18 @@ function drawWorld(g, now) {
   }
   // zone labels
   if (!inside) {
+    // waterfalls + ruin arch (taller than one tile: drawn over the base terrain)
+    for (const w of WATERFALLS) g.drawImage(waterfallTile, w.tx*TILE, w.ty*TILE);
+    g.drawImage(ruinArch, RUIN_ARCH.tx*TILE, RUIN_ARCH.ty*TILE);
     for (const l of ZONE_LABELS) drawLabel(g, l.tx, l.ty, l.text);
-    if (gardenBloomed || ruinOpen) drawLabel(g, 20, 11, 'Garden of Hope');
+    if (gardenBloomed || ruinOpen) drawLabel(g, 20, 12, 'Garden of Hope');
   }
   if (ruinOpen && !inside) {
     g.fillStyle = `rgba(255,240,180,${0.10+0.05*Math.sin(now/500)})`;
-    g.fillRect(18*TILE, 12*TILE, 5*TILE, 5*TILE);
+    g.fillRect(17*TILE, 13*TILE, 6*TILE, 5*TILE);
   }
   if (gardenBloomed && !inside) { // the garden glows softly once it has bloomed
-    drawGlow(g, 20*TILE, 14*TILE, 110, 'rgba(255,190,215,A)', now, 13, 0.5 + 0.12*Math.sin(now/600));
+    drawGlow(g, 20*TILE, 15*TILE, 110, 'rgba(255,190,215,A)', now, 13, 0.5 + 0.12*Math.sin(now/600));
   }
   if (worshipFlash && Date.now() - worshipFlash < 4000 && inside) {
     g.fillStyle = `rgba(255,236,170,${0.22 * (1 - (Date.now()-worshipFlash)/4000)})`;
@@ -2582,7 +2602,7 @@ const LEAF_COLORS = ['#8ac96a','#d9c26a','#c9a24a','#7cc165','#e8b93c'];
 const leaves = [];
 for (let i = 0; i < 18; i++) leaves.push({ x: Math.random()*WW*TILE, y: Math.random()*WH*TILE, ph: Math.random()*7, sp: 0.5+Math.random()*0.8, c: LEAF_COLORS[i % LEAF_COLORS.length] });
 // warm windows + church door, glowing at night (world tiles)
-const WINDOW_GLOWS = [{tx:18,ty:3},{tx:22,ty:3},{tx:10,ty:15},{tx:20,ty:5}];
+const WINDOW_GLOWS = [{tx:29,ty:11},{tx:31,ty:11},{tx:9,ty:10},{tx:30,ty:15}];
 // smoothed fox position (render-only; the server stays authoritative)
 let foxSm = null, foxFace = 1;
 // Hannah's hello, staged like a storybook moment
