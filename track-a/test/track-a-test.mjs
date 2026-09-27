@@ -50,6 +50,18 @@ await new Promise((resolve, reject) => {
 });
 ok('server starts', serverUp);
 
+// ---------- static file serving ----------
+console.log('static assets:');
+const rHome = await fetch(`http://127.0.0.1:${PORT}/`);
+ok('GET / returns 200 html', rHome.status === 200 && (rHome.headers.get('content-type') || '').includes('text/html'));
+const r404 = await fetch(`http://127.0.0.1:${PORT}/nope.html`);
+ok('missing file returns 404', r404.status === 404);
+const rMp4 = await fetch(`http://127.0.0.1:${PORT}/assets/intro.mp4`);
+ok('GET /assets/intro.mp4 returns 200', rMp4.status === 200);
+ok('intro.mp4 content-type is video/mp4', rMp4.headers.get('content-type') === 'video/mp4', String(rMp4.headers.get('content-type')));
+const mp4Bytes = await rMp4.arrayBuffer();
+ok('intro.mp4 has a body', mp4Bytes.byteLength > 100000, String(mp4Bytes.byteLength));
+
 // ---------- client helper ----------
 class C {
   constructor(name) { this.name = name; this.msgs = []; this.state = { players: new Map(), farm: [], ruinOpen: false, you: null, code: null }; }

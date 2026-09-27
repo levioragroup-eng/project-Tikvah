@@ -26,6 +26,14 @@
   button.small { font-size:15px; padding:8px 16px; }
   #joinRow { display:none; margin-top:12px; }
   #menu .hint { margin-top:16px; font-size:13px; color:#bfe0b4; max-width:440px; line-height:1.6; padding-bottom:24px; }
+  /* intro video overlay */
+  #intro { position:absolute; inset:0; display:none; background:#000; z-index:50; }
+  #intro video { width:100%; height:100%; object-fit:cover; display:block; }
+  #introSkip { position:absolute; right:16px; bottom:16px; z-index:2; font-size:15px; padding:10px 22px; border-radius:999px;
+    border:2px solid rgba(255,255,255,.7); background:rgba(0,0,0,.5); color:#fff; cursor:pointer; font-weight:bold; }
+  #introPlay { position:absolute; inset:0; display:none; align-items:center; justify-content:center; z-index:2; }
+  #introPlay button { font-size:22px; padding:16px 34px; border-radius:999px; border:3px solid #ffd76e;
+    background:rgba(0,0,0,.65); color:#ffe9a8; cursor:pointer; font-weight:bold; }
   /* character creator */
   #creatorWrap { display:none; background:rgba(255,251,232,.96); color:#3a2a12; border-radius:16px; border:3px solid #7a4b1f;
     padding:14px 16px; margin-bottom:14px; width:min(430px,92vw); }
@@ -134,6 +142,12 @@
   <div id="toast"></div>
   <div id="tutorial">Walk with <b>WASD / arrows</b> · Press <b>E</b> to interact<br>Live the village rhythm each day — <b>farm, fish, cook, greet, light a candle</b> —<br>and the <b>Garden of Hope</b> will bloom 🌸<br>Find the <b>ancient ruin</b> with a friend: stand on both glowing stones together ✨</div>
 
+  <div id="intro">
+    <video id="introVid" src="assets/intro.mp4" playsinline preload="metadata"></video>
+    <div id="introPlay"><button id="introPlayBtn">▶ Play</button></div>
+    <button id="introSkip">Skip →</button>
+  </div>
+
   <div id="menu">
     <h1>TIKVAH</h1>
     <p class="sub">A place to grow, a story to live.</p>
@@ -199,6 +213,34 @@
 
 <script>
 'use strict';
+// ================= Intro video overlay =================
+// Plays /assets/intro.mp4 full-screen once per session, before the landing screen.
+(function introVideo() {
+  try { if (window.sessionStorage.getItem('tikvah_intro_seen') === '1') return; } catch (e) {}
+  const ov = document.getElementById('intro');
+  const vid = document.getElementById('introVid');
+  const playBox = document.getElementById('introPlay');
+  let done = false;
+  function dismiss() {
+    if (done) return; done = true;
+    try { window.sessionStorage.setItem('tikvah_intro_seen', '1'); } catch (e) {}
+    try { vid.pause(); } catch (e) {}
+    vid.removeAttribute('src'); vid.load();
+    ov.style.display = 'none';
+  }
+  ov.style.display = 'block';
+  ov.addEventListener('click', dismiss);              // tap anywhere to skip
+  vid.addEventListener('ended', dismiss);             // finished -> landing
+  vid.addEventListener('error', dismiss);             // failed -> landing, never trap
+  document.getElementById('introPlayBtn').addEventListener('click', (e) => {
+    e.stopPropagation();
+    playBox.style.display = 'none';
+    vid.play().catch(dismiss);
+  });
+  vid.play().then(null, () => {                       // autoplay blocked: show tap-to-play
+    playBox.style.display = 'flex';
+  });
+})();
 // ================= Net & state =================
 const WS_URL = (location.protocol === 'https:' ? 'wss://' : 'ws://') + location.host;
 let ws = null, myId = null, code = null;
