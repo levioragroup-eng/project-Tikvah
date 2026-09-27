@@ -1,0 +1,32 @@
+; Engine configuration file.
+; Track B: Godot architecture skeleton — scaffolding only, no gameplay is implemented.
+; See README.md and ARCHITECTURE.md.
+
+config_version=5
+
+[application]
+
+config/name="Tikvah — Track B (Architecture Skeleton)"
+config/description="Christian multiplayer pixel-art life-sim adventure RPG — Track B persistent-world architecture. Scaffolding only."
+run/main_scene=""
+config/features=PackedStringArray("4.4", "GL Compatibility")
+config/icon=""
+
+[autoload]
+
+GameState="*res://autoload/game_state.gd"
+
+[display]
+
+window/size/viewport_width=1280
+window/size/viewport_height=720
+window/stretch/mode="canvas_items"
+
+[input_devices]
+
+pointing/emulate_touch_from_mouse=true
+
+[rendering]
+
+renderer/rendering_method="gl_compatibility"
+renderer/rendering_method.mobile="gl_compatibility"
