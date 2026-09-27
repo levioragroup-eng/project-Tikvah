@@ -85,6 +85,9 @@ const HOME_RECT = { x0: 7, y0: 9, x1: 10, y1: 11 };
 const CAFE_RECT = { x0: 23, y0: 13, x1: 25, y1: 15 };
 const STALL_TILES = [ {tx:14,ty:10}, {tx:16,ty:10}, {tx:18,ty:10} ];
 const FOUNTAIN_TILE = { tx: 20, ty: 15 };
+// BATCH7: pink-blossom clusters along the lanes and plaza (mirrors client)
+const BLOSSOM_SPOTS = [[15,17],[23,7],[12,7],[25,11],[21,7],[24,17],[14,19],[25,19],[9,6],[33,17]];
+function isBlossomSpot(tx, ty) { for (const s of BLOSSOM_SPOTS) if (s[0]===tx && s[1]===ty) return true; return false; }
 
 function inRect(tx, ty, r) { return tx >= r.x0 && tx <= r.x1 && ty >= r.y0 && ty <= r.y1; }
 
@@ -116,13 +119,13 @@ function isTreeTile(tx, ty) {   // mirrors client isTree(), minus the ruin clear
   if (tx === 8 && ty === 14) return false;  // the farm gate stays open (north side)
   if ((tx === 3 && (ty === 0 || ty === 1)) || (tx === 36 && (ty === 0 || ty === 1))) return false; // waterfalls
   if (tx >= 31 && tx <= 32 && ty >= 3 && ty <= 4) return false; // ruin arch
+  if (isBlossomSpot(tx, ty)) return true;   // BATCH7: pink-blossom lane clusters
   if (tx >= 0 && tx <= 4 && ty >= 0 && ty <= 24) return (tx*13 + ty*7) % 4 !== 3;
   if (tx >= 35 && tx <= 39 && ty >= 0 && ty <= 20) return (tx*11 + ty*5) % 5 !== 4;
-  if ((tx*7 + ty*13) % 23 === 0 && baseKind(tx,ty) === 'grass' &&
-      !(tx>=28&&tx<=32&&ty>=9&&ty<=15) && !(tx>=7&&tx<=10&&ty>=9&&ty<=12) &&
-      !(tx>=23&&tx<=25&&ty>=12&&ty<=16) && !(tx>=14&&tx<=18&&ty>=9&&ty<=11) &&
-      !(tx>=5&&tx<=11&&ty>=13&&ty<=19))
-    return true;
+  // BATCH7: north forest band + groves (mirrors client — dense board forest)
+  if (ty >= 0 && ty <= 2 && tx >= 5 && tx <= 34 && (tx*5 + ty*11) % 5 !== 4) return true;
+  if (tx >= 8 && tx <= 11 && ty >= 2 && ty <= 4 && (tx + ty) % 3 !== 2) return true;
+  if (tx >= 24 && tx <= 27 && ty >= 2 && ty <= 4 && (tx*2 + ty) % 3 !== 0) return true;
   return false;
 }
 

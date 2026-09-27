@@ -324,6 +324,37 @@ const b5Checks = [
 ];
 for (const [label, needle] of b5Checks) ok('ui contains ' + label, pageHtml.includes(needle));
 
+// ---------- Batch 7: landmark set-pieces (static page) ----------
+console.log('batch7 landmarks (static page):');
+const b7Checks = [
+  ['batch7 marker', 'BATCH7: landmark set-pieces'],
+  ['tall steeple painter', 'const churchSteeple = px(64,96'],
+  ['steeple belfry', '// belfry: arched openings glowing warm'],
+  ['steeple gold cross', '// gold cross on top'],
+  ['steeple drawn over church', 'drawImage(churchSteeple, 29*TILE, 6*TILE)'],
+  ['church layout east', 'x0:28, y0:10, x1:32, y1:14'],
+  ['waterfall layout reserved', 'const WATERFALLS = [{tx:3,ty:0},{tx:36,ty:0}]'],
+  ['waterfall drawn post-loop', 'drawImage(waterfallTile, w.tx*TILE, w.ty*TILE)'],
+  ['waterfall animation', '// BATCH7: animated falling streaks'],
+  ['ruin arch layout', 'tx:31, ty:3'],
+  ['ruin arch drawn', 'drawImage(ruinArch, RUIN_ARCH.tx*TILE, RUIN_ARCH.ty*TILE)'],
+  ['ruin arch vines', '// BATCH7: hanging vines claim the arch'],
+  ['blossom spots list', 'const BLOSSOM_SPOTS = [[15,17],[23,7],[12,7],[25,11],[21,7],[24,17],[14,19],[25,19],[9,6],[33,17]]'],
+  ['blossom spot fn', 'function isBlossomSpot(tx,ty)'],
+  ['blossom variant used', 'if (isBlossomSpot(tx,ty)) tv = treeBlossom'],
+  ['blossom lush canopy', '// wide side puffs'],
+  ['north forest band', 'if (ty >= 0 && ty <= 2 && tx >= 5 && tx <= 34'],
+  ['forest groves', 'tx >= 8 && tx <= 11 && ty >= 2 && ty <= 4'],
+  ['stone bridge painter', 'const bridgeTile'],
+  ['bridge stone deck', '// BATCH7: stone arch bridge'],
+  ['bridge parapets', '// parapets: raised stone rails'],
+  ['tiered fountain', 'const fountainTile'],
+  ['fountain stone basin', '// wide stone basin'],
+  ['fountain upper tier kept', '// upper tier'],
+  ['fountain drawn', 'drawImage(fountainTile, x, y)'],
+];
+for (const [label, needle] of b7Checks) ok('art contains ' + label, pageHtml.includes(needle));
+
 // ---------- Beauty pass: lighting / particles / animation / UI / staging ----------
 console.log('beauty pass (static page):');
 const beautyChecks = [

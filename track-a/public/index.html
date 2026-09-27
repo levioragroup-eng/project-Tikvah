@@ -1484,22 +1484,31 @@ const sandTile = px(TILE,TILE,(g)=>{
   for (let i=0;i<5;i++) g.fillRect(rnd(TILE), rnd(TILE), 2, 2);
 });
 const bridgeTile = px(TILE,TILE,(g)=>{
-  // warm stone arch bridge deck, top-down read (deck spans horizontally)
+  // BATCH7: stone arch bridge — deck runs north-south (vertical), pale stone,
+  // raised parapets with capstones, subtle arch crown across the deck
   const P = BOARD_PALETTE;
-  g.fillStyle = '#8a7a5e'; g.fillRect(0,0,TILE,TILE);
-  g.fillStyle = P.stone; g.fillRect(0,3,TILE,26);
-  g.fillStyle = '#a08a66';
-  for (let y=3;y<29;y+=6) g.fillRect(0,y,TILE,1);
-  for (let x=8;x<TILE;x+=16) g.fillRect(x,3,1,26);
-  g.fillStyle = '#c4b492'; g.fillRect(0,13,TILE,6);          // center walkway
-  g.fillStyle = 'rgba(255,255,255,.18)'; g.fillRect(0,13,TILE,1);
-  // arch rib beneath: curved band arcing across the deck
-  g.strokeStyle = '#8a7658'; g.lineWidth = 2;
-  g.beginPath(); g.arc(16, 42, 24, Math.PI*1.28, Math.PI*1.72); g.stroke();
-  g.fillStyle = '#7a6248'; g.fillRect(0,0,TILE,4); g.fillRect(0,28,TILE,4);   // rails
-  g.fillStyle = '#9a8468'; g.fillRect(0,0,TILE,1); g.fillRect(0,28,TILE,1);
-  g.fillStyle = '#5f4c36';
-  for (let x=2;x<TILE;x+=8){ g.fillRect(x,0,3,4); g.fillRect(x,28,3,4); }      // rail posts
+  g.fillStyle = P.stone; g.fillRect(0,0,TILE,TILE);            // stone base
+  g.fillStyle = '#c9bfa8'; g.fillRect(6,0,20,TILE);            // deck
+  g.fillStyle = '#a89a80';
+  for (let y=4;y<TILE;y+=8) g.fillRect(6,y,20,1);              // deck courses
+  g.fillStyle = '#ded4bc'; g.fillRect(13,0,6,TILE);            // center walkway
+  g.fillStyle = 'rgba(255,255,255,.25)'; g.fillRect(13,0,1,TILE);
+  // arch crown: pale curve swelling across the deck
+  g.strokeStyle = 'rgba(120,105,80,.55)'; g.lineWidth = 2;
+  g.beginPath(); g.arc(16,-8,22,Math.PI*0.18,Math.PI*0.82); g.stroke();
+  // parapets: raised stone rails left + right with capstones
+  for (const px0 of [1,25]) {
+    g.fillStyle = '#9a8f76'; g.fillRect(px0,0,6,TILE);         // parapet wall
+    g.fillStyle = '#c9bfa8'; g.fillRect(px0,0,6,2);            // capstone
+    g.fillStyle = '#7c7260'; g.fillRect(px0,2,6,1);            // cap shadow
+    g.fillStyle = '#b0a58c';
+    for (let y=7;y<TILE;y+=10) g.fillRect(px0+1,y,4,1);        // stone courses
+    g.fillStyle = '#6e6552';
+    for (let y=4;y<TILE;y+=10) g.fillRect(px0+2,y,2,2);        // posts
+  }
+  // water shadow where the arch meets the river
+  g.fillStyle = 'rgba(30,60,90,.28)';
+  g.fillRect(0,0,1,TILE); g.fillRect(TILE-1,0,1,TILE);
 });
 const dockTile = px(TILE,TILE,(g)=>{ g.fillStyle='#8a5a2b'; g.fillRect(0,0,TILE,TILE); g.fillStyle='#a06a35'; for(let y=0;y<TILE;y+=8) g.fillRect(0,y,TILE,6); g.fillStyle='#5d3a17'; for(let y=0;y<TILE;y+=8) g.fillRect(0,y+6,TILE,2); });
 const soilTile = px(TILE,TILE,(g)=>{
@@ -1640,7 +1649,13 @@ function treeTile(v) {
       dith(50, deep, 12, 12, 14, 10);                              // shadow dither
       dith(24, mid, 8, 6, 16, 12);                                 // midtone texture
       g.fillStyle = lite; g.fillRect(10,4,5,3);                    // sunlit crown
-      if (bl) dith(20, '#fff0f6', 8, 4, 16, 12);                   // blossom sparkle
+      if (bl) {
+        dith(20, '#fff0f6', 8, 4, 16, 12);                   // blossom sparkle
+        dith(16, '#e87aa0', 10, 8, 12, 10);                  // deep pink heart
+        g.fillStyle = base; g.fillRect(3,11,5,7); g.fillRect(24,11,5,7);   // wide side puffs
+        g.fillStyle = lite; g.fillRect(3,11,5,2); g.fillRect(24,11,5,2);   // puff light
+        g.fillStyle = dark; g.fillRect(3,16,5,2); g.fillRect(24,16,5,2);   // puff shade
+      }
     }
   });
 }
@@ -1667,28 +1682,36 @@ const lampTile = px(TILE,TILE,(g)=>{ g.clearRect(0,0,TILE,TILE);
   g.fillStyle='#ffd76e'; g.fillRect(11,3,10,8);
   g.fillStyle='#3a3a3a'; g.fillRect(11,3,10,2); g.fillRect(10,0,12,3);
 });
-// Tiered stone fountain with sparkling water (Batch 2: board-style)
+// BATCH7: classic tiered plaza fountain — wide stone basin (stone dominates,
+// water only in the middle), stacked tiers, crown spout, falling streams
 const fountainTile = px(TILE,TILE,(g)=>{
   const P = BOARD_PALETTE;
-  g.fillStyle = '#8a7f6e'; g.beginPath(); g.arc(16,23,12,0,7); g.fill();
-  g.fillStyle = P.stone; g.beginPath(); g.arc(16,23,10,0,7); g.fill();
-  g.fillStyle = '#d0c4a8'; g.beginPath(); g.arc(16,23,10,Math.PI,0); g.fill();
-  g.fillStyle = P.waterAzure; g.beginPath(); g.arc(16,23,8,0,7); g.fill();
-  g.fillStyle = '#5fb8e8'; g.beginPath(); g.arc(14,21,4,0,7); g.fill();
-  g.fillStyle = 'rgba(255,255,255,.85)';
-  g.fillRect(11,19,2,2); g.fillRect(20,24,2,2); g.fillRect(15,27,2,2);
-  g.fillStyle = 'rgba(190,228,255,.85)';
-  g.fillRect(9,12,2,9); g.fillRect(21,12,2,9);                  // falling streams
-  g.fillStyle = '#9a9aa5'; g.fillRect(14,10,4,13);              // column
-  g.fillStyle = '#7c7c88'; g.fillRect(14,10,1,13);
-  g.fillStyle = '#c9c9d4'; g.fillRect(17,10,1,13);
-  g.fillStyle = '#a89e88'; g.beginPath(); g.arc(16,9,7,0,7); g.fill();   // upper tier
+  g.clearRect(0,0,TILE,TILE);
+  // wide stone basin
+  g.fillStyle = '#8f8268'; g.beginPath(); g.arc(16,20,14,0,7); g.fill();
+  g.fillStyle = '#b8a888'; g.beginPath(); g.arc(16,20,12,0,7); g.fill();
+  g.fillStyle = '#d8d0bd'; g.beginPath(); g.arc(16,20,12,Math.PI,0); g.fill();  // rim light
+  g.fillStyle = '#8f8268'; g.beginPath(); g.arc(16,20,12,0,Math.PI); g.fill();  // rim shade
+  // water surface, smaller than the stone
+  g.fillStyle = P.waterAzure; g.beginPath(); g.arc(16,20,8,0,7); g.fill();
+  g.fillStyle = '#7cc4ee'; g.beginPath(); g.arc(14,18,4,0,7); g.fill();
+  g.fillStyle = 'rgba(255,255,255,.7)'; g.fillRect(12,16,2,2); g.fillRect(19,21,2,2);
+  // central column
+  g.fillStyle = '#9a9aa5'; g.fillRect(14,10,4,12);
+  g.fillStyle = '#7c7c88'; g.fillRect(14,10,1,12);
+  g.fillStyle = '#c9c9d4'; g.fillRect(17,10,1,12);
+  // upper tier
+  g.fillStyle = '#a89e88'; g.beginPath(); g.arc(16,9,7,0,7); g.fill();
   g.fillStyle = P.stone; g.beginPath(); g.arc(16,9,6,0,7); g.fill();
   g.fillStyle = '#6db8e8'; g.beginPath(); g.arc(16,9,4,0,7); g.fill();
   g.fillStyle = 'rgba(255,255,255,.8)'; g.fillRect(14,7,3,2);
-  g.fillStyle = '#9a9aa5'; g.fillRect(15,3,2,6);                // crown spout
-  g.fillStyle = '#bfe4ff'; g.beginPath(); g.arc(16,4,3,0,7); g.fill();
-  g.fillStyle = '#ffffff'; g.fillRect(15,2,2,2);
+  // crown spout
+  g.fillStyle = '#9a9aa5'; g.fillRect(15,2,2,7);
+  g.fillStyle = '#c9c9d4'; g.fillRect(15,2,2,1);
+  g.fillStyle = '#bfe4ff'; g.beginPath(); g.arc(16,3,2,0,7); g.fill();
+  // falling streams from the tier into the basin
+  g.fillStyle = 'rgba(190,228,255,.85)';
+  g.fillRect(9,11,2,7); g.fillRect(21,11,2,7);
 });
 // Market stall (Batch 2): timber posts, peaked striped canopy, bunting, goods
 function stallTile(awning) {
@@ -1928,6 +1951,45 @@ const churchRoof = px(TILE,TILE,(g)=>{
   g.fillStyle = '#3a4a5e'; g.fillRect(0,29,TILE,3);             // eave shadow
   g.fillStyle = '#9ab5cc'; g.fillRect(0,29,TILE,1);             // eave trim
 });
+// BATCH7: tall landmark steeple — stone tower + lamplit belfry + tall spire,
+// gold cross on top (64x96, drawn over the church roof so the church reads tall)
+const churchSteeple = px(64,96,(g)=>{
+  const P = BOARD_PALETTE;
+  g.clearRect(0,0,64,96);
+  // tower base (stone, matches churchWall)
+  g.fillStyle = '#d8d0bd'; g.fillRect(14,64,36,32);
+  g.fillStyle = '#bcae93';
+  for (let y=70;y<96;y+=7) g.fillRect(14,y,36,1);
+  g.fillStyle = 'rgba(0,0,0,.12)'; g.fillRect(14,93,36,3);
+  // small stained-glass lancet on the tower
+  g.fillStyle = '#b3a488'; g.fillRect(27,72,10,18);
+  g.beginPath(); g.arc(32,72,5,Math.PI,0); g.fill();
+  g.fillStyle = '#4a8ad9'; g.fillRect(28,73,3,16);
+  g.fillStyle = '#e8b93c'; g.fillRect(31,73,3,16);
+  g.fillStyle = '#7ab5e8'; g.beginPath(); g.arc(32,73,4,Math.PI,0); g.fill();
+  g.fillStyle = '#1a2340'; g.fillRect(30,73,1,16);
+  // belfry: arched openings glowing warm
+  g.fillStyle = '#c4b69c'; g.fillRect(16,40,32,26);
+  g.fillStyle = '#8f8268'; g.fillRect(16,40,32,2); g.fillRect(16,64,32,2);
+  for (const bx of [20,36]) {
+    g.fillStyle = '#232a44'; g.fillRect(bx,46,8,16);
+    g.beginPath(); g.arc(bx+4,46,4,Math.PI,0); g.fill();
+    g.fillStyle = '#ffd76e'; g.fillRect(bx+2,50,4,10);   // lamplit belfry
+    g.fillStyle = '#b57e45'; g.fillRect(bx+1,48,6,2); g.fillRect(bx+1,60,6,2);
+  }
+  g.fillStyle = '#6e5a3e'; g.fillRect(30,52,4,8);        // bell
+  g.fillStyle = '#8a6f4a'; g.fillRect(30,52,4,2);
+  // tall spire
+  for (let y=0;y<40;y++){ const hw=2+(y/40)*13;
+    g.fillStyle = P.spireBlue; g.fillRect(Math.round(32-hw), y, Math.round(hw*2), 1); }
+  g.fillStyle = '#42566e';
+  for (let y=0;y<40;y++){ const hw=2+(y/40)*13; g.fillRect(32, y, Math.round(hw), 1); }
+  g.fillStyle = '#8aa5bd';
+  for (let y=4;y<36;y+=4){ const hw=2+(y/40)*13; g.fillRect(Math.round(32-hw), y, 2, 1); }
+  // gold cross on top
+  g.fillStyle = P.gold; g.fillRect(31,0,2,10); g.fillRect(27,3,10,2);
+  g.fillStyle = '#ffe9a8'; g.fillRect(31,0,1,10);
+});
 // BATCH4: board-style interiors — stone slabs, pews with kneelers, cloth-draped altar,
 // brass candle stands; tall glowing lancets live in churchWall above
 const churchFloor = px(TILE,TILE,(g)=>{
@@ -2087,6 +2149,15 @@ const ruinArch = px(64,64,(g)=>{
   g.fillStyle = '#8a8a92'; g.fillRect(8,58,9,6); g.fillRect(48,60,8,4);     // rubble
   g.fillStyle = '#a8a8b2'; g.fillRect(8,58,9,2); g.fillRect(48,60,8,1);
   g.fillStyle = '#4a8f3c'; g.fillRect(9,62,4,2); g.fillRect(50,60,3,2);
+  // BATCH7: hanging vines claim the arch, with a few pink blossoms
+  g.fillStyle = '#3a7230';
+  for (const vx of [14,24,40,50]) { const vl = 10+((vx*7)%12); g.fillRect(vx,12,3,vl); }
+  g.fillStyle = '#4a8f3c';
+  for (const vx of [14,24,40,50]) { const vl = 10+((vx*7)%12); g.fillRect(vx+1,14,vl-4,2); g.fillRect(vx,12+vl-3,3,2); }
+  g.fillStyle = '#f0a0c0';
+  for (const bp of [[15,20],[25,16],[41,22],[51,18]]) g.fillRect(bp[0],bp[1],3,3);
+  g.fillStyle = '#ffd4e4';
+  for (const bp of [[15,20],[25,16],[41,22],[51,18]]) g.fillRect(bp[0]+1,bp[1]+1,1,1);
 });
 // BATCH4: board-style interiors — warm plank floor, wainscot walls, patchwork-quilt bed,
 // brick fireplace, paneled wardrobe, table + chair, pray-nook shelf, braided rugs,
@@ -2295,6 +2366,9 @@ const LAMPS = [{tx:17,ty:12},{tx:22,ty:12},{tx:19,ty:17},{tx:27,ty:14},{tx:13,ty
 const STALLS = [{tx:14,ty:10,s:stallA},{tx:16,ty:10,s:stallB},{tx:18,ty:10,s:stallC}];
 const WATERFALLS = [{tx:3,ty:0},{tx:36,ty:0}];   // 1 wide x 2 tall
 const RUIN_ARCH = {tx:31, ty:3};                  // 2 wide x 2 tall
+// BATCH7: landmark set-pieces — pink-blossom clusters along the lanes and plaza
+const BLOSSOM_SPOTS = [[15,17],[23,7],[12,7],[25,11],[21,7],[24,17],[14,19],[25,19],[9,6],[33,17]];
+function isBlossomSpot(tx,ty){ for (const s of BLOSSOM_SPOTS) if (s[0]===tx&&s[1]===ty) return true; return false; }
 const FLOWERS = [[14,12],[16,17],[23,11],[28,15],[12,22],[7,15],[33,8],[3,25],[15,5],[29,22]];
 const ZONE_LABELS = [
   {tx:8, ty:10, text:'Your House'}, {tx:8, ty:19, text:'Farms'},
@@ -2325,14 +2399,15 @@ function isTree(tx, ty) {
   for (const w of WATERFALLS) if (tx === w.tx && (ty === w.ty || ty === w.ty + 1)) return false;
   if (tx >= RUIN_ARCH.tx && tx <= RUIN_ARCH.tx + 1 && ty >= RUIN_ARCH.ty && ty <= RUIN_ARCH.ty + 1) return false;
   for (const s of STONES) if (Math.abs(tx - s.tx) <= 1 && Math.abs(ty - s.ty) <= 1) return false;
+  // BATCH7: pink-blossom clusters along the lanes and plaza (board signature trees)
+  if (isBlossomSpot(tx, ty)) return true;
   // dense pine forest bands (board edges)
   if (tx >= 0 && tx <= 4 && ty >= 0 && ty <= 24) return (tx*13 + ty*7) % 4 !== 3;
   if (tx >= 35 && tx <= 39 && ty >= 0 && ty <= 20) return (tx*11 + ty*5) % 5 !== 4;
-  if ((tx*7 + ty*13) % 23 === 0 && baseTile(tx,ty) === 'grass' &&
-      !(tx>=28&&tx<=32&&ty>=9&&ty<=15) && !(tx>=7&&tx<=10&&ty>=9&&ty<=12) &&
-      !(tx>=23&&tx<=25&&ty>=12&&ty<=16) && !(tx>=14&&tx<=18&&ty>=9&&ty<=11) &&
-      !(tx>=5&&tx<=11&&ty>=13&&ty<=19))
-    return true;
+  // BATCH7: north forest band + groves (dense board forest, not scattered singles)
+  if (ty >= 0 && ty <= 2 && tx >= 5 && tx <= 34 && (tx*5 + ty*11) % 5 !== 4) return true;
+  if (tx >= 8 && tx <= 11 && ty >= 2 && ty <= 4 && (tx + ty) % 3 !== 2) return true;
+  if (tx >= 24 && tx <= 27 && ty >= 2 && ty <= 4 && (tx*2 + ty) % 3 !== 0) return true;
   return false;
 }
 function isFence(tx, ty) {
@@ -2392,10 +2467,10 @@ function drawWorld(g, now) {
     }
     if (isFence(tx,ty)) g.drawImage(fenceTile, x, y);
     if (isTree(tx,ty)) {
-      // pines in the forest bands, cherry blossoms scattered along the lanes
+      // BATCH7: tall pines in the forest bands, pink blossoms at the lane clusters
       let tv = ((tx+ty)%2===0) ? treeA : treeB;
-      if (tx <= 4 || tx >= 35) tv = treeTallPine;
-      else if ((tx*3 + ty*5) % 7 === 0) tv = treeBlossom;
+      if (isBlossomSpot(tx,ty)) tv = treeBlossom;
+      else if (tx <= 4 || tx >= 35 || (ty <= 2 && tx >= 5 && tx <= 34)) tv = treeTallPine;
       g.drawImage(tv, x, y-8);
     }
     // church building
@@ -2457,8 +2532,26 @@ function drawWorld(g, now) {
   // zone labels
   if (!inside) {
     // waterfalls + ruin arch (taller than one tile: drawn over the base terrain)
-    for (const w of WATERFALLS) g.drawImage(waterfallTile, w.tx*TILE, w.ty*TILE);
+    for (const w of WATERFALLS) {
+      g.drawImage(waterfallTile, w.tx*TILE, w.ty*TILE);
+      // BATCH7: animated falling streaks + foam sparkle
+      const wx = w.tx*TILE;
+      for (let i=0;i<3;i++){
+        const fy = ((now/28 + i*22) % 56);
+        g.fillStyle = 'rgba(255,255,255,.75)';
+        g.fillRect(wx+10+((i*7)%9), 10+fy, 3, 7);
+        g.fillStyle = 'rgba(191,228,255,.8)';
+        g.fillRect(wx+17-((i*5)%7), 10+((fy+30)%56), 2, 6);
+      }
+      if (Math.sin(now/380 + wx) > 0.3) {
+        g.fillStyle = 'rgba(255,255,255,.9)';
+        g.fillRect(wx+8+((now/90)%14), 54, 3, 3);
+        g.fillRect(wx+20-((now/110)%10), 58, 2, 2);
+      }
+    }
     g.drawImage(ruinArch, RUIN_ARCH.tx*TILE, RUIN_ARCH.ty*TILE);
+    // BATCH7: tall landmark steeple over the church roof (the board's tall church)
+    g.drawImage(churchSteeple, 29*TILE, 6*TILE);
     for (const l of ZONE_LABELS) drawLabel(g, l.tx, l.ty, l.text);
     if (gardenBloomed || ruinOpen) drawLabel(g, 20, 12, 'Garden of Hope');
   }
