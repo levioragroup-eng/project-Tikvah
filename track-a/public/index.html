@@ -26,6 +26,7 @@
   button.small { font-size:15px; padding:8px 16px; }
   #joinRow { display:none; margin-top:12px; }
   #menu .hint { margin-top:16px; font-size:13px; color:#bfe0b4; max-width:440px; line-height:1.6; padding-bottom:24px; }
+  #menu .pnote { margin-top:10px; font-size:12px; color:#9fc79a; max-width:440px; line-height:1.5; padding-bottom:24px; font-style:italic; }
   /* intro video overlay */
   #intro { position:absolute; inset:0; display:none; background:#000; z-index:50; }
   #intro video { width:100%; height:100%; object-fit:cover; display:block; }
@@ -253,6 +254,7 @@
         <button class="big tbtn ghost" id="btnHow">📖 HOW TO PLAY</button>
       </div>
       <div class="hint">Up to ten travelers, one village.<br>No accounts, no downloads.</div>
+      <div class="pnote">🏡 The village persists while the server runs — a server restart resets it.</div>
     </div>
 
     <div id="roomPanel" style="display:none">
@@ -260,7 +262,10 @@
       <p class="sub">Choose how you arrive.</p>
       <input id="name" maxlength="16" placeholder="Your name" autocomplete="off">
       <div class="row">
-        <button class="big" id="btnCreate">Create Room</button>
+        <button class="big" id="btnPublic">🌿 Enter the Public Village</button>
+      </div>
+      <div class="row">
+        <button class="big ghost" id="btnCreate">Create a Private Village</button>
         <button class="big ghost" id="btnJoinShow">Join Room</button>
       </div>
       <div id="joinRow">
@@ -278,7 +283,8 @@
         <b>Move</b> — WASD / arrow keys, or the joystick on your phone.<br>
         <b>Interact</b> — E, or tap the E button. 👋 wave with 1 · ❤️ heart with 2.<br>
         <b>The rhythm</b> — each day: 🌾 tend the farm · 🎣 catch a fish · 🍲 cook a meal · 👋 greet a neighbor · 🕯️ light a candle — and the <b>Garden of Hope</b> will bloom 🌸<br>
-        <b>The ruin</b> — find the ancient ruin with a friend: stand on both glowing stones together ✨
+        <b>The ruin</b> — find the ancient ruin with a friend: stand on both glowing stones together ✨<br>
+        <b>The village</b> — it persists while the server runs; a server restart resets it. 🏡
       </div>
       <button class="backlink" data-back>← Back to title</button>
     </div>
@@ -640,6 +646,18 @@ function onMsg(m) {
       qcBubbles.clear(); document.getElementById('qcPanel').style.display = 'none';
       firstViewT = Date.now();   // fresh start, fresh first view
       toast('🌱 A new beginning — the village awaits.');
+      break;
+    case 'reset-personal':
+      // public village: only this traveler restarts — the shared world is
+      // untouched, so keep all world state and just hide overlays.
+      players.set(m.p.id, m.p);
+      document.getElementById('ending').style.display = 'none';
+      document.getElementById('verse').style.display = 'none';
+      document.getElementById('panel').style.display = 'none';
+      document.getElementById('dialogue').style.display = 'none';
+      burst = 0; particles.length = 0;
+      firstViewT = Date.now();
+      toast('🌱 A new beginning — the village carries on around you.');
       break;
     case 'error': document.getElementById('err').textContent = m.message; break;
   }
@@ -1006,6 +1024,11 @@ setInterval(() => {
 }, 100);
 
 // menu wiring
+document.getElementById('btnPublic').onclick = () => {
+  const name = document.getElementById('name').value.trim();
+  if (!name) return document.getElementById('err').textContent = 'Enter your name first.';
+  connect(); pending.push({t:'join', name, code: 'TIKVAH', look});
+};
 document.getElementById('btnCreate').onclick = () => {
   const name = document.getElementById('name').value.trim();
   if (!name) return document.getElementById('err').textContent = 'Enter your name first.';

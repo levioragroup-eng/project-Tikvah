@@ -37,6 +37,15 @@ export const QUICK_CHAT = [
 ];
 export const QUICK_CHAT_COOLDOWN_MS = 2000;
 
+// ---------- Mini-MMO (M2): persistent public village ----------
+// The public room lives at a fixed code, is created once at server startup,
+// and is NEVER reaped (exempt from the empty-room cleanup). Its world state
+// (farm crops, garden bloom, candles, day phase, NPC hearts) persists in
+// server memory while the server runs. Railway's disk is ephemeral, so a
+// server restart resets the village.
+export const PUBLIC_CODE = 'TIKVAH';
+const REAP_MS = parseInt(process.env.REAP_MS || '60000', 10); // empty private-room grace
+
 // Village layout (tile coords)
 export const FARM_PLOTS = [ {tx:6,ty:9}, {tx:8,ty:9}, {tx:10,ty:9}, {tx:6,ty:11}, {tx:8,ty:11}, {tx:10,ty:11} ];
 export const DOCK = { tx: 33, ty: 20 };            // fishing spot
@@ -218,11 +227,10 @@ function newCode() {
   return c;
 }
 
-function createRoom() {
-  const code = newCode();
+function buildRoom(code, isPublic = false) {
   const now = Date.now();
   const room = {
-    code, id: ++roomSeq, createdAt: now,
+    code, id: ++roomSeq, createdAt: now, isPublic,
     players: new Map(),   // ws -> player
     sockets: new Set(),
     farm: FARM_PLOTS.map(p => ({ tx: p.tx, ty: p.ty, stage: 'empty', t: 0 })),
@@ -248,6 +256,10 @@ function createRoom() {
   };
   rooms.set(code, room);
   return room;
+}
+
+function createRoom() {
+  return buildRoom(newCode());   // private rooms: random 4-letter code, reaped when empty
 }
 
 function dist(ax, ay, bx, by) { return Math.hypot(ax-bx, ay-by); }
@@ -682,7 +694,9 @@ wss.on('connection', (ws, req) => {
         case 'join': {
           const code = String(m.code || '').toUpperCase().trim();
           const name = String(m.name || '').slice(0, MAX_NAME_LEN);
-          if (!/^[A-Z]{4}$/.test(code) || !rooms.has(code)) { err(ws, 'bad-code', 'Room not found. Check the code and try again.'); return; }
+          // 4-letter codes are private rooms; the fixed PUBLIC_CODE is the
+          // persistent public village. Anything else is rejected.
+          if ((code !== PUBLIC_CODE && !/^[A-Z]{4}$/.test(code)) || !rooms.has(code)) { err(ws, 'bad-code', 'Room not found. Check the code and try again.'); return; }
           if (!name.trim()) { err(ws, 'bad-name', 'Name required'); return; }
           if (ws.room) { err(ws, 'in-room', 'Already in a room'); return; }
           const room = rooms.get(code);
@@ -755,7 +769,23 @@ wss.on('connection', (ws, req) => {
         case 'play-again': {
           if (!ws.room) return;
           const room = ws.room;
-          // reset the shared world for a fresh run
+          if (room.isPublic) {
+            // PUBLIC VILLAGE: play-again is a personal fresh start only. The
+            // shared world state (farm, ruin, day, rhythm, candles, garden,
+            // NPC hearts) is NEVER wiped here — the village carries on.
+            const self = room.players.get(ws);
+            if (!self) return;
+            self.x = SPAWN.tx*TILE + TILE/2; self.y = SPAWN.ty*TILE + TILE/2;
+            self.dir = 'right'; self.moving = false; self.ix = 0; self.iy = 0;
+            self.emote = null; self.emoteAt = 0;
+            self.inside = false; self.place = null; self.fishing = null;
+            self.inv = { produce: 0, fish: 0, meals: 0 };
+            const pub = playerPublic(self);
+            broadcast(room, { t: 'player', p: pub }, ws);
+            send(ws, { t: 'reset-personal', p: pub });
+            break;
+          }
+          // private rooms: reset the shared world for a fresh run
           const now2 = Date.now();
           room.farm = FARM_PLOTS.map(p => ({ tx: p.tx, ty: p.ty, stage: 'empty', t: 0 }));
           room.ruin.open = false;
@@ -800,9 +830,11 @@ wss.on('connection', (ws, req) => {
     const p = room.players.get(ws);
     room.players.delete(ws); room.sockets.delete(ws);
     if (p) broadcast(room, {t:'leave', id: p.id, name: p.name});
-    if (room.players.size === 0) {
-      // keep empty rooms briefly so a dropped player can rejoin, then reap
-      setTimeout(() => { if (room.players.size === 0) rooms.delete(room.code); }, 60_000).unref();
+    // Keep empty PRIVATE rooms briefly so a dropped player can rejoin, then
+    // reap. The public village is exempt: it is never reaped, so its world
+    // state persists while the server runs even when everyone leaves.
+    if (!room.isPublic && room.players.size === 0) {
+      setTimeout(() => { if (room.players.size === 0) rooms.delete(room.code); }, REAP_MS).unref();
     }
   });
 });
@@ -812,6 +844,10 @@ setInterval(() => {
 }, 30_000).unref();
 
 setInterval(() => { for (const [, room] of rooms) if (room.players.size > 0) tickRoom(room); }, 50); // 20 Hz
+
+// M2: create the permanent public village at startup. It is never reaped,
+// so the shared world persists in memory while the server runs.
+buildRoom(PUBLIC_CODE, true);
 
 server.listen(PORT, () => console.log(`Tikvah Track-A server on http://localhost:${PORT}`));
 

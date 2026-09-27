@@ -38,7 +38,7 @@ function ok(name, cond, detail='') {
 // ---------- server ----------
 console.log('starting server...');
 const srv = spawn('node', ['server.js'], {
-  cwd: ROOT, env: { ...process.env, PORT: String(PORT), CROP_GROW_MS: '1500', FISH_WAIT_MIN: '800', FISH_WAIT_MAX: '1200', FISH_CATCH_WINDOW: '3000', DAY_MS: '45000' },
+  cwd: ROOT, env: { ...process.env, PORT: String(PORT), CROP_GROW_MS: '1500', FISH_WAIT_MIN: '800', FISH_WAIT_MAX: '1200', FISH_CATCH_WINDOW: '3000', DAY_MS: '45000', REAP_MS: '500' },
   stdio: ['ignore', 'pipe', 'pipe'],
 });
 srv.stderr.on('data', d => process.stderr.write('[srv] ' + d));
@@ -555,7 +555,75 @@ try {
   for (let i = 0; i < 200; i++) f.send({ t: 'input', x: 1, y: 0 });
   ok('message flood gets disconnected', await f.waitFor(() => closed, 4000));
 
-  [a, b, c, d, k, ...fillers].forEach(x => x.close());
+  // ---------- M2: persistent public village ----------
+  console.log('public village (M2):');
+  ok('page offers the public village button', pageHtml.includes('Enter the Public Village'));
+  ok('page keeps a create-a-private-village option', pageHtml.includes('Create a Private Village'));
+  ok('title carries the persistence footnote', pageHtml.includes('The village persists while the server runs'));
+
+  const v1 = new C('Villager1'); await v1.connect();
+  v1.send({ t: 'join', name: 'Villager1', code: 'TIKVAH' });
+  ok('join TIKVAH -> joined the public village', await v1.waitFor(() => v1.state.code === 'TIKVAH', 3000), 'code=' + v1.state.code);
+  // v1 tends a plot, then leaves the village EMPTY — the public room must
+  // keep its world state (and must not be reaped).
+  ok('v1 walks to the village path', await walkTo(v1, 20*TILE+16, 18*TILE+16, 12000));
+  ok('v1 walks to the farm gate', await walkTo(v1, 11*TILE+16, 10*TILE+16, 12000));
+  ok('v1 walks to plot 1', await walkTo(v1, PLOT0.x, PLOT0.y, 12000));
+  v1.send({ t: 'interact' }); // plant (not watered: stays 'planted')
+  ok('v1 plants a crop', await v1.waitFor(() => v1.state.farm[0]?.stage === 'planted', 3000));
+  v1.close();
+  await sleep(1500); // well past the 500ms test reap grace
+  const v2 = new C('Villager2'); await v2.connect();
+  v2.send({ t: 'join', name: 'Villager2', code: 'TIKVAH' });
+  ok('public village still exists after being empty (never reaped)',
+     await v2.waitFor(() => v2.state.code === 'TIKVAH', 3000));
+  ok('world state survives an empty public village', v2.state.farm[0]?.stage === 'planted', v2.state.farm[0]?.stage);
+
+  // private rooms keep the old behavior: reaped after the empty grace
+  const pv = new C('PrivateV'); await pv.connect();
+  pv.send({ t: 'create', name: 'PrivateV' });
+  ok('private room created', await pv.waitFor(() => !!pv.state.code && pv.state.code !== 'TIKVAH', 3000));
+  const pvCode = pv.state.code;
+  ok('private room code is still 4 letters', /^[A-Z]{4}$/.test(pvCode), 'got: ' + pvCode);
+  pv.close();
+  await sleep(1500); // past the 500ms test reap grace
+  const rc = new C('ReapCheck'); await rc.connect();
+  rc.send({ t: 'join', name: 'ReapCheck', code: pvCode });
+  const reapErr = await rc.waitFor(() => rc.msgs.some(m => m.t === 'error'), 3000) ? rc.lastOf('error') : null;
+  ok('empty private room is reaped (unchanged behavior)', !!reapErr && reapErr.code === 'bad-code', reapErr?.code);
+  rc.close();
+
+  // play-again inside the public village = personal reset only
+  const v3 = new C('Villager3'); await v3.connect();
+  v3.send({ t: 'join', name: 'Villager3', code: 'TIKVAH' });
+  ok('observer joins the public village', await v3.waitFor(() => v3.state.code === 'TIKVAH', 3000));
+  // v2 farms plot 3 for a real inventory before the personal reset
+  const PLOT2 = { x: 10*TILE+16, y: 9*TILE+16 };
+  ok('v2 walks to the village path', await walkTo(v2, 20*TILE+16, 18*TILE+16, 12000));
+  ok('v2 walks to the farm gate', await walkTo(v2, 11*TILE+16, 10*TILE+16, 12000));
+  ok('v2 walks to plot 3', await walkTo(v2, PLOT2.x, PLOT2.y, 12000));
+  v2.send({ t: 'interact' }); // plant
+  ok('v2 plants plot 3', await v2.waitFor(() => v2.state.farm[2]?.stage === 'planted', 3000));
+  v2.send({ t: 'interact' }); // water
+  ok('v2 waters plot 3', await v2.waitFor(() => v2.state.farm[2]?.stage === 'growing', 3000));
+  ok('v2 crop grows', await v2.waitFor(() => v2.state.farm[2]?.stage === 'ready', 8000));
+  v2.send({ t: 'interact' }); // harvest -> produce
+  ok('v2 harvests produce', await v2.waitFor(() => (v2.me()?.inv?.produce || 0) >= 1, 3000));
+  const farmSnap = JSON.stringify(v3.state.farm);
+  v2.send({ t: 'play-again' });
+  const rp = await v2.waitFor(() => v2.msgs.some(m => m.t === 'reset-personal'), 3000) ? v2.lastOf('reset-personal') : null;
+  ok('play-again in the public village -> reset-personal', !!rp);
+  ok('no shared-world reset broadcast in the public village',
+     !v2.msgs.some(m => m.t === 'reset') && !v3.msgs.some(m => m.t === 'reset'));
+  ok('shared farm untouched by the personal reset', JSON.stringify(v3.state.farm) === farmSnap, JSON.stringify(v3.state.farm.map(f=>f.stage)));
+  ok('personal inventory cleared', !!rp && rp.p.inv.produce === 0 && rp.p.inv.fish === 0 && rp.p.inv.meals === 0, JSON.stringify(rp?.p.inv));
+  ok('player respawns at the village lane', !!rp && Math.hypot(rp.p.x - SPAWN.x, rp.p.y - SPAWN.y) < 40, `${rp?.p.x},${rp?.p.y}`);
+  ok('observer sees the reset traveler back at spawn', await v3.waitFor(() => {
+    const p = v3.state.players.get(v2.state.you.id);
+    return !!p && Math.hypot(p.x - SPAWN.x, p.y - SPAWN.y) < 40;
+  }, 3000));
+
+  [a, b, c, d, k, v2, v3, ...fillers].forEach(x => x.close());
 } finally {
   srv.kill('SIGTERM');
 }
