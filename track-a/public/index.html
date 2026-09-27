@@ -1,0 +1,467 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>Tikvah — A place to grow, a story to live</title>
+<style>
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body { margin:0; padding:0; height:100%; overflow:hidden; background:#1a2b1e;
+    font-family: "Trebuchet MS", Verdana, sans-serif; color:#fff; touch-action:none; }
+  #wrap { position:fixed; inset:0; display:flex; align-items:center; justify-content:center; }
+  canvas#game { image-rendering: pixelated; background:#5da24a; display:none; }
+  /* landing */
+  #menu { position:absolute; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center;
+    background: radial-gradient(ellipse at 50% 30%, #3f7a52 0%, #274d33 60%, #1a2b1e 100%); z-index:10; padding:16px; text-align:center; }
+  #menu h1 { font-size:52px; margin:0 0 4px; letter-spacing:6px; color:#ffe9a8; text-shadow:3px 3px 0 #7a4b1f, 6px 6px 0 rgba(0,0,0,.35); }
+  #menu p.sub { color:#dff3d8; margin:0 0 24px; font-style:italic; }
+  #menu input { font-size:20px; padding:12px 16px; border-radius:12px; border:3px solid #7a4b1f; width:min(320px,80vw);
+    text-align:center; margin-bottom:12px; background:#fffbe8; color:#333; }
+  #menu .row { display:flex; gap:12px; flex-wrap:wrap; justify-content:center; }
+  button.big { font-size:20px; padding:12px 26px; border-radius:14px; border:3px solid #5d3a17; cursor:pointer;
+    background:linear-gradient(#ffd76e,#f0a840); color:#4a2c0c; font-weight:bold; box-shadow:0 4px 0 #5d3a17; }
+  button.big:active { transform:translateY(3px); box-shadow:0 1px 0 #5d3a17; }
+  button.ghost { background:rgba(255,255,255,.15); color:#fff; border-color:#fff; box-shadow:none; }
+  #joinRow { display:none; margin-top:12px; }
+  #menu .hint { margin-top:18px; font-size:13px; color:#bfe0b4; max-width:420px; }
+  /* HUD */
+  #hud { position:absolute; top:0; left:0; right:0; display:none; justify-content:space-between; align-items:center;
+    padding:8px 12px; z-index:5; pointer-events:none; }
+  #roomcode { background:rgba(0,0,0,.55); padding:6px 14px; border-radius:10px; font-size:18px; letter-spacing:3px; font-weight:bold; color:#ffe9a8; }
+  #toast { position:absolute; top:56px; left:50%; transform:translateX(-50%); background:rgba(20,30,20,.85);
+    padding:10px 20px; border-radius:12px; font-size:16px; z-index:6; display:none; text-align:center; max-width:90vw; }
+  #tutorial { position:absolute; bottom:86px; left:50%; transform:translateX(-50%); background:rgba(20,30,20,.88);
+    padding:12px 22px; border-radius:14px; font-size:15px; z-index:6; text-align:center; line-height:1.7; border:2px solid #ffe9a8; }
+  /* touch controls */
+  #joy { position:absolute; left:18px; bottom:18px; width:120px; height:120px; border-radius:50%;
+    background:rgba(255,255,255,.12); border:2px solid rgba(255,255,255,.35); display:none; z-index:7; }
+  #stick { position:absolute; left:50%; top:50%; width:52px; height:52px; border-radius:50%;
+    background:rgba(255,255,255,.45); transform:translate(-50%,-50%); }
+  #btnE { position:absolute; right:18px; bottom:30px; width:84px; height:84px; border-radius:50%; display:none; z-index:7;
+    background:linear-gradient(#ffd76e,#f0a840); border:3px solid #5d3a17; font-size:30px; font-weight:bold; color:#4a2c0c; }
+  #emotes { position:absolute; right:14px; top:64px; display:none; flex-direction:column; gap:8px; z-index:7; }
+  #emotes button { width:48px; height:48px; border-radius:50%; font-size:22px; background:rgba(0,0,0,.5);
+    border:2px solid rgba(255,255,255,.4); }
+  /* verse panel */
+  #verse { position:absolute; inset:0; display:none; align-items:center; justify-content:center; z-index:20;
+    background:rgba(10,15,10,.7); padding:20px; }
+  #verse .card { background:#fffbe8; color:#3a2a12; border-radius:16px; padding:28px; max-width:440px; text-align:center;
+    border:4px solid #7a4b1f; box-shadow:0 10px 40px rgba(0,0,0,.5); }
+  #verse .ref { font-weight:bold; font-size:20px; margin-bottom:12px; color:#7a4b1f; }
+  #verse .text { font-style:italic; font-size:17px; line-height:1.6; }
+  #verse button { margin-top:18px; }
+  #err { color:#ffb3a7; min-height:22px; margin-top:8px; font-size:15px; }
+</style>
+</head>
+<body>
+<div id="wrap">
+  <canvas id="game"></canvas>
+
+  <div id="hud">
+    <div id="roomcode">····</div>
+    <div style="color:#dff3d8;font-size:13px;pointer-events:none">E = interact · 1 wave · 2 heart</div>
+  </div>
+  <div id="toast"></div>
+  <div id="tutorial">Walk with <b>WASD / arrows</b> · Press <b>E</b> to interact<br>Find the <b>ancient ruin</b> with a friend — stand on both glowing stones together ✨</div>
+
+  <div id="menu">
+    <h1>TIKVAH</h1>
+    <p class="sub">A place to grow, a story to live.</p>
+    <input id="name" maxlength="16" placeholder="Your name" autocomplete="off">
+    <div class="row">
+      <button class="big" id="btnCreate">Create Room</button>
+      <button class="big ghost" id="btnJoinShow">Join Room</button>
+    </div>
+    <div id="joinRow">
+      <input id="code" maxlength="4" placeholder="CODE" style="text-transform:uppercase" autocomplete="off">
+      <button class="big" id="btnJoin">Join</button>
+    </div>
+    <div id="err"></div>
+    <div class="hint">Two players, one village. Farm, fish, pray — and discover the ancient ruin together. No accounts, no downloads.</div>
+  </div>
+
+  <div id="joy"><div id="stick"></div></div>
+  <button id="btnE">E</button>
+  <div id="emotes"><button data-e="wave">👋</button><button data-e="heart">❤️</button></div>
+
+  <div id="verse"><div class="card">
+    <div class="ref" id="vref"></div>
+    <div class="text" id="vtext"></div>
+    <button class="big" id="vclose">Amen</button>
+  </div></div>
+</div>
+
+<script>
+'use strict';
+// ================= Net =================
+const WS_URL = (location.protocol === 'https:' ? 'wss://' : 'ws://') + location.host;
+let ws = null, myId = null, code = null;
+let players = new Map(), farm = [], ruinOpen = false, fox = {x:0,y:0};
+let fishing = null, biteFlash = 0;
+
+function connect() {
+  ws = new WebSocket(WS_URL);
+  ws.onopen = () => sendPending();
+  ws.onmessage = (ev) => onMsg(JSON.parse(ev.data));
+  ws.onclose = () => { toast('Connection lost — refresh to rejoin.'); };
+  ws.onerror = () => {};
+}
+let pending = [];
+function send(m) { if (ws && ws.readyState === 1) ws.send(JSON.stringify(m)); else pending.push(m); }
+function sendPending() { pending.forEach(m => send(m)); pending = []; }
+
+function onMsg(m) {
+  switch (m.t) {
+    case 'joined':
+      code = m.code; myId = m.you.id;
+      players = new Map(m.players.map(p => [p.id, p]));
+      farm = m.farm; ruinOpen = m.ruin.open; fox = m.fox;
+      document.getElementById('menu').style.display = 'none';
+      document.getElementById('game').style.display = 'block';
+      document.getElementById('hud').style.display = 'flex';
+      document.getElementById('roomcode').textContent = 'ROOM ' + code;
+      if (isTouch) { document.getElementById('joy').style.display='block'; document.getElementById('btnE').style.display='block'; document.getElementById('emotes').style.display='flex'; }
+      resize(); break;
+    case 'join': players.set(m.p.id, m.p); toast(m.p.name + ' joined the village 🌿'); break;
+    case 'leave': players.delete(m.id); break;
+    case 'tick': m.players.forEach(p => players.set(p.id, p)); break;
+    case 'player': players.set(m.p.id, m.p); break;
+    case 'farm': farm = m.farm; break;
+    case 'fox': fox = m; break;
+    case 'harvest': toast('🌾 ' + m.by + ' harvested a crop!'); break;
+    case 'catch': toast('🐟 ' + m.by + ' caught a fish!'); fishing = null; break;
+    case 'bite': if (m.player === myId) { biteFlash = Date.now(); toast('❗ TAP E NOW!'); } break;
+    case 'pet': toast('🦊 ' + m.by + ' petted the fox'); break;
+    case 'verse': showVerse(m.ref, m.text); break;
+    case 'interact-fail': if (m.reason === 'nothing-nearby') toast('Nothing to do here — walk closer.'); break;
+    case 'ruin-open':
+      ruinOpen = true; burst = 120;
+      toast('✨ ' + m.message);
+      break;
+    case 'error': document.getElementById('err').textContent = m.message; break;
+  }
+}
+
+// ================= Input =================
+const keys = {};
+addEventListener('keydown', (e) => {
+  if (['ArrowUp','ArrowDown','ArrowLeft','ArrowRight',' '].includes(e.key)) e.preventDefault();
+  keys[e.key.toLowerCase()] = true;
+  if (e.key === 'e' || e.key === 'E') doInteract();
+  if (e.key === '1') send({t:'emote', id:'wave'});
+  if (e.key === '2') send({t:'emote', id:'heart'});
+  hideTutorial();
+});
+addEventListener('keyup', (e) => { keys[e.key.toLowerCase()] = false; });
+function doInteract() { send({t:'interact'}); hideTutorial(); }
+document.getElementById('btnE').addEventListener('click', doInteract);
+document.querySelectorAll('#emotes button').forEach(b =>
+  b.addEventListener('click', () => send({t:'emote', id: b.dataset.e})));
+
+// virtual joystick
+const isTouch = ('ontouchstart' in window) || navigator.maxTouchPoints > 0;
+const joy = {x:0, y:0, active:false};
+(function(){
+  const el = document.getElementById('joy'), stick = document.getElementById('stick');
+  function setPt(t) {
+    const r = el.getBoundingClientRect();
+    let dx = t.clientX - (r.left + r.width/2), dy = t.clientY - (r.top + r.height/2);
+    const max = r.width/2 - 10, len = Math.hypot(dx,dy) || 1;
+    if (len > max) { dx = dx/len*max; dy = dy/len*max; }
+    stick.style.transform = `translate(calc(-50% + ${dx}px), calc(-50% + ${dy}px))`;
+    joy.x = dx/max; joy.y = dy/max; joy.active = true;
+  }
+  el.addEventListener('touchstart', e => { e.preventDefault(); setPt(e.touches[0]); }, {passive:false});
+  el.addEventListener('touchmove', e => { e.preventDefault(); setPt(e.touches[0]); }, {passive:false});
+  el.addEventListener('touchend', () => { joy.x=joy.y=0; joy.active=false; stick.style.transform='translate(-50%,-50%)'; });
+})();
+
+function currentInput() {
+  let x = 0, y = 0;
+  if (keys['a'] || keys['arrowleft']) x -= 1;
+  if (keys['d'] || keys['arrowright']) x += 1;
+  if (keys['w'] || keys['arrowup']) y -= 1;
+  if (keys['s'] || keys['arrowdown']) y += 1;
+  if (joy.active) { x = joy.x; y = joy.y; }
+  return {x, y};
+}
+let lastSent = '';
+setInterval(() => {
+  if (!myId) return;
+  const {x, y} = currentInput();
+  const s = x.toFixed(2)+','+y.toFixed(2);
+  if (s !== lastSent) { lastSent = s; send({t:'input', x, y}); }
+}, 100);
+
+// menu wiring
+document.getElementById('btnCreate').onclick = () => {
+  const name = document.getElementById('name').value.trim();
+  if (!name) return document.getElementById('err').textContent = 'Enter your name first.';
+  connect(); pending.push({t:'create', name});
+};
+document.getElementById('btnJoinShow').onclick = () => {
+  document.getElementById('joinRow').style.display = 'block';
+};
+document.getElementById('btnJoin').onclick = () => {
+  const name = document.getElementById('name').value.trim();
+  const c = document.getElementById('code').value.trim().toUpperCase();
+  if (!name) return document.getElementById('err').textContent = 'Enter your name first.';
+  if (!/^[A-Z]{4}$/.test(c)) return document.getElementById('err').textContent = 'Enter the 4-letter room code.';
+  connect(); pending.push({t:'join', name, code: c});
+};
+function showVerse(ref, text) {
+  document.getElementById('vref').textContent = ref + ' (KJV)';
+  document.getElementById('vtext').textContent = '“' + text + '”';
+  document.getElementById('verse').style.display = 'flex';
+}
+document.getElementById('vclose').onclick = () => document.getElementById('verse').style.display = 'none';
+let toastTimer = null;
+function toast(msg) {
+  const el = document.getElementById('toast');
+  el.textContent = msg; el.style.display = 'block';
+  clearTimeout(toastTimer); toastTimer = setTimeout(() => el.style.display = 'none', 3200);
+}
+function hideTutorial() { document.getElementById('tutorial').style.display = 'none'; }
+setTimeout(hideTutorial, 20000);
+
+// ================= Pixel art =================
+const TILE = 32, WW = 40, WH = 28;
+const cv = document.getElementById('game');
+const ctx = cv.getContext('2d');
+ctx.imageSmoothingEnabled = false;
+let SCALE = 1, camX = 0, camY = 0;
+
+function resize() {
+  const w = innerWidth, h = innerHeight;
+  SCALE = Math.max(1, Math.floor(Math.min(w / (WW*TILE), h / (WH*TILE)) * 2));
+  SCALE = Math.min(SCALE, 3);
+  cv.width = WW*TILE; cv.height = WH*TILE;
+  cv.style.width = (WW*TILE*SCALE/2) + 'px';
+  cv.style.height = (WH*TILE*SCALE/2) + 'px';
+  // canvas shows half the world; camera follows player
+}
+addEventListener('resize', resize);
+
+function px(w, h, fn) {
+  const c = document.createElement('canvas'); c.width = w; c.height = h;
+  const g = c.getContext('2d'); fn(g, w, h);
+  return c;
+}
+const rnd = (a) => Math.floor(Math.random()*a);
+
+// tile sprites
+function grassTile(variant) {
+  return px(TILE, TILE, (g) => {
+    g.fillStyle = '#6db354'; g.fillRect(0,0,TILE,TILE);
+    g.fillStyle = '#63a84c';
+    for (let i=0;i<8;i++) g.fillRect(rnd(TILE), rnd(TILE), 3, 3);
+    g.fillStyle = '#7cc165';
+    for (let i=0;i<5;i++) g.fillRect(rnd(TILE), rnd(TILE), 2, 4);
+    if (variant === 1) { // flowers
+      g.fillStyle = '#ff9ec4';
+      for (let i=0;i<3;i++){ const x=rnd(24)+4, y=rnd(24)+4;
+        g.fillRect(x,y,3,3); g.fillStyle='#ffe066'; g.fillRect(x+1,y+1,1,1); g.fillStyle='#ff9ec4'; }
+    }
+  });
+}
+const grassA = grassTile(0), grassB = grassTile(1);
+const pathTile = px(TILE,TILE,(g)=>{ g.fillStyle='#d9b978'; g.fillRect(0,0,TILE,TILE); g.fillStyle='#c9a866'; for(let i=0;i<6;i++) g.fillRect(rnd(TILE),rnd(TILE),4,3); });
+const waterTile = px(TILE,TILE,(g)=>{ g.fillStyle='#4a9ed6'; g.fillRect(0,0,TILE,TILE); g.fillStyle='#6db8e8'; for(let i=0;i<4;i++) g.fillRect(rnd(TILE),rnd(TILE),8,2); });
+const sandTile = px(TILE,TILE,(g)=>{ g.fillStyle='#e8d49a'; g.fillRect(0,0,TILE,TILE); g.fillStyle='#dcc484'; for(let i=0;i<5;i++) g.fillRect(rnd(TILE),rnd(TILE),3,3); });
+const dockTile = px(TILE,TILE,(g)=>{ g.fillStyle='#8a5a2b'; g.fillRect(0,0,TILE,TILE); g.fillStyle='#a06a35'; for(let y=0;y<TILE;y+=8) g.fillRect(0,y,TILE,6); g.fillStyle='#5d3a17'; for(let y=0;y<TILE;y+=8) g.fillRect(0,y+6,TILE,2); });
+const soilTile = px(TILE,TILE,(g)=>{ g.fillStyle='#7a4f28'; g.fillRect(0,0,TILE,TILE); g.fillStyle='#5f3d1f'; for(let y=4;y<TILE;y+=8) g.fillRect(2,y,TILE-4,3); });
+const cropTiles = {
+  planted: px(TILE,TILE,(g)=>{ g.drawImage(soilTile,0,0); g.fillStyle='#4d8a3a'; for(let i=0;i<6;i++){const x=4+rnd(20),y=6+rnd(16); g.fillRect(x,y,2,4);} }),
+  growing: px(TILE,TILE,(g)=>{ g.drawImage(soilTile,0,0); g.fillStyle='#5da244'; for(let i=0;i<5;i++){const x=4+rnd(20),y=4+rnd(14); g.fillRect(x,y,3,7); g.fillRect(x-2,y+2,7,2);} }),
+  ready: px(TILE,TILE,(g)=>{ g.drawImage(soilTile,0,0); g.fillStyle='#e8b93c'; for(let i=0;i<5;i++){const x=4+rnd(20),y=4+rnd(12); g.fillRect(x,y,4,6); g.fillStyle='#c9922a'; g.fillRect(x+1,y+2,2,2); g.fillStyle='#e8b93c';} }),
+};
+const stoneTile = px(TILE,TILE,(g)=>{ // ruin stone
+  g.fillStyle='rgba(0,0,0,0)'; g.clearRect(0,0,TILE,TILE);
+  g.fillStyle='#9a9aa5'; g.fillRect(8,6,16,22); g.fillStyle='#7c7c88'; g.fillRect(8,6,4,22);
+  g.fillStyle='#b5b5c0'; g.fillRect(11,9,4,4); g.fillRect(16,15,5,3);
+});
+const stoneGlow = px(TILE,TILE,(g)=>{ g.drawImage(stoneTile,0,0);
+  g.fillStyle='rgba(255,230,120,0.55)'; g.fillRect(6,4,20,26); g.drawImage(stoneTile,0,0); });
+const gardenTile = px(TILE,TILE,(g)=>{
+  g.fillStyle='#6db354'; g.fillRect(0,0,TILE,TILE);
+  const cols=['#ff9ec4','#ff6b8a','#ffe066','#ffffff','#c49aff'];
+  for(let i=0;i<7;i++){ const x=rnd(26)+3,y=rnd(26)+3; g.fillStyle=cols[rnd(cols.length)]; g.fillRect(x,y,4,4); g.fillStyle='#3f7a2e'; g.fillRect(x+1,y+4,2,3); }
+});
+const churchWall = px(TILE,TILE,(g)=>{ g.fillStyle='#b9b3a8'; g.fillRect(0,0,TILE,TILE); g.fillStyle='#a09a8e'; g.fillRect(0,0,TILE,4); g.fillRect(0,28,TILE,4); g.fillStyle='#8f897d'; for(let x=0;x<TILE;x+=16) g.fillRect(x,4,2,24); });
+const churchRoof = px(TILE,TILE,(g)=>{ g.fillStyle='#8a4f3a'; g.fillRect(0,0,TILE,TILE); g.fillStyle='#74402e'; for(let y=0;y<TILE;y+=8) g.fillRect(0,y,TILE,3); });
+const churchFloor = px(TILE,TILE,(g)=>{ g.fillStyle='#cbb98f'; g.fillRect(0,0,TILE,TILE); g.fillStyle='#bfa87f'; for(let x=0;x<TILE;x+=16) for(let y=0;y<TILE;y+=16) g.fillRect(x,y,8,8); });
+const pewTile = px(TILE,TILE,(g)=>{ g.drawImage(churchFloor,0,0); g.fillStyle='#7a4f28'; g.fillRect(2,10,TILE-4,10); g.fillStyle='#5f3d1f'; g.fillRect(2,10,TILE-4,3); });
+const altarTile = px(TILE,TILE,(g)=>{ g.drawImage(churchFloor,0,0); g.fillStyle='#e8e0cc'; g.fillRect(6,14,20,12); g.fillStyle='#c9bfa8'; g.fillRect(6,14,20,3); g.fillStyle='#ffd76e'; g.fillRect(14,4,4,10); g.fillRect(11,7,10,3); });
+const standTile = px(TILE,TILE,(g)=>{ g.drawImage(churchFloor,0,0); g.fillStyle='#7a4f28'; g.fillRect(12,12,8,14); g.fillStyle='#f5eeda'; g.fillRect(8,6,16,8); g.fillStyle='#c9bfa8'; g.fillRect(15,6,2,8); });
+const doorMat = px(TILE,TILE,(g)=>{ g.drawImage(churchFloor,0,0); g.fillStyle='#8a4f3a'; g.fillRect(4,4,TILE-8,TILE-8); g.fillStyle='#a86a4a'; g.fillRect(8,8,TILE-16,TILE-16); });
+
+// player sprite 16x24, palette varies by index
+function playerSprite(pal) {
+  return px(16, 24, (g) => {
+    const skin='#f2c99a', hair=pal.hair, tunic=pal.tunic, pants='#5a4632';
+    g.fillStyle=hair; g.fillRect(3,1,10,5); g.fillRect(2,4,12,3);       // hair
+    g.fillStyle=skin; g.fillRect(4,6,8,6);                                // face
+    g.fillStyle='#333'; g.fillRect(6,8,2,2); g.fillRect(10,8,2,2);        // eyes
+    g.fillStyle=tunic; g.fillRect(3,12,10,7);                             // tunic
+    g.fillStyle=skin; g.fillRect(1,12,2,5); g.fillRect(13,12,2,5);         // arms
+    g.fillStyle=pants; g.fillRect(4,19,3,5); g.fillRect(9,19,3,5);         // legs
+    g.fillStyle='#3a2c1e'; g.fillRect(4,22,3,2); g.fillRect(9,22,3,2);     // shoes
+  });
+}
+const pals = [
+  {hair:'#4a2c14', tunic:'#4a8ac9'}, {hair:'#1e1e1e', tunic:'#c96a4a'},
+  {hair:'#8a5a2b', tunic:'#6aa84f'}, {hair:'#d9c08a', tunic:'#9a6ac9'},
+  {hair:'#5d3a17', tunic:'#c9a44a'}, {hair:'#2e2e2e', tunic:'#4ac9b2'},
+  {hair:'#7a2e2e', tunic:'#c94a6a'}, {hair:'#3a5a2e', tunic:'#7a8ac9'},
+];
+const foxSprite = px(16, 12, (g) => {
+  g.fillStyle='#e08a3c'; g.fillRect(2,4,10,6);            // body
+  g.fillStyle='#f2b26a'; g.fillRect(10,2,5,6);            // head
+  g.fillStyle='#e08a3c'; g.fillRect(10,0,2,3); g.fillRect(13,0,2,3); // ears
+  g.fillStyle='#333'; g.fillRect(12,4,2,2);               // eye
+  g.fillStyle='#fff'; g.fillRect(2,6,2,4);               // tail tip
+  g.fillStyle='#8a4f1f'; g.fillRect(4,10,2,2); g.fillRect(8,10,2,2); // feet
+});
+
+// ================= Map =================
+// base terrain per tile
+function baseTile(tx, ty) {
+  // river: vertical band x=30..31
+  if (tx === 30 || tx === 31) return 'water';
+  if (tx === 29 || tx === 32) return 'sand';
+  // dock planks at (33,20) reaching toward river
+  // path: from spawn (20,14) up to church (20,6) and east to dock
+  if (ty === 14 && tx >= 18 && tx <= 32) return 'path';
+  if (tx === 20 && ty >= 6 && ty <= 14) return 'path';
+  if (tx >= 29 && tx <= 33 && ty === 20) return 'path';
+  return 'grass';
+}
+const FARM = [{tx:6,ty:9},{tx:8,ty:9},{tx:6,ty:11},{tx:8,ty:11}];
+const CHURCH = {x0:17, y0:2, x1:23, y1:4, door:{tx:20,ty:5}};
+const STONES = [{tx:4,ty:22},{tx:35,ty:3}];
+
+function drawWorld(g, now) {
+  const inside = players.get(myId)?.inside;
+  for (let ty=0; ty<WH; ty++) for (let tx=0; tx<WH && tx<WW; tx++) {
+    const x = tx*TILE, y = ty*TILE;
+    if (inside) { drawInterior(g, tx, ty, x, y); continue; }
+    const b = baseTile(tx, ty);
+    if (b === 'water') { g.drawImage(waterTile, x, y + Math.sin(now/600 + tx)*1.5); g.drawImage(waterTile, x, y); }
+    else if (b === 'sand') g.drawImage(sandTile, x, y);
+    else if (b === 'path') g.drawImage(pathTile, x, y);
+    else g.drawImage(((tx*7+ty*13)%5===0) ? grassB : grassA, x, y);
+    // dock
+    if (tx===33 && ty===20) g.drawImage(dockTile, x, y);
+    // farm plots
+    const f = farm.find(f => f.tx===tx && f.ty===ty);
+    if (f) {
+      if (f.stage==='empty') g.drawImage(soilTile, x, y);
+      else g.drawImage(cropTiles[f.stage] || soilTile, x, y);
+    }
+    // church building
+    if (tx>=CHURCH.x0 && tx<=CHURCH.x1 && ty>=CHURCH.y0-1 && ty<=CHURCH.y1) {
+      if (ty===CHURCH.y0-1) g.drawImage(churchRoof, x, y);
+      else g.drawImage(churchWall, x, y);
+    }
+    if (tx===CHURCH.door.tx && ty===CHURCH.door.ty) { g.drawImage(pathTile,x,y); g.drawImage(doorMat,x,y); }
+    // ruin stones
+    for (const s of STONES) if (s.tx===tx && s.ty===ty) {
+      g.drawImage(ruinOpen ? stoneGlow : stoneTile, x, y);
+      if (!ruinOpen) { // glow pulse
+        g.fillStyle = `rgba(160,220,255,${0.25+0.2*Math.sin(now/400)})`;
+        g.fillRect(x+6, y+4, 20, 26);
+      }
+    }
+    // garden revealed at center plaza when open
+    if (ruinOpen && tx>=18 && tx<=22 && ty>=12 && ty<=16 && !(tx===20&&ty===14)) {
+      if ((tx+ty)%2===0) g.drawImage(gardenTile, x, y);
+    }
+  }
+  if (ruinOpen) {
+    // light rays
+    g.fillStyle = `rgba(255,240,180,${0.10+0.05*Math.sin(now/500)})`;
+    g.fillRect(18*TILE, 12*TILE, 5*TILE, 5*TILE);
+  }
+}
+function drawInterior(g, tx, ty, x, y) {
+  // small chapel: floor everywhere, walls border, pews, altar, stand, exit mat
+  const border = tx===14||tx===26||ty===17||ty===26;
+  if (border) g.drawImage(churchWall, x, y);
+  else g.drawImage(churchFloor, x, y);
+  if ((tx===17||tx===23) && (ty===20||ty===22)) g.drawImage(pewTile, x, y);
+  if (tx===20 && ty===20) g.drawImage(altarTile, x, y);
+  if (tx===16 && ty===20) g.drawImage(standTile, x, y);
+  if (tx===20 && ty===24) g.drawImage(doorMat, x, y);
+}
+
+// ================= Render loop =================
+let burst = 0;
+const particles = [];
+function loop(now) {
+  requestAnimationFrame(loop);
+  if (!myId) return;
+  ctx.clearRect(0,0,cv.width,cv.height);
+  const me = players.get(myId);
+  // camera centers player, clamped
+  const vw = cv.width, vh = cv.height;
+  if (me) {
+    camX = Math.max(0, Math.min(WW*TILE - vw, me.x - vw/2));
+    camY = Math.max(0, Math.min(WH*TILE - vh, me.y - vh/2));
+  }
+  ctx.save();
+  // zoom: draw at 2x by scaling context? We sized canvas = world px; camera via translate + clip
+  ctx.translate(-camX, -camY);
+  drawWorld(ctx, now);
+  // fox
+  ctx.drawImage(foxSprite, fox.x-8, fox.y-10);
+  // players sorted by y
+  const list = [...players.values()].sort((a,b)=>a.y-b.y);
+  list.forEach((p, i) => {
+    const spr = playerSprite(pals[i % pals.length]);
+    const bob = p.moving ? Math.sin(now/120)*1.5 : 0;
+    ctx.drawImage(spr, Math.round(p.x-8), Math.round(p.y-22+bob));
+    // name
+    ctx.font = '10px monospace'; ctx.textAlign = 'center';
+    ctx.fillStyle = 'rgba(0,0,0,.6)'; ctx.fillRect(p.x-24, p.y-38, 48, 12);
+    ctx.fillStyle = '#fff'; ctx.fillText(p.name.slice(0,12), p.x, p.y-29);
+    // fishing rod indicator
+    if (p.fishing) {
+      ctx.font = '14px monospace';
+      ctx.fillText(p.fishing==='bite' ? '❗' : '🎣', p.x+14, p.y-24);
+    }
+    // emotes
+    if (p.emote) {
+      ctx.font = '18px monospace';
+      const e = p.emote==='wave' ? '👋' : p.emote==='heart' ? '❤️' : '🙏';
+      ctx.fillText(e, p.x, p.y-44 + Math.sin(now/300)*2);
+    }
+  });
+  // ruin-open particle burst
+  if (burst > 0) {
+    for (let i=0;i<4;i++) particles.push({x:20*TILE+(Math.random()-0.5)*5*TILE, y:14*TILE+(Math.random()-0.5)*5*TILE, vx:(Math.random()-0.5)*1.5, vy:-Math.random()*1.5-0.3, life:60+Math.random()*40});
+    burst -= 4;
+  }
+  for (let i=particles.length-1;i>=0;i--) {
+    const pt = particles[i];
+    pt.x+=pt.vx; pt.y+=pt.vy; pt.life--;
+    if (pt.life<=0) { particles.splice(i,1); continue; }
+    ctx.fillStyle = `rgba(255,${200+Math.floor(Math.random()*55)},120,${pt.life/100})`;
+    ctx.fillRect(pt.x, pt.y, 3, 3);
+  }
+  ctx.restore();
+  // vignette warmth
+  const vg = ctx.createRadialGradient(vw/2,vh/2,vh*0.4, vw/2,vh/2, vh*0.85);
+  vg.addColorStop(0,'rgba(0,0,0,0)'); vg.addColorStop(1,'rgba(30,15,5,0.35)');
+  ctx.fillStyle = vg; ctx.fillRect(0,0,vw,vh);
+  // bite flash banner
+  if (Date.now() - biteFlash < 2500 && fishing !== null) {
+    ctx.fillStyle = 'rgba(0,0,0,.55)'; ctx.fillRect(camX+vw/2-110, camY+40, 220, 30);
+    ctx.fillStyle = '#ffe066'; ctx.font = 'bold 16px sans-serif'; ctx.textAlign='center';
+    ctx.fillText('❗ BITE! Press E now!', camX+vw/2, camY+61);
+  }
+}
+requestAnimationFrame(loop);
+resize();
+</script>
+</body>
+</html>
