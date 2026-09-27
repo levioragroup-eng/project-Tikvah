@@ -1762,33 +1762,41 @@ const tableTile = px(TILE,TILE,(g)=>{ g.clearRect(0,0,TILE,TILE);
   g.fillStyle = '#6b4423'; g.fillRect(14,26,4,4);
   g.fillStyle = '#8a5a2b'; g.fillRect(10,29,12,3);
 });
-// Church walls (Batch 2): warm ashlar stone + tall arched stained-glass lancet
+// Church walls (Batch 4): warm ashlar stone + TALL glowing stained-glass lancet,
+// vaulted arch band at the top = high-ceiling feel (serves exterior + interior walls)
 const churchWall = px(TILE,TILE,(g)=>{
-  g.fillStyle = '#d9d2c2'; g.fillRect(0,0,TILE,TILE);          // warm light stone
-  g.fillStyle = '#b8ab94';                                     // ashlar courses
-  for (let y=7;y<TILE;y+=8) g.fillRect(0,y,TILE,1);
-  for (let r=0;r<4;r++){ const y0=r*8, off=(r%2)*8;
-    for (let x=off;x<TILE;x+=16) g.fillRect(x,y0,1,8); }
-  g.fillStyle = 'rgba(255,255,255,.20)'; g.fillRect(0,0,TILE,1);
-  g.fillStyle = '#c4bba6';                                      // window surround
-  g.fillRect(9,10,14,18);
-  g.beginPath(); g.arc(16,10,7,0,7); g.fill();
-  g.fillStyle = '#232a44';                                     // dark recess
-  g.fillRect(11,12,10,16);
-  g.beginPath(); g.arc(16,12,5,0,7); g.fill();
-  g.fillStyle = '#4a8ad9'; g.fillRect(11,12,3,16);             // blue pane
-  g.fillStyle = '#e8b93c'; g.fillRect(14,12,4,16);             // gold pane
-  g.fillStyle = '#e87aa0'; g.fillRect(18,12,3,16);             // pink pane
-  g.fillStyle = '#7ab5e8'; g.beginPath(); g.arc(16,12,5,Math.PI,0); g.fill();  // arch panes
-  g.fillStyle = '#e8b93c'; g.beginPath(); g.arc(16,12,3,Math.PI,0); g.fill();
-  g.fillStyle = '#e87aa0'; g.beginPath(); g.arc(16,12,2,Math.PI,0); g.fill();
+  g.fillStyle = '#d8d0bd'; g.fillRect(0,0,TILE,TILE);          // warm light stone
+  g.fillStyle = '#bcae93';                                     // ashlar courses
+  for (let y=10;y<TILE;y+=7) g.fillRect(0,y,TILE,1);
+  for (let r=0;r<5;r++){ const y0=4+r*7, off=(r%2)*8;
+    for (let x=off;x<TILE;x+=16) g.fillRect(x,y0,1,7); }
+  g.fillStyle = 'rgba(255,255,255,.18)'; g.fillRect(0,4,TILE,1);
+  g.fillStyle = '#a89a80';                                     // vaulted arch band
+  g.fillRect(0,0,TILE,5);
+  g.fillStyle = '#c4b69c'; g.fillRect(0,5,TILE,1);
+  g.fillStyle = '#8f8268'; g.fillRect(0,0,TILE,1);
+  g.fillStyle = '#b3a488';                                     // window surround
+  g.fillRect(8,8,16,20);
+  g.beginPath(); g.arc(16,8,8,Math.PI,0); g.fill();
+  g.fillStyle = '#232a44';                                     // dark recess (gothic arch)
+  g.fillRect(10,10,12,18);
+  g.beginPath(); g.arc(16,10,6,Math.PI,0); g.fill();
+  g.fillStyle = '#4a8ad9'; g.fillRect(10,10,4,18);            // blue pane
+  g.fillStyle = '#e8b93c'; g.fillRect(14,10,4,18);            // gold pane
+  g.fillStyle = '#e87aa0'; g.fillRect(18,10,4,18);            // pink pane
+  g.fillStyle = '#7ab5e8'; g.beginPath(); g.arc(16,10,6,Math.PI,0); g.fill();  // arch panes
+  g.fillStyle = '#ffd76e'; g.beginPath(); g.arc(16,10,4,Math.PI,0); g.fill();
+  g.fillStyle = '#f0a0c0'; g.beginPath(); g.arc(16,10,2.5,Math.PI,0); g.fill();
   g.fillStyle = '#1a2340';                                     // leading
-  g.fillRect(13,12,1,16); g.fillRect(17,12,1,16);
-  g.fillRect(11,19,10,1);
-  g.fillStyle = 'rgba(255,255,255,.35)'; g.fillRect(12,13,2,7); // glass shine
-  g.fillStyle = '#b8ab94'; g.fillRect(8,28,16,2);               // sill
-  g.fillStyle = '#e8e0d0'; g.fillRect(8,28,16,1);
-  g.fillStyle = 'rgba(0,0,0,.10)'; g.fillRect(0,30,TILE,2);
+  g.fillRect(13,10,1,18); g.fillRect(18,10,1,18);
+  g.fillRect(10,16,12,1); g.fillRect(10,22,12,1);
+  const gl = g.createRadialGradient(16,17,1,16,17,13);        // glowing glass
+  gl.addColorStop(0,'rgba(255,236,170,.55)'); gl.addColorStop(1,'rgba(255,236,170,0)');
+  g.fillStyle = gl; g.fillRect(6,4,20,28);
+  g.fillStyle = 'rgba(255,255,255,.40)'; g.fillRect(11,11,2,15); // shine
+  g.fillStyle = '#b3a488'; g.fillRect(7,28,18,2);               // sill
+  g.fillStyle = '#d8d0bd'; g.fillRect(7,28,18,1);
+  g.fillStyle = 'rgba(0,0,0,.12)'; g.fillRect(0,30,TILE,2);
 });
 // Church roof (Batch 2): crown of tall blue-gray spires, each cross-topped
 const churchRoof = px(TILE,TILE,(g)=>{
@@ -1812,10 +1820,64 @@ const churchRoof = px(TILE,TILE,(g)=>{
   g.fillStyle = '#3a4a5e'; g.fillRect(0,29,TILE,3);             // eave shadow
   g.fillStyle = '#9ab5cc'; g.fillRect(0,29,TILE,1);             // eave trim
 });
-const churchFloor = px(TILE,TILE,(g)=>{ g.fillStyle='#cbb98f'; g.fillRect(0,0,TILE,TILE); g.fillStyle='#bfa87f'; for(let x=0;x<TILE;x+=16) for(let y=0;y<TILE;y+=16) g.fillRect(x,y,8,8); });
-const pewTile = px(TILE,TILE,(g)=>{ g.drawImage(churchFloor,0,0); g.fillStyle='#7a4f28'; g.fillRect(2,10,TILE-4,10); g.fillStyle='#5f3d1f'; g.fillRect(2,10,TILE-4,3); });
-const altarTile = px(TILE,TILE,(g)=>{ g.drawImage(churchFloor,0,0); g.fillStyle='#e8e0cc'; g.fillRect(6,14,20,12); g.fillStyle='#c9bfa8'; g.fillRect(6,14,20,3); g.fillStyle='#ffd76e'; g.fillRect(14,4,4,10); g.fillRect(11,7,10,3); });
-const standTile = px(TILE,TILE,(g)=>{ g.drawImage(churchFloor,0,0); g.fillStyle='#7a4f28'; g.fillRect(12,12,8,14); g.fillStyle='#f5eeda'; g.fillRect(8,6,16,8); g.fillStyle='#c9bfa8'; g.fillRect(15,6,2,8); });
+// BATCH4: board-style interiors — stone slabs, pews with kneelers, cloth-draped altar,
+// brass candle stands; tall glowing lancets live in churchWall above
+const churchFloor = px(TILE,TILE,(g)=>{
+  g.fillStyle='#cec2a8'; g.fillRect(0,0,TILE,TILE);            // warm stone slabs
+  g.fillStyle='#c2b49a';                                       // checker variation
+  for(let x=0;x<TILE;x+=16) for(let y=0;y<TILE;y+=16) if(((x+y)/16)%2===0) g.fillRect(x,y,16,16);
+  g.fillStyle='#a2937a';                                       // grout
+  for(let x=0;x<=TILE;x+=16) g.fillRect(x,0,1,TILE);
+  for(let y=0;y<=TILE;y+=16) g.fillRect(0,y,TILE,1);
+  g.fillStyle='rgba(255,255,255,.14)';                         // top light
+  for(let x=2;x<TILE;x+=16) for(let y=2;y<TILE;y+=16) g.fillRect(x,y,12,1);
+  g.fillStyle='rgba(0,0,0,.07)'; g.fillRect(0,30,TILE,2);
+});
+const pewTile = px(TILE,TILE,(g)=>{ g.drawImage(churchFloor,0,0);
+  g.fillStyle='rgba(0,0,0,.14)'; g.fillRect(2,28,28,3);        // floor shadow
+  g.fillStyle='#5d3a17'; g.fillRect(2,24,28,3);                // kneeler base
+  g.fillStyle='#a8555f'; g.fillRect(2,22,28,3);                // kneeler cushion
+  g.fillStyle='#c97a85'; g.fillRect(2,22,28,1);
+  g.fillStyle='#6b4423'; g.fillRect(3,12,3,11); g.fillRect(26,12,3,11); // pew ends
+  g.fillStyle='#8a5a2b'; g.fillRect(3,14,26,6);                // seat
+  g.fillStyle='#a8743a'; g.fillRect(3,14,26,2);                // seat highlight
+  g.fillStyle='#6b4423'; g.fillRect(3,4,26,9);                 // backrest
+  g.fillStyle='#7a4f28'; g.fillRect(4,5,24,3);                 // back panel inset
+  g.fillStyle='#5d3a17'; g.fillRect(2,1,28,4);                 // top rail
+  g.fillStyle='#ffd76e'; g.fillRect(3,2,26,1);                 // rail sheen
+});
+const altarTile = px(TILE,TILE,(g)=>{ g.drawImage(churchFloor,0,0);
+  g.fillStyle='rgba(0,0,0,.16)'; g.fillRect(5,27,22,3);
+  g.fillStyle='#b8ab94'; g.fillRect(8,16,16,11);                // stone body
+  g.fillStyle='#9a8d74'; g.fillRect(8,16,16,2); g.fillRect(8,25,16,2);
+  g.fillStyle='#c9bda4'; g.fillRect(8,16,3,11);                 // left light
+  g.fillStyle='#e8e0cc'; g.fillRect(8,12,16,5);                 // stone mensa
+  g.fillStyle='#fffdf4'; g.fillRect(6,10,20,6);                 // white cloth
+  g.fillStyle='#e8e0cc'; g.fillRect(6,14,20,2);                 // cloth hem shadow
+  g.fillStyle='#d4a940'; g.fillRect(6,15,20,1);                 // gold hem band
+  g.fillStyle='#ffd76e'; g.fillRect(15,0,2,9); g.fillRect(12,3,8,2);  // gold cross
+  g.fillStyle='#fff3c4'; g.fillRect(15,0,1,9);
+  g.fillStyle='#b8912f'; g.fillRect(13,9,6,2);                  // cross base
+  g.fillStyle='#fffbe8'; g.fillRect(8,6,2,5); g.fillRect(22,6,2,5);   // altar candles
+  g.fillStyle='#ffca55'; g.fillRect(8,4,2,2); g.fillRect(22,4,2,2);
+});
+const standTile = px(TILE,TILE,(g)=>{ g.drawImage(churchFloor,0,0);
+  g.fillStyle='rgba(0,0,0,.14)'; g.fillRect(6,27,20,3);
+  g.fillStyle='#5d3a17'; g.fillRect(14,18,4,9);                 // post
+  g.fillRect(10,26,12,2);                                       // feet
+  g.fillStyle='#8a5a2b'; g.fillRect(13,18,2,9);
+  g.fillStyle='#b8912f'; g.fillRect(6,14,20,4);                 // brass tray
+  g.fillStyle='#ffd76e'; g.fillRect(6,14,20,1);
+  const sg=g.createRadialGradient(16,9,1,16,9,14);             // candle glow
+  sg.addColorStop(0,'rgba(255,210,130,.5)'); sg.addColorStop(1,'rgba(255,210,130,0)');
+  g.fillStyle=sg; g.fillRect(2,-5,28,28);
+  for(const cx of [8,12,16,20,24]){                            // row of lit candles
+    g.fillStyle='#fffbe8'; g.fillRect(cx-1,8,3,7);
+    g.fillStyle='#e8dcc0'; g.fillRect(cx-1,13,3,2);
+    g.fillStyle='#ffca55'; g.fillRect(cx-1,5,3,3);              // flame
+    g.fillStyle='#fff3c4'; g.fillRect(cx,5,1,2);
+  }
+});
 // Church door (Batch 2, also interior exits): arched wooden door, stone surround, cross
 const doorMat = px(TILE,TILE,(g)=>{
   const P = BOARD_PALETTE;
@@ -1918,37 +1980,174 @@ const ruinArch = px(64,64,(g)=>{
   g.fillStyle = '#a8a8b2'; g.fillRect(8,58,9,2); g.fillRect(48,60,8,1);
   g.fillStyle = '#4a8f3c'; g.fillRect(9,62,4,2); g.fillRect(50,60,3,2);
 });
-// home interior tiles
-const woodFloor = px(TILE,TILE,(g)=>{ g.fillStyle='#c9a06a'; g.fillRect(0,0,TILE,TILE); g.fillStyle='#b8905c'; for(let y=0;y<TILE;y+=8) g.fillRect(0,y,TILE,2); });
-const homeWall = px(TILE,TILE,(g)=>{ g.fillStyle='#d9c4a0'; g.fillRect(0,0,TILE,TILE); g.fillStyle='#c4ab84'; g.fillRect(0,0,TILE,4); g.fillRect(0,28,TILE,4); });
+// BATCH4: board-style interiors — warm plank floor, wainscot walls, patchwork-quilt bed,
+// brick fireplace, paneled wardrobe, table + chair, pray-nook shelf, braided rugs,
+// curtained window + book shelf (homeWindowTile / homeShelfTile)
+const woodFloor = px(TILE,TILE,(g)=>{
+  g.fillStyle='#b57e45'; g.fillRect(0,0,TILE,TILE);            // warm planks
+  for(let y=0;y<TILE;y+=8){
+    g.fillStyle=((y/8)%2===0)?'#bb8549':'#ad7440'; g.fillRect(0,y,TILE,8);
+    g.fillStyle='#8a5a2b'; g.fillRect(0,y,TILE,1);             // plank gap
+    const jx=((y*13)%22)+5;                                    // butt joint
+    g.fillRect(jx,y,1,8);
+    g.fillStyle='rgba(90,55,25,.30)';                          // grain
+    g.fillRect(3,y+3,7,1); g.fillRect(19,y+5,9,1);
+  }
+  g.fillStyle='rgba(255,235,200,.10)'; g.fillRect(0,0,TILE,TILE);
+});
+const homeWall = px(TILE,TILE,(g)=>{
+  g.fillStyle='#e6d2a8'; g.fillRect(0,0,TILE,TILE);            // warm plaster
+  g.fillStyle='#f0dfb8'; g.fillRect(0,0,TILE,2);               // top light
+  g.fillStyle='#8a5a2b'; g.fillRect(0,19,TILE,13);             // wood wainscot
+  g.fillStyle='#a8743a'; g.fillRect(0,19,TILE,2);              // chair rail
+  g.fillStyle='#c99a5a'; g.fillRect(0,19,TILE,1);
+  g.fillStyle='#6b4423';                                       // panel grooves
+  for(let x=3;x<TILE;x+=7) g.fillRect(x,22,1,10);
+  g.fillStyle='rgba(0,0,0,.10)'; g.fillRect(0,30,TILE,2);
+});
 const bedTile = px(TILE,TILE,(g)=>{ g.drawImage(woodFloor,0,0);
-  g.fillStyle='#7a4f28'; g.fillRect(2,8,28,20); g.fillStyle='#f5eeda'; g.fillRect(4,4,12,10);
-  g.fillStyle='#c96a6a'; g.fillRect(4,12,24,14); g.fillStyle='#b05858'; g.fillRect(4,12,24,3);
+  g.fillStyle='rgba(0,0,0,.15)'; g.fillRect(2,28,28,3);        // floor shadow
+  g.fillStyle='#6b4423'; g.fillRect(2,4,5,24);                 // headboard
+  g.fillStyle='#8a5a2b'; g.fillRect(3,6,3,12);
+  g.fillStyle='#5d3a17'; g.fillRect(1,1,7,4);                  // crown
+  g.fillStyle='#ffd76e'; g.fillRect(2,1,5,1);                  // crown sheen
+  g.fillStyle='#8a5a2b'; g.fillRect(6,19,19,9);                 // frame rail
+  g.fillStyle='#fff8ea'; g.fillRect(6,13,9,7);                 // pillow
+  g.fillStyle='#e8dcc0'; g.fillRect(6,18,9,2);
+  g.fillStyle='#f6ead2'; g.fillRect(6,13,9,1);
+  const qp=['#c96a6a','#e8b93c','#6aa84f','#9a6ac9'];          // patchwork quilt
+  for(let i=0;i<3;i++) for(let j=0;j<2;j++){
+    g.fillStyle=qp[(i+j)%4]; g.fillRect(15+i*5,13+j*6,5,6);
+  }
+  g.fillStyle='rgba(255,255,255,.35)';                         // quilt stitching
+  for(let i=0;i<3;i++) for(let j=0;j<2;j++) g.fillRect(15+i*5+1,13+j*6+1,3,1);
+  g.fillStyle='#e8dcc0'; g.fillRect(15,24,15,3);               // quilt hem
+  g.fillStyle='#6b4423'; g.fillRect(25,9,5,19);                 // footboard (tucks quilt)
+  g.fillStyle='#5d3a17'; g.fillRect(24,7,7,3);
 });
 const hearthTile = px(TILE,TILE,(g)=>{ g.drawImage(woodFloor,0,0);
-  g.fillStyle='#8a8a92'; g.fillRect(4,10,24,18); g.fillStyle='#5a5a62'; g.fillRect(8,14,16,12);
-  g.fillStyle='#3a3a40'; g.fillRect(8,20,16,6);
+  g.fillStyle='rgba(0,0,0,.15)'; g.fillRect(3,28,26,3);
+  g.fillStyle='#a85548'; g.fillRect(4,8,24,20);                // brick surround
+  g.fillStyle='#8a4239';                                       // mortar courses
+  for(let y=10;y<28;y+=5) g.fillRect(4,y,24,1);
+  for(let r=0;r<4;r++){ const y0=8+r*5, off=(r%2)*6;
+    for(let x=4+off;x<28;x+=12) g.fillRect(x,y0,1,5); }
+  g.fillStyle='#c9755f'; g.fillRect(4,8,24,2);                 // top brick light
+  g.fillStyle='#2a1f16'; g.fillRect(10,16,12,12);              // firebox
+  g.fillStyle='#1a140e'; g.fillRect(10,16,12,4);
+  g.fillStyle='#4a2c14'; g.fillRect(11,25,10,3);               // logs
+  g.fillStyle='#6b4423'; g.fillRect(11,25,10,1);
+  g.fillStyle='#6b4423'; g.fillRect(2,3,28,6);                 // wooden mantel
+  g.fillStyle='#8a5a2b'; g.fillRect(2,3,28,2);
+  g.fillStyle='#c99a5a'; g.fillRect(2,3,28,1);
+  g.fillStyle='#fffbe8'; g.fillRect(5,0,2,3);                  // mantel candle
+  g.fillStyle='#ffca55'; g.fillRect(5,-1,2,2);
+  g.fillStyle='#4a8f3c'; g.fillRect(24,0,4,3);                 // mantel plant
+  g.fillStyle='#6b4423'; g.fillRect(25,2,2,1);
 });
 const wardrobeTile = px(TILE,TILE,(g)=>{ g.drawImage(woodFloor,0,0);
-  g.fillStyle='#6b4423'; g.fillRect(4,2,24,28); g.fillStyle='#8a5a2b'; g.fillRect(6,4,20,24);
-  g.fillStyle='#4a2c14'; g.fillRect(15,4,2,24); g.fillStyle='#ffd76e'; g.fillRect(12,15,2,3); g.fillRect(18,15,2,3);
+  g.fillStyle='rgba(0,0,0,.15)'; g.fillRect(3,28,26,3);
+  g.fillStyle='#5d3a17'; g.fillRect(3,0,26,4);                // crown
+  g.fillStyle='#8a5a2b'; g.fillRect(3,0,26,1);
+  g.fillStyle='#6b4423'; g.fillRect(4,4,24,25);               // body
+  for(const dx of [5,17]){                                    // double doors
+    g.fillStyle='#7a4f28'; g.fillRect(dx,6,10,20);
+    g.fillStyle='#5d3a17'; g.fillRect(dx+2,8,6,7);            // recessed panels
+    g.fillRect(dx+2,17,6,7);
+    g.fillStyle='#8a5a2b'; g.fillRect(dx+2,8,6,1);
+  }
+  g.fillStyle='#4a2c14'; g.fillRect(15,6,2,20);               // center seam
+  g.fillStyle='#ffd76e'; g.fillRect(13,15,2,3); g.fillRect(17,15,2,3);  // brass knobs
+  g.fillStyle='#fff3c4'; g.fillRect(13,15,1,1); g.fillRect(17,15,1,1);
+  g.fillStyle='#4a2c14'; g.fillRect(4,29,24,2);               // plinth
 });
 const tableInTile = px(TILE,TILE,(g)=>{ g.drawImage(woodFloor,0,0);
-  g.fillStyle='#8a5a2b'; g.fillRect(6,10,20,6); g.fillRect(13,16,6,12);
-  g.fillStyle='#fffbe8'; g.fillRect(12,6,8,5); g.fillStyle='#e8b93c'; g.fillRect(13,7,3,3);
+  g.fillStyle='rgba(0,0,0,.14)'; g.fillRect(5,28,22,2);
+  g.fillStyle='#6b4423'; g.fillRect(10,15,4,13); g.fillRect(18,15,4,13);  // legs
+  g.fillStyle='#8a5a2b'; g.fillRect(9,13,14,3);                // apron
+  g.fillStyle='#a8743a'; g.fillRect(4,8,24,6);                // round top
+  g.fillStyle='#c99a5a'; g.fillRect(4,8,24,2);
+  g.fillStyle='#e8dcc0'; g.fillRect(12,8,8,6);                // runner cloth
+  g.fillStyle='#c96a6a'; g.fillRect(12,8,8,1);
+  g.fillStyle='#fffbe8'; g.fillRect(15,3,2,6);                // candle
+  g.fillStyle='#ffca55'; g.fillRect(15,1,2,2);                // flame
+  g.fillStyle='#fff3c4'; g.fillRect(15,1,1,1);
 });
 const chairTile = px(TILE,TILE,(g)=>{ g.drawImage(woodFloor,0,0);
-  g.fillStyle='#6b4423'; g.fillRect(10,14,12,6); g.fillRect(10,6,3,10); g.fillRect(19,6,3,10);
+  g.fillStyle='rgba(0,0,0,.14)'; g.fillRect(7,28,18,3);
+  g.fillStyle='#6b4423'; g.fillRect(8,2,3,14); g.fillRect(21,2,3,14);  // back posts
+  g.fillStyle='#5d3a17'; g.fillRect(7,0,18,3);               // top rail
+  g.fillStyle='#8a5a2b'; g.fillRect(7,0,18,1);
+  g.fillStyle='#7a4f28';                                     // slats
+  for(let y=5;y<13;y+=3) g.fillRect(8,y,16,2);
+  g.fillStyle='#c96a6a'; g.fillRect(8,14,16,4);              // cushion
+  g.fillStyle='#e88a90'; g.fillRect(8,14,16,1);
+  g.fillStyle='#8a5a2b'; g.fillRect(7,17,18,4);              // seat
+  g.fillStyle='#6b4423'; g.fillRect(9,21,3,8); g.fillRect(20,21,3,8);  // legs
+  g.fillStyle='#8a5a2b'; g.fillRect(9,24,14,2);              // rung
 });
 const nookTile = px(TILE,TILE,(g)=>{ g.drawImage(homeWall,0,0);
-  g.fillStyle='#7a4f28'; g.fillRect(6,18,20,4);
-  g.fillStyle='#fffbe8'; g.fillRect(13,10,6,8); g.fillStyle='#ffd76e'; g.fillRect(15,6,2,5);
+  g.fillStyle='#d4a940'; g.fillRect(15,3,2,7); g.fillRect(12,5,8,2);  // small gold cross on the wall
+  g.fillStyle='#ffe9a8'; g.fillRect(15,3,1,7);
+  g.fillStyle='#6b4423'; g.fillRect(4,20,24,3);              // shelf
+  g.fillStyle='#8a5a2b'; g.fillRect(4,20,24,1);
+  const nbc=['#c96a6a','#4a8ac9','#6aa84f','#e8b93c'];        // books
+  for(let i=0;i<4;i++){ g.fillStyle=nbc[i]; g.fillRect(5+i*3,12,3,8); }
+  g.fillStyle='rgba(255,255,255,.3)'; g.fillRect(5,14,11,1);
+  g.fillStyle='#fffbe8'; g.fillRect(19,12,2,8);              // lit candle
+  g.fillStyle='#ffca55'; g.fillRect(19,9,2,3);
+  g.fillStyle='#fff3c4'; g.fillRect(19,9,1,1);
+  g.fillStyle='#d9c4a0'; g.fillRect(23,13,4,7);              // jar
+  g.fillStyle='#b8a888'; g.fillRect(23,13,4,2);
+  g.fillStyle='#8ecae6'; g.fillRect(24,15,1,3);
 });
 const RUG_COLORS = ['#c96a6a', '#6a9ac9', '#6aa84f', '#9a6ac9'];
 const rugTile = (i) => px(TILE,TILE,(g)=>{ g.drawImage(woodFloor,0,0);
-  g.fillStyle=RUG_COLORS[i%4]; g.fillRect(2,6,28,20); g.fillStyle='rgba(255,255,255,.25)'; g.fillRect(5,9,22,14);
+  const c = RUG_COLORS[i%4];
+  const d = mixHex(c, '#3a2a18', 0.45);                       // shaded braid tone
+  g.fillStyle='rgba(0,0,0,.12)'; g.fillRect(1,9,30,16);
+  g.fillStyle=c; g.fillRect(2,8,28,16);                       // braided rug
+  g.fillStyle=d;
+  g.fillRect(2,8,28,2); g.fillRect(2,22,28,2);                 // outer braid
+  g.fillRect(2,8,2,16); g.fillRect(28,8,2,16);
+  g.fillStyle='rgba(255,255,255,.22)';                        // braid rows
+  for(let y=11;y<22;y+=4) g.fillRect(5,y,22,2);
+  g.fillStyle=d;
+  for(let y=13;y<22;y+=4) g.fillRect(5,y,22,1);
+  g.fillStyle='#e8dcc0';                                       // fringe
+  for(let x=3;x<30;x+=4){ g.fillRect(x,6,2,2); g.fillRect(x,24,2,2); }
 });
 const rugTiles = [rugTile(0), rugTile(1), rugTile(2), rugTile(3)];
+// Curtained window showing the sky (board "Your Home" panel) — decor on the top wall
+const homeWindowTile = px(TILE,TILE,(g)=>{ g.drawImage(homeWall,0,0);
+  g.fillStyle='#8ecae6'; g.fillRect(9,8,14,16);               // sky through window
+  g.fillStyle='#bfe4ff'; g.fillRect(9,8,14,6);
+  g.fillStyle='#ffd76e'; g.beginPath(); g.arc(18,13,3,0,7); g.fill();   // sun
+  g.fillStyle='#ffffff'; g.fillRect(11,17,5,3); g.fillRect(13,16,6,2);   // cloud
+  g.fillStyle='#6b4423'; g.fillRect(15,8,2,16); g.fillRect(9,15,14,2);   // muntins
+  g.fillStyle='#8a5a2b';                                       // frame
+  g.fillRect(7,6,18,3); g.fillRect(7,23,18,3); g.fillRect(7,6,3,20); g.fillRect(22,6,3,20);
+  g.fillStyle='#c96a6a';                                       // curtains
+  g.fillRect(2,4,6,22); g.fillRect(24,4,6,22);
+  g.fillStyle='#a8555f';
+  g.fillRect(2,4,2,22); g.fillRect(26,4,2,22);
+  g.fillStyle='#5d3a17'; g.fillRect(0,3,32,2);                 // curtain rod
+});
+// Wall shelf with books + jars (board "Your Home" panel) — decor on the top wall
+const homeShelfTile = px(TILE,TILE,(g)=>{ g.drawImage(homeWall,0,0);
+  for(const sy of [10,20]){
+    g.fillStyle='#6b4423'; g.fillRect(3,sy,26,3);              // shelves
+    g.fillStyle='#8a5a2b'; g.fillRect(3,sy,26,1);
+  }
+  g.fillStyle='#d9c4a0'; g.fillRect(6,4,4,6); g.fillRect(14,3,5,7); g.fillRect(23,5,3,5);  // jars on upper shelf
+  g.fillStyle='#b8a888'; g.fillRect(6,4,4,2); g.fillRect(14,3,5,2); g.fillRect(23,5,3,2);
+  g.fillStyle='#8ecae6'; g.fillRect(7,6,2,3);
+  const sbc=['#4a8ac9','#c96a6a','#6aa84f','#e8b93c','#9a6ac9']; // books row on lower shelf
+  for(let i=0;i<5;i++){ g.fillStyle=sbc[i]; g.fillRect(5+i*3,12,3,8); }
+  g.fillStyle='rgba(255,255,255,.3)'; g.fillRect(5,14,13,1);
+  g.fillStyle='#6b4423'; g.fillRect(23,17,4,3);                // small pot
+  g.fillStyle='#4a8f3c'; g.fillRect(22,12,6,5);               // plant
+});
 // BATCH3: storybook fox — rounder, fluffier, big bright eyes
 const foxSprite = px(16, 12, (g) => {
   const fur = '#e08a3c', furL = '#f6c98a', furD = '#8a4f1f';
@@ -2198,10 +2397,19 @@ function drawHomeInterior(g, tx, ty, x, y, now) {
   if (tx===32 && ty===21) g.drawImage(wardrobeTile, x, y);    // change clothes
   if (tx===35 && ty===21) g.drawImage(chairTile, x, y);        // sit
   if (tx===35 && ty===24) g.drawImage(tableInTile, x, y);      // side table (decor)
+  if (tx===31 && ty===17) g.drawImage(homeWindowTile, x, y);  // curtained window (decor)
+  if (tx===34 && ty===17) g.drawImage(homeShelfTile, x, y);   // shelf with books/jars (decor)
   if (tx===28 && ty===24) { // wall lamp (decor)
     g.drawImage(homeWall, x, y);
-    g.fillStyle='#3a3a3a'; g.fillRect(x+14,y+10,4,16);
-    g.fillStyle='#ffd76e'; g.fillRect(x+11,y+4,10,8);
+    const lg = g.createRadialGradient(x+16,y+11,2,x+16,y+11,22);  // warm light pool
+    lg.addColorStop(0,'rgba(255,210,130,.55)'); lg.addColorStop(1,'rgba(255,210,130,0)');
+    g.fillStyle=lg; g.fillRect(x-6,y-11,44,44);
+    g.fillStyle='#5d3a17'; g.fillRect(x+14,y+16,4,10);   // stand
+    g.fillStyle='#6b4423'; g.fillRect(x+11,y+25,10,4);   // base
+    g.fillStyle='#f2c078'; g.fillRect(x+9,y+6,14,11);    // warm shade
+    g.fillStyle='#e8a85c'; g.fillRect(x+9,y+14,14,3);    // shade lower band
+    g.fillStyle='#fff3c4'; g.fillRect(x+11,y+8,10,2);    // lit top
+    g.fillStyle='#8a5a2b'; g.fillRect(x+15,y+3,2,4);     // finial
     drawGlow(g, x+16, y+10, 30, 'rgba(255,205,110,A)', now, 9);
   }
   if (tx===32 && ty===24) g.drawImage(doorMat, x, y);          // exit
