@@ -29,9 +29,10 @@ export const STONE_A = { tx: 4, ty: 22 };
 export const STONE_B = { tx: 35, ty: 3 };
 export const SPAWN = { tx: 20, ty: 14 };
 
-const CROP_GROW_MS = 45_000;                       // watered -> ready
-const FISH_WAIT_MIN = 3_000, FISH_WAIT_MAX = 7_000;
-const FISH_CATCH_WINDOW = 2_500;
+const CROP_GROW_MS = parseInt(process.env.CROP_GROW_MS || '45000', 10); // watered -> ready
+const FISH_WAIT_MIN = parseInt(process.env.FISH_WAIT_MIN || '3000', 10);
+const FISH_WAIT_MAX = parseInt(process.env.FISH_WAIT_MAX || '7000', 10);
+const FISH_CATCH_WINDOW = parseInt(process.env.FISH_CATCH_WINDOW || '2500', 10);
 
 const VERSES = [
   { ref: 'Jeremiah 29:11', text: 'For I know the thoughts that I think toward you, saith the LORD, thoughts of peace, and not of evil, to give you an expected end.' },

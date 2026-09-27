@@ -23,20 +23,20 @@ Due Oct 30/31, 2026. Judging: Execution / Creativity / Usefulness / Polish (25% 
 
 | REQUIREMENT | STATUS | IMPLEMENTATION | TEST STATUS | DEPENDENCIES |
 |---|---|---|---|---|
-| Public URL — game playable at a public link | PLANNED | Static hosting + Node `ws` server; URL published after Ariel approves hosting (D5) | — | D5 hosting approval |
-| Create room — player can create a new multiplayer room | PLANNED | Server endpoint: create room → returns room code | — | Server skeleton |
-| Join room — player can join via room code | PLANNED | Client join screen: enter code → connect to room | — | Create room |
-| Room code — short, shareable, human-friendly code | PLANNED | e.g. 4-letter codes (readable, unambiguous characters) | — | Create room |
-| 2-player multiplayer — exactly the demo's core: two players together | PLANNED | Room capacity 2; both avatars live in shared state | — | Server authoritative state |
-| Separate devices — two players on two different devices in the same room | PLANNED | Device-independent client; tested phone+phone, phone+desktop, desktop+desktop | — | Public URL |
-| Shared movement — both players see each other move in real time | PLANNED | Server-authoritative positions broadcast at tick rate; client interpolation | — | 2-player multiplayer |
-| Meaningful multiplayer activity — something worth doing together (not just co-presence) | PLANNED | Farming/fishing/church/creature interactions doable side-by-side; shared tasks | — | Interaction verbs |
-| Mobile controls — full playability on touch devices | PLANNED | Virtual joystick + tap-to-interact; responsive canvas | — | Client input layer |
-| Desktop controls — full playability with keyboard/mouse | PLANNED | WASD/arrows + E/Space interact; click-to-move optional | — | Client input layer |
-| Clear rules — player understands what to do without a manual | PLANNED | Condensed onboarding (neighbor NPC, <5 min), contextual prompts | — | Onboarding design |
-| Replayability — reasons to play again | PLANNED | Daily/seasonal variation, creature visits, garden keepsakes, friend invites | — | Persistence (session) |
-| Signature ruin moment — TWO players activate TWO ruin stones SIMULTANEOUSLY to open the hidden garden | PLANNED | Both stones need concurrent activation within a timing window; garden instance opens for the pair | — | Instancing, 2-player sync |
-| Judging polish — the entry feels finished, not prototype-rough | PLANNED | Art/audio/UX pass per GAME-ECOSYSTEM.md §5 before submission | — | All above |
+| Public URL — game playable at a public link | PLANNED | Static hosting + Node `ws` server; URL published after Ariel approves hosting (D5) | — (local-only per milestone scope) | D5 hosting approval |
+| Create room — player can create a new multiplayer room | PASSED | Server `create` → 4-letter code; client Create Room button | headless create→joined PASS (test/track-a-test.mjs, 2026-09-26) | Server skeleton |
+| Join room — player can join via room code | PASSED | Client join screen: enter code → connect to room | headless 2-client same-code join PASS (2026-09-26) | Create room |
+| Room code — short, shareable, human-friendly code | PASSED | 4-letter codes, unambiguous charset (no I/L/O) | format + join-by-code PASS (2026-09-26) | Create room |
+| 2-player multiplayer — exactly the demo's core: two players together | PASSED | Room cap 8; 2+ avatars live in shared authoritative state | headless 2-client shared room PASS (2026-09-26) | Server authoritative state |
+| Separate devices — two players on two different devices in the same room | PLANNED | Device-independent client; tested phone+phone, phone+desktop, desktop+desktop | — (headless clients only; real device pairing pending) | Public URL |
+| Shared movement — both players see each other move in real time | PASSED | Server-authoritative positions, 20 Hz tick broadcast, input-vector (no client positions) | movement sync + speed-cap PASS (2026-09-26) | 2-player multiplayer |
+| Meaningful multiplayer activity — something worth doing together (not just co-presence) | PASSED | Farm (plant/water/harvest), fishing (cast/bite/catch), church (pray/verse), fox pet — all shared state | headless farm/fish/church/fox PASS (2026-09-26) | Interaction verbs |
+| Mobile controls — full playability on touch devices | IMPLEMENTED | Virtual joystick + E button + emote buttons; responsive canvas | implemented — manual touch-device test pending | Client input layer |
+| Desktop controls — full playability with keyboard/mouse | IMPLEMENTED | WASD/arrows + E interact; 1/2 emotes | implemented — manual browser test pending | Client input layer |
+| Clear rules — player understands what to do without a manual | IMPLEMENTED | 3-line tutorial overlay (WASD • E • ruin hint); contextual toasts | implemented — first-tester read pending | Onboarding design |
+| Replayability — reasons to play again | PLANNED | Daily/seasonal variation, creature visits, garden keepsakes, friend invites | — (out of milestone scope) | Persistence (session) |
+| Signature ruin moment — TWO players activate TWO ruin stones SIMULTANEOUSLY to open the hidden garden | PASSED | Server verifies both players on stones simultaneously (40px radius, 20 Hz); garden blooms at plaza + "Hope lives here — discovered together." | ruin-open fired on both clients, message verified PASS (2026-09-26) | Instancing, 2-player sync |
+| Judging polish — the entry feels finished, not prototype-rough | PLANNED | Art/audio/UX pass per GAME-ECOSYSTEM.md §5 before submission | — (post-milestone pass) | All above |
 
 ---
 
