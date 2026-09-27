@@ -1682,36 +1682,56 @@ const lampTile = px(TILE,TILE,(g)=>{ g.clearRect(0,0,TILE,TILE);
   g.fillStyle='#ffd76e'; g.fillRect(11,3,10,8);
   g.fillStyle='#3a3a3a'; g.fillRect(11,3,10,2); g.fillRect(10,0,12,3);
 });
-// BATCH7: classic tiered plaza fountain — wide stone basin (stone dominates,
-// water only in the middle), stacked tiers, crown spout, falling streams
+// FINAL-FIX: tiered STONE water fountain redrawn from scratch — masonry basin
+// ring of individual blocks, calm deep-blue water, stacked stone tiers with
+// spilling sheets, stone finial + modest jet. No crystal, no flame, no glow.
 const fountainTile = px(TILE,TILE,(g)=>{
   const P = BOARD_PALETTE;
   g.clearRect(0,0,TILE,TILE);
-  // wide stone basin
-  g.fillStyle = '#8f8268'; g.beginPath(); g.arc(16,20,14,0,7); g.fill();
-  g.fillStyle = '#b8a888'; g.beginPath(); g.arc(16,20,12,0,7); g.fill();
-  g.fillStyle = '#d8d0bd'; g.beginPath(); g.arc(16,20,12,Math.PI,0); g.fill();  // rim light
-  g.fillStyle = '#8f8268'; g.beginPath(); g.arc(16,20,12,0,Math.PI); g.fill();  // rim shade
-  // water surface, smaller than the stone
-  g.fillStyle = P.waterAzure; g.beginPath(); g.arc(16,20,8,0,7); g.fill();
-  g.fillStyle = '#7cc4ee'; g.beginPath(); g.arc(14,18,4,0,7); g.fill();
-  g.fillStyle = 'rgba(255,255,255,.7)'; g.fillRect(12,16,2,2); g.fillRect(19,21,2,2);
-  // central column
-  g.fillStyle = '#9a9aa5'; g.fillRect(14,10,4,12);
-  g.fillStyle = '#7c7c88'; g.fillRect(14,10,1,12);
-  g.fillStyle = '#c9c9d4'; g.fillRect(17,10,1,12);
-  // upper tier
-  g.fillStyle = '#a89e88'; g.beginPath(); g.arc(16,9,7,0,7); g.fill();
-  g.fillStyle = P.stone; g.beginPath(); g.arc(16,9,6,0,7); g.fill();
-  g.fillStyle = '#6db8e8'; g.beginPath(); g.arc(16,9,4,0,7); g.fill();
-  g.fillStyle = 'rgba(255,255,255,.8)'; g.fillRect(14,7,3,2);
-  // crown spout
-  g.fillStyle = '#9a9aa5'; g.fillRect(15,2,2,7);
-  g.fillStyle = '#c9c9d4'; g.fillRect(15,2,2,1);
-  g.fillStyle = '#bfe4ff'; g.beginPath(); g.arc(16,3,2,0,7); g.fill();
-  // falling streams from the tier into the basin
-  g.fillStyle = 'rgba(190,228,255,.85)';
-  g.fillRect(9,11,2,7); g.fillRect(21,11,2,7);
+  // wide stone basin: ring of 12 masonry blocks (ellipse, 3/4 view)
+  const cx=16, cy=21, rx=13.5, ry=9.5;
+  g.lineWidth = 5;
+  for (let i=0;i<12;i++){
+    const a0=(i/12)*Math.PI*2, a1=((i+0.82)/12)*Math.PI*2;
+    g.strokeStyle = i%2 ? '#9a8f76' : '#8d826c';
+    g.beginPath(); g.ellipse(cx,cy,rx,ry,0,a0,a1); g.stroke();
+  }
+  g.lineWidth = 1.5;                                            // rim light + shade
+  g.strokeStyle = '#c4b797';
+  g.beginPath(); g.ellipse(cx,cy,rx,ry,0,Math.PI*1.15,Math.PI*1.85); g.stroke();
+  g.strokeStyle = '#6e6455';
+  g.beginPath(); g.ellipse(cx,cy,rx,ry,0,Math.PI*0.15,Math.PI*0.85); g.stroke();
+  // calm basin water (deep blue, thin ripple arcs — not neon)
+  g.fillStyle = P.waterDeep; g.beginPath(); g.ellipse(cx,cy,rx-3.4,ry-3.2,0,0,7); g.fill();
+  g.fillStyle = '#2b8bc4'; g.beginPath(); g.ellipse(cx-1,cy-1,rx-5.5,ry-4.6,0,0,7); g.fill();
+  g.strokeStyle = 'rgba(255,255,255,.55)'; g.lineWidth = 1;
+  g.beginPath(); g.ellipse(cx,cy,rx-4.6,ry-4,0,Math.PI*0.1,Math.PI*0.7); g.stroke();
+  g.beginPath(); g.ellipse(cx+1,cy,rx-6.4,ry-5.2,0,Math.PI*1.1,Math.PI*1.7); g.stroke();
+  // central stone pedestal (masonry courses)
+  g.fillStyle = '#a89e88'; g.fillRect(13,11,6,11);
+  g.fillStyle = '#7c7260'; g.fillRect(13,11,1,11);
+  g.fillStyle = '#c4b797'; g.fillRect(18,11,1,11);
+  g.fillStyle = '#6e6455'; g.fillRect(13,14,6,1); g.fillRect(13,18,6,1);
+  // lower tier: stone disc, water sheet spilling over the front rim
+  g.fillStyle = '#8d826c'; g.beginPath(); g.ellipse(16,11,8,3.6,0,0,7); g.fill();
+  g.fillStyle = '#b3a78d'; g.beginPath(); g.ellipse(16,10.4,8,3.2,0,0,7); g.fill();
+  g.fillStyle = '#2e9fd8'; g.beginPath(); g.ellipse(16,10.2,5.4,2,0,0,7); g.fill();
+  g.fillStyle = 'rgba(220,240,255,.9)';
+  for (const sx of [9.5,12.5,16,19.5,22.5]) g.fillRect(sx,12.5,1.6,4);
+  g.fillStyle = 'rgba(255,255,255,.85)';
+  for (const sx of [10.5,17,21.5]) g.fillRect(sx,12.5,1,3);
+  // upper tier: smaller stone disc, smaller spill
+  g.fillStyle = '#8d826c'; g.beginPath(); g.ellipse(16,6.4,5,2.4,0,0,7); g.fill();
+  g.fillStyle = '#b3a78d'; g.beginPath(); g.ellipse(16,5.9,5,2.1,0,0,7); g.fill();
+  g.fillStyle = '#2e9fd8'; g.beginPath(); g.ellipse(16,5.7,3.2,1.3,0,0,7); g.fill();
+  g.fillStyle = 'rgba(220,240,255,.9)';
+  for (const sx of [12,16,20]) g.fillRect(sx,7.4,1.4,3);
+  // stone finial + modest upward jet (thin dashed stream, side droplets)
+  g.fillStyle = '#a89e88'; g.fillRect(15,2.4,2,2.4);
+  g.fillStyle = '#c4b797'; g.fillRect(15,2.4,2,1);
+  g.fillStyle = 'rgba(230,245,255,.95)'; g.fillRect(15.4,0,1.2,2.4);
+  g.fillStyle = 'rgba(255,255,255,.9)';
+  g.fillRect(12,1,1.4,1.4); g.fillRect(19,1.6,1.4,1.4);
 });
 // Market stall (Batch 2): timber posts, peaked striped canopy, bunting, goods
 function stallTile(awning) {
@@ -2500,18 +2520,14 @@ function drawWorld(g, now) {
     if ((tx===23||tx===25) && ty===17) g.drawImage(tableTile, x, y);
     // market stalls
     for (const s of STALLS) if (s.tx===tx && s.ty===ty) g.drawImage(s.s, x, y);
-    // fountain
+    // fountain — FINAL-FIX: subtle in-basin shimmer only, no glow above the tile
     if (tx===FOUNTAIN.tx && ty===FOUNTAIN.ty) {
       g.drawImage(fountainTile, x, y);
-      g.fillStyle = 'rgba(190,228,255,.9)';
-      const o = Math.sin(now/300)*2;
-      g.fillRect(x+14, y+1+o, 2, 3); g.fillRect(x+18, y+3-o, 2, 3);
-      // fountainSparkle: droplets catching the light
-      if (Math.sin(now/700 + x) > 0.72) {
-        g.fillStyle = 'rgba(255,255,255,.85)';
-        g.fillRect(x+10+Math.sin(now/300)*4, y-2, 2, 2);
-        g.fillRect(x+20-Math.sin(now/340)*4, y+1, 2, 2);
-      }
+      // fountainSparkle: retired the bright burst; gentle ripple flicker in the basin
+      const sh = Math.sin(now/420);
+      g.fillStyle = 'rgba(255,255,255,.5)';
+      g.fillRect(x+11+(sh>0?1:0), y+20, 2, 1);
+      g.fillRect(x+20-(sh>0?1:0), y+22, 2, 1);
     }
     // lamps
     for (const l of LAMPS) if (l.tx===tx && l.ty===ty) g.drawImage(lampTile, x, y-8);
