@@ -161,6 +161,52 @@ const b2Checks = [
 ];
 for (const [label, needle] of b2Checks) ok('art contains ' + label, pageHtml.includes(needle));
 
+// ---------- Batch 3: board-style characters (static page) ----------
+console.log('batch3 characters (static page):');
+const b3Checks = [
+  ['batch3 marker', 'BATCH3_CHARACTERS'],
+  ['color mixer helper', 'function mixHex(a, b, t)'],
+  ['lookSprite painter', 'function lookSprite(lk)'],
+  ['npcSprite painter', 'function npcSprite(name)'],
+  ['spriteFor cache', 'function spriteFor(lk)'],
+  ['npc look Hannah', "Hannah: { skin:'#9a6540'"],
+  ['npc look Elias', "Elias:  { skin:'#e0ac7e'"],
+  ['npc look Miriam', "Miriam: { skin:'#f2c99a'"],
+  ["hannah's apron", 'apron:true'],
+  ['hannah dark wavy hair', "hairColor:'#241610'"],
+  ['cream blouse base', 'cream blouse (board anchor)'],
+  ['fabric folds', '// fabric folds (soft shading)'],
+  ['outfit trim collar', 'g.fillRect(6,12,4,1); g.fillRect(4,16,8,1);'],
+  ['anchor green default skirt', 'anchor green skirt'],
+  ['skirt flare + hem', '// skirt with flare + hem'],
+  ['brown boots', '// brown boots + legs'],
+  ['boot highlight', "g.fillStyle = bootL; g.fillRect(x1,22,3,1);"],
+  ['expressive eyes', '// expressive board eyes with shine'],
+  ['eye shine', "// eye shine"],
+  ['blush', '// blush'],
+  ['smile', '// smile'],
+  ['long hair falls', '// back hair behind the body (long wavy falls, board anchor)'],
+  ['hair shine', '// shine on the falls'],
+  ['curly afro volume', '// rounded volume'],
+  ['bun ball', '// bun ball'],
+  ['hair tie', '// hair tie'],
+  ['straw hat', '// straw hat'],
+  ['hair flower', '// hair flower with leaf'],
+  ['storybook fox', 'BATCH3: storybook fox'],
+  ['fox fluffy tail', '// big fluffy tail with white tip'],
+  ['fox bright eye', '// big bright eye with shine'],
+  ['fox cheek fluff', '// cheek fluff'],
+  // look-shape contract locks (creator, server validLook, tests depend on these)
+  ['skin enum intact', "skin: ['#f2c99a', '#e0ac7e', '#c68a5a', '#9a6540', '#6e452a']"],
+  ['hair enum intact', "hair: ['long', 'short', 'curly', 'bun']"],
+  ['hairColor enum intact', "hairColor: ['#2e1c10', '#4a2c14', '#8a5a2b', '#d9c08a', '#a34a2e']"],
+  ['outfit enum intact', "outfit: ['#4a8ac9', '#c96a4a', '#6aa84f', '#9a6ac9', '#c9a44a']"],
+  ['dress enum intact', 'dress: [false, true]'],
+  ['accessory enum intact', "accessory: ['none', 'hat', 'flower']"],
+  ['preview uses lookSprite', 'g.drawImage(lookSprite(look), 0, 0, 32, 48);'],
+];
+for (const [label, needle] of b3Checks) ok('art contains ' + label, pageHtml.includes(needle));
+
 // ---------- Beauty pass: lighting / particles / animation / UI / staging ----------
 console.log('beauty pass (static page):');
 const beautyChecks = [

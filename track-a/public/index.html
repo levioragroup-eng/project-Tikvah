@@ -168,8 +168,10 @@
     padding:18px 20px; margin-bottom:6px; width:min(460px,94vw); }
   #creatorWrap h3 { display:none; }
   #creatorTop { display:flex; gap:18px; align-items:flex-start; justify-content:center; }
-  #preview { width:96px; height:144px; image-rendering:pixelated; background:linear-gradient(#e8f4dc,#cfe8b8);
-    border-radius:12px; border:3px solid #7a4b1f; flex:none; box-shadow:inset 0 0 20px rgba(90,140,90,.25); }
+  #preview { width:96px; height:144px; image-rendering:pixelated;
+    background:radial-gradient(circle at 50% 32%, #fbf7e6 0%, #eef3d2 55%, #cfe8b8 100%);
+    border-radius:12px; border:3px solid #7a4b1f; flex:none;
+    box-shadow:inset 0 0 20px rgba(90,140,90,.25), 0 3px 10px rgba(122,75,31,.35); }
   #creatorOpts { flex:1; min-width:0; text-align:left; }
   .crow { margin-bottom:9px; }
   .crow > span { display:block; font-size:11px; font-weight:bold; color:#7a4b1f; margin-bottom:4px;
@@ -1142,45 +1144,139 @@ function px(w, h, fn) {
 }
 const rnd = (a) => Math.floor(Math.random()*a);
 
+// color helper for soft shading/highlights in character art
+function mixHex(a, b, t) {
+  const p = h => [parseInt(h.slice(1,3),16), parseInt(h.slice(3,5),16), parseInt(h.slice(5,7),16)];
+  const A = p(a), B = p(b);
+  return '#' + A.map((v,i)=>Math.round(v+(B[i]-v)*t).toString(16).padStart(2,'0')).join('');
+}
 // ---- character sprite from a look ----
+// BATCH3_CHARACTERS: board-style chibi painters — larger head, expressive
+// eyes with shine, blush, volumetric hair with shine, cream blouse base,
+// fabric folds, outfit-colored trim, anchor-green default skirt, brown boots.
 function lookSprite(lk) {
   return px(16, 24, (g) => {
     const skin = lk.skin || '#f2c99a', hairC = lk.hairColor || '#4a2c14',
-          tunic = lk.outfit || '#4a8ac9', hair = lk.hair || 'long';
-    // legs + shoes
-    if (lk.dress) { g.fillStyle = '#3a2c1e'; g.fillRect(5,21,2,3); g.fillRect(9,21,2,3); }
-    else {
-      g.fillStyle = '#4a3a28'; g.fillRect(4,18,3,5); g.fillRect(9,18,3,5);
-      g.fillStyle = '#3a2c1e'; g.fillRect(4,22,3,2); g.fillRect(9,22,3,2);
+          hair = lk.hair || 'long', acc = lk.accessory || 'none';
+    const blouse = '#f6ead2';                    // cream blouse (board anchor)
+    const trim = lk.outfit || '#4a8ac9';         // outfit color: collar, cuffs, waist, hem
+    const skirtC = trim === '#4a8ac9' ? '#5f8f4a' : trim; // default look = anchor green skirt
+    const skinD = mixHex(skin, '#1a0f08', .18);
+    const hairL = mixHex(hairC, '#ffffff', .38), hairD = mixHex(hairC, '#1a0f08', .25);
+    const blouseD = mixHex(blouse, '#1a0f08', .12), blouseL = mixHex(blouse, '#ffffff', .5);
+    const skirtD = mixHex(skirtC, '#1a0f08', .22), skirtL = mixHex(skirtC, '#ffffff', .30);
+    const boot = '#6a4526', bootD = '#3a2a18', bootL = '#8a5f3a';
+
+    // back hair behind the body (long wavy falls, board anchor)
+    if (hair === 'long') {
+      g.fillStyle = hairC;
+      g.fillRect(1,5,2,8); g.fillRect(13,5,2,8);
+      g.fillRect(1,7,1,1); g.fillRect(14,7,1,1);   // wave bumps
+      g.fillRect(1,10,1,1); g.fillRect(14,10,1,1);
+      g.fillStyle = hairD; g.fillRect(1,13,2,1); g.fillRect(13,13,2,1);
+      g.fillStyle = hairL; g.fillRect(1,6,1,2); g.fillRect(14,6,1,2); // shine on the falls
     }
-    // outfit
-    g.fillStyle = tunic;
-    if (lk.dress) { g.fillRect(4,12,8,5); g.fillRect(3,16,10,6); }
-    else g.fillRect(3,12,10,7);
-    // arms
-    g.fillStyle = skin; g.fillRect(1,12,2,5); g.fillRect(13,12,2,5);
-    // face
-    g.fillStyle = skin; g.fillRect(4,6,8,6);
-    g.fillStyle = '#333'; g.fillRect(6,8,2,2); g.fillRect(10,8,2,2);
-    // hair
+    // brown boots + legs
+    const boots = (x1, x2) => {
+      g.fillStyle = boot; g.fillRect(x1,22,3,2); g.fillRect(x2,22,3,2);
+      g.fillStyle = bootL; g.fillRect(x1,22,3,1); g.fillRect(x2,22,3,1);
+      g.fillStyle = bootD; g.fillRect(x1,23,3,1); g.fillRect(x2,23,3,1);
+    };
+    if (lk.dress) {
+      g.fillStyle = skin; g.fillRect(5,21,2,1); g.fillRect(9,21,2,1);
+      g.fillStyle = skinD; g.fillRect(6,21,1,1); g.fillRect(10,21,1,1);
+      boots(4, 9);
+    } else {
+      g.fillStyle = '#4a3a28'; g.fillRect(4,18,3,4); g.fillRect(9,18,3,4); // trousers
+      g.fillStyle = mixHex('#4a3a28', '#1a0f08', .3); g.fillRect(6,18,1,4); g.fillRect(11,18,1,4);
+      boots(4, 9);
+    }
+    // cream blouse torso
+    g.fillStyle = blouse; g.fillRect(4,12,8,5);
+    // fabric folds (soft shading)
+    g.fillStyle = blouseD; g.fillRect(6,13,1,3); g.fillRect(9,13,1,3);
+    g.fillStyle = blouseL; g.fillRect(5,13,1,2);
+    // outfit trim: collar, waistband
+    g.fillStyle = trim; g.fillRect(6,12,4,1); g.fillRect(4,16,8,1);
+    if (lk.dress) {
+      // skirt with flare + hem
+      g.fillStyle = skirtC;
+      g.fillRect(4,17,8,1); g.fillRect(3,18,10,2); g.fillRect(3,20,10,1);
+      g.fillStyle = skirtD; g.fillRect(5,18,1,2); g.fillRect(8,18,1,2); g.fillRect(11,18,1,2);
+      g.fillStyle = skirtL; g.fillRect(3,20,10,1);
+    } else {
+      // tunic: longer blouse + trim hem
+      g.fillStyle = blouse; g.fillRect(4,17,8,1);
+      g.fillStyle = blouseD; g.fillRect(6,17,1,1); g.fillRect(9,17,1,1);
+      g.fillStyle = trim; g.fillRect(4,18,8,1);
+    }
+    // sleeves + arms
+    g.fillStyle = blouse; g.fillRect(2,12,2,2); g.fillRect(12,12,2,2);
+    g.fillStyle = trim; g.fillRect(2,14,2,1); g.fillRect(12,14,2,1); // cuffs
+    g.fillStyle = skin; g.fillRect(2,15,2,2); g.fillRect(12,15,2,2);
+    g.fillStyle = skinD; g.fillRect(2,17,2,1); g.fillRect(12,17,2,1);
+    // Hannah's apron (warm hostess apron over the dress)
+    if (lk.apron) {
+      g.fillStyle = '#fbf6ea';
+      g.fillRect(5,12,1,2); g.fillRect(10,12,1,2);   // straps
+      g.fillRect(6,13,4,4); g.fillRect(6,17,4,3);    // bib + skirt panel
+      g.fillRect(4,16,2,1); g.fillRect(10,16,2,1);   // waist ties
+      g.fillStyle = mixHex('#fbf6ea', '#1a0f08', .18); g.fillRect(6,19,4,1);
+      g.fillStyle = mixHex('#fbf6ea', '#1a0f08', .08); g.fillRect(7,14,2,2); // pocket
+    }
+    // neck + face
+    g.fillStyle = skin; g.fillRect(7,11,2,1);
+    g.fillStyle = skin; g.fillRect(3,4,10,7);
+    g.fillStyle = skinD; g.fillRect(12,5,1,5);                    // cheek shadow
+    g.fillStyle = mixHex(skin, '#1a0f08', .12); g.fillRect(4,10,8,1);
+    g.fillStyle = mixHex(skin, '#ffffff', .3); g.fillRect(4,5,1,1); // cheek light
+    // expressive board eyes with shine
+    g.fillStyle = hairD; g.fillRect(5,6,2,1); g.fillRect(9,6,2,1); // brows
+    g.fillStyle = '#2e1f14'; g.fillRect(5,7,2,2); g.fillRect(9,7,2,2);
+    g.fillStyle = '#fff'; g.fillRect(5,7,1,1); g.fillRect(9,7,1,1); // eye shine
+    g.fillStyle = '#f2a0a0'; g.fillRect(3,9,2,1); g.fillRect(11,9,2,1); // blush
+    g.fillStyle = '#a05a4a'; g.fillRect(7,9,2,1);                  // smile
+    // hair per style: volume + shine in hairColor
     g.fillStyle = hairC;
-    if (hair === 'long') { g.fillRect(3,1,10,5); g.fillRect(2,5,12,3); g.fillRect(2,6,2,9); g.fillRect(12,6,2,9); }
-    else if (hair === 'short') { g.fillRect(3,1,10,5); g.fillRect(2,4,12,3); }
-    else if (hair === 'curly') { g.fillRect(2,1,12,6); g.fillRect(4,0,8,2); g.fillRect(1,4,2,4); g.fillRect(13,4,2,4); }
-    else if (hair === 'bun') { g.fillRect(3,2,10,4); g.fillRect(2,5,12,2); g.fillRect(6,0,4,2); }
-    // accessory
-    if (lk.accessory === 'hat') {
-      g.fillStyle = '#d9b978'; g.fillRect(3,0,10,3); g.fillRect(0,3,16,2);
-      g.fillStyle = '#8a5a2b'; g.fillRect(3,2,10,1);
-    } else if (lk.accessory === 'flower') {
-      g.fillStyle = '#ff9ec4'; g.fillRect(11,1,3,3);
-      g.fillStyle = '#ffe066'; g.fillRect(12,2,1,1);
+    if (hair === 'long') {
+      g.fillRect(2,1,12,2); g.fillRect(3,0,10,1);   // cap
+      g.fillRect(3,3,10,1);                          // bangs
+      g.fillStyle = hairL; g.fillRect(5,1,2,1); g.fillRect(4,2,1,1); // shine
+    } else if (hair === 'short') {
+      g.fillRect(2,1,12,2); g.fillRect(3,0,10,1);
+      g.fillRect(3,3,10,1);
+      g.fillRect(2,4,1,3); g.fillRect(13,4,1,3);     // sides to the jaw
+      g.fillStyle = hairL; g.fillRect(5,1,2,1);
+    } else if (hair === 'curly') {
+      g.fillRect(5,0,6,1); g.fillRect(3,1,10,1); g.fillRect(2,2,12,1);
+      g.fillRect(1,3,14,1); g.fillRect(1,4,14,1);    // rounded volume
+      g.fillRect(1,5,2,2); g.fillRect(13,5,2,2);
+      g.fillStyle = hairL; g.fillRect(4,1,3,1); g.fillRect(3,2,2,1); // shine cluster
+    } else if (hair === 'bun') {
+      g.fillRect(7,0,2,1); g.fillRect(6,1,4,1);      // bun ball
+      g.fillStyle = hairL; g.fillRect(7,0,1,1);
+      g.fillStyle = hairC; g.fillRect(2,2,12,1); g.fillRect(3,3,10,1); // cap + bangs
+      g.fillStyle = trim; g.fillRect(7,2,2,1);      // hair tie
+    }
+    // accessories (same option names as the creator)
+    if (acc === 'hat') {
+      // straw hat
+      g.fillStyle = '#d9b978';
+      g.fillRect(4,0,8,2); g.fillRect(0,2,16,2);
+      g.fillStyle = trim; g.fillRect(4,1,8,1);       // band
+      g.fillStyle = mixHex('#d9b978', '#ffffff', .4); g.fillRect(0,2,16,1);
+      g.fillStyle = mixHex('#d9b978', '#1a0f08', .25); g.fillRect(0,3,16,1);
+    } else if (acc === 'flower') {
+      // hair flower with leaf
+      g.fillStyle = '#ff9ec4'; g.fillRect(12,3,3,3);
+      g.fillStyle = '#ffe066'; g.fillRect(13,4,1,1);
+      g.fillStyle = '#6aa84f'; g.fillRect(11,5,1,1);
     }
   });
 }
 const npcLooks = {
-  Hannah: { skin:'#9a6540', hair:'long', hairColor:'#1e1e1e', outfit:'#c96a4a', dress:true, accessory:'flower' },
-  Elias:  { skin:'#e0ac7e', hair:'short', hairColor:'#8a5a2b', outfit:'#6aa84f', dress:false, accessory:'none' },
+  Hannah: { skin:'#9a6540', hair:'long', hairColor:'#241610', outfit:'#c96a4a', dress:true, accessory:'flower', apron:true },
+  Elias:  { skin:'#e0ac7e', hair:'short', hairColor:'#5a3a1e', outfit:'#6aa84f', dress:false, accessory:'none' },
   Miriam: { skin:'#f2c99a', hair:'bun', hairColor:'#d9c08a', outfit:'#9a6ac9', dress:true, accessory:'none' },
 };
 const npcSprites = {};
@@ -1188,6 +1284,8 @@ function npcSprite(name) {
   if (!npcSprites[name]) npcSprites[name] = lookSprite(npcLooks[name] || look);
   return npcSprites[name];
 }
+
+// ---- terrain tiles ----
 
 // ---- terrain tiles ----
 // Batch 1: board-palette art foundation (canonical colors from DESIGN-BOARD-2026-09-27)
@@ -1851,14 +1949,31 @@ const rugTile = (i) => px(TILE,TILE,(g)=>{ g.drawImage(woodFloor,0,0);
   g.fillStyle=RUG_COLORS[i%4]; g.fillRect(2,6,28,20); g.fillStyle='rgba(255,255,255,.25)'; g.fillRect(5,9,22,14);
 });
 const rugTiles = [rugTile(0), rugTile(1), rugTile(2), rugTile(3)];
+// BATCH3: storybook fox — rounder, fluffier, big bright eyes
 const foxSprite = px(16, 12, (g) => {
-  g.fillStyle='#e08a3c'; g.fillRect(2,4,10,6);
-  g.fillStyle='#f2b26a'; g.fillRect(10,2,5,6);
-  g.fillStyle='#e08a3c'; g.fillRect(10,0,2,3); g.fillRect(13,0,2,3);
-  g.fillStyle='#333'; g.fillRect(12,4,2,2);
-  g.fillStyle='#fff'; g.fillRect(2,6,2,4);
-  g.fillStyle='#8a4f1f'; g.fillRect(4,10,2,2); g.fillRect(8,10,2,2);
+  const fur = '#e08a3c', furL = '#f6c98a', furD = '#8a4f1f';
+  // big fluffy tail with white tip
+  g.fillStyle = fur; g.fillRect(1,5,4,5); g.fillRect(2,4,3,1); g.fillRect(2,10,3,1);
+  g.fillStyle = '#ffffff'; g.fillRect(0,6,2,3); g.fillRect(1,5,1,1); g.fillRect(1,9,1,1);
+  g.fillStyle = furL; g.fillRect(2,6,1,3);
+  // round body + fluffy belly
+  g.fillStyle = fur; g.fillRect(4,6,7,4);
+  g.fillStyle = furL; g.fillRect(5,8,5,2);
+  g.fillStyle = furD; g.fillRect(5,10,2,2); g.fillRect(8,10,2,2); // paws
+  // big head, tall ears
+  g.fillStyle = fur; g.fillRect(10,3,5,5);
+  g.fillRect(10,1,2,2); g.fillRect(13,1,2,2);
+  g.fillStyle = furD; g.fillRect(10,1,2,1); g.fillRect(13,1,2,1); // ear tips
+  g.fillStyle = furL; g.fillRect(11,2,1,1); g.fillRect(13,2,1,1); // inner ear
+  g.fillStyle = furL; g.fillRect(13,5,2,2);          // muzzle
+  g.fillStyle = '#2e1f14'; g.fillRect(14,5,1,1);     // nose
+  // big bright eye with shine
+  g.fillStyle = '#2e1f14'; g.fillRect(11,4,2,2);
+  g.fillStyle = '#fff'; g.fillRect(11,4,1,1);
+  // cheek fluff
+  g.fillStyle = '#ffffff'; g.fillRect(10,6,1,2);
 });
+
 
 // ================= Map layout =================
 const FARM_RECT = { x0:5, y0:8, x1:11, y1:12 };
