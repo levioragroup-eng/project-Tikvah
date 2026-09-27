@@ -384,8 +384,10 @@
 </div>
 
 <!-- BATCH1: board-palette terrain art (canonical colors from DESIGN-BOARD-2026-09-27) -->
+<!-- BATCH2: board-style buildings art (canonical buildings from DESIGN-BOARD-2026-09-27) -->
 <script>
 /* TIKVAH-BATCH1-BOARD-ART: board-palette terrain/vegetation foundation */
+/* TIKVAH-BATCH2-BUILDINGS-ART: church spire crown, cottage, cafe, stalls, fountain, ruin stonework, waterfall + ruin arch painters */
 
 'use strict';
 // ================= Intro video overlay =================
@@ -1337,17 +1339,29 @@ const cropTiles = {
     }
   }),
 };
+// Ancient ruin stone (Batch 2): mossy stonework, cracks, carved golden grooves
 const stoneTile = px(TILE,TILE,(g)=>{
   g.clearRect(0,0,TILE,TILE);
-  g.fillStyle='#9a9aa5'; g.fillRect(8,6,16,22);            // standing stone
-  g.fillStyle='#7c7c88'; g.fillRect(8,6,4,22);             // left shadow
-  g.fillStyle='#b5b5c0'; g.fillRect(20,6,4,22);            // right light
-  g.fillStyle='#c9c9d4'; g.fillRect(8,6,16,3);             // top cap
-  g.fillStyle='#5a5a62'; g.fillRect(13,12,2,8); g.fillRect(16,18,3,2); // cracks
-  g.fillStyle='#4a8f3c';                                   // moss in the board's meadow green
-  for (let i=0;i<4;i++) g.fillRect(9+rnd(13), 8+rnd(18), 2, 2);
-  g.fillStyle='#6ab04c';
-  for (let i=0;i<3;i++) g.fillRect(9+rnd(13), 8+rnd(18), 1, 1);
+  g.fillStyle = '#9a9aa5'; g.fillRect(8,6,16,24);
+  g.fillStyle = '#7c7c88'; g.fillRect(8,6,4,24);
+  g.fillStyle = '#b5b5c0'; g.fillRect(20,6,4,24);
+  g.fillStyle = '#c9c9d4'; g.fillRect(8,6,16,3);
+  g.fillStyle = '#8a8a92';
+  g.fillRect(9,10,3,2); g.fillRect(19,22,4,3); g.fillRect(14,26,5,2);
+  g.fillStyle = '#5a5a62';
+  g.fillRect(13,8,1,7); g.fillRect(13,14,4,1); g.fillRect(18,20,1,8);
+  g.fillStyle = '#6e6e78'; g.fillRect(10,16,12,3);              // carved grooves
+  g.fillStyle = '#ffd76e'; g.fillRect(10,16,12,1);              // sleeping gold light
+  g.fillStyle = '#6e6e78'; g.fillRect(15,9,2,17);
+  g.fillStyle = '#ffca55'; g.fillRect(15,9,1,17);
+  g.fillStyle = 'rgba(255,240,180,.9)';
+  g.fillRect(11,16,2,1); g.fillRect(20,16,2,1); g.fillRect(15,10,1,2);
+  g.fillStyle = '#4a8f3c';                                      // moss claims the stone
+  g.fillRect(8,26,16,4); g.fillRect(8,6,5,4); g.fillRect(20,8,4,6);
+  g.fillStyle = '#6ab04c';
+  for (let i=0;i<8;i++){ const x=8+((i*5+1)%15), y=6+((i*11+2)%22); g.fillRect(x,y,2,1); }
+  g.fillStyle = '#3a7230';
+  for (let i=0;i<5;i++){ const x=9+((i*7)%13), y=24+((i*3)%5); g.fillRect(x,y,2,2); }
 });
 const stoneGlow = px(TILE,TILE,(g)=>{ g.drawImage(stoneTile,0,0);
   g.fillStyle='rgba(255,230,120,0.55)'; g.fillRect(6,4,20,26); g.drawImage(stoneTile,0,0); });
@@ -1447,53 +1461,364 @@ const lampTile = px(TILE,TILE,(g)=>{ g.clearRect(0,0,TILE,TILE);
   g.fillStyle='#ffd76e'; g.fillRect(11,3,10,8);
   g.fillStyle='#3a3a3a'; g.fillRect(11,3,10,2); g.fillRect(10,0,12,3);
 });
+// Tiered stone fountain with sparkling water (Batch 2: board-style)
 const fountainTile = px(TILE,TILE,(g)=>{
-  g.fillStyle='#9a9aa5'; g.fillRect(4,20,24,9); g.fillStyle='#7c7c88'; g.fillRect(4,26,24,3);
-  g.fillStyle='#6db8e8'; g.fillRect(7,18,18,4);
-  g.fillStyle='#9a9aa5'; g.fillRect(14,8,4,12);
-  g.fillStyle='#6db8e8'; g.fillRect(10,5,12,4);
-  g.fillStyle='#bfe4ff'; g.fillRect(12,6,3,2);
+  const P = BOARD_PALETTE;
+  g.fillStyle = '#8a7f6e'; g.beginPath(); g.arc(16,23,12,0,7); g.fill();
+  g.fillStyle = P.stone; g.beginPath(); g.arc(16,23,10,0,7); g.fill();
+  g.fillStyle = '#d0c4a8'; g.beginPath(); g.arc(16,23,10,Math.PI,0); g.fill();
+  g.fillStyle = P.waterAzure; g.beginPath(); g.arc(16,23,8,0,7); g.fill();
+  g.fillStyle = '#5fb8e8'; g.beginPath(); g.arc(14,21,4,0,7); g.fill();
+  g.fillStyle = 'rgba(255,255,255,.85)';
+  g.fillRect(11,19,2,2); g.fillRect(20,24,2,2); g.fillRect(15,27,2,2);
+  g.fillStyle = 'rgba(190,228,255,.85)';
+  g.fillRect(9,12,2,9); g.fillRect(21,12,2,9);                  // falling streams
+  g.fillStyle = '#9a9aa5'; g.fillRect(14,10,4,13);              // column
+  g.fillStyle = '#7c7c88'; g.fillRect(14,10,1,13);
+  g.fillStyle = '#c9c9d4'; g.fillRect(17,10,1,13);
+  g.fillStyle = '#a89e88'; g.beginPath(); g.arc(16,9,7,0,7); g.fill();   // upper tier
+  g.fillStyle = P.stone; g.beginPath(); g.arc(16,9,6,0,7); g.fill();
+  g.fillStyle = '#6db8e8'; g.beginPath(); g.arc(16,9,4,0,7); g.fill();
+  g.fillStyle = 'rgba(255,255,255,.8)'; g.fillRect(14,7,3,2);
+  g.fillStyle = '#9a9aa5'; g.fillRect(15,3,2,6);                // crown spout
+  g.fillStyle = '#bfe4ff'; g.beginPath(); g.arc(16,4,3,0,7); g.fill();
+  g.fillStyle = '#ffffff'; g.fillRect(15,2,2,2);
 });
+// Market stall (Batch 2): timber posts, peaked striped canopy, bunting, goods
 function stallTile(awning) {
   return px(TILE,TILE,(g)=>{
     g.clearRect(0,0,TILE,TILE);
-    g.fillStyle='#6b4423'; g.fillRect(4,12,3,18); g.fillRect(25,12,3,18);
-    for (let i=0;i<4;i++){ g.fillStyle = i%2 ? '#fffbe8' : awning; g.fillRect(2+i*7,4,7,9); }
-    g.fillStyle='#6b4423'; g.fillRect(2,12,28,2);
-    g.fillStyle='#8a5a2b'; g.fillRect(6,22,20,8);
-    const goods=['#e05a4e','#e8b93c','#6aa84f'];
-    for(let i=0;i<6;i++){ g.fillStyle=goods[i%3]; g.fillRect(8+i*3,19,3,3); }
+    g.fillStyle = '#6b4423'; g.fillRect(4,10,3,20); g.fillRect(25,10,3,20);
+    g.fillStyle = '#8a5a2b'; g.fillRect(4,10,1,20); g.fillRect(25,10,1,20);
+    for (let i=0;i<8;i++){ const x0=i*4, xc=x0+2;               // peaked canopy
+      const yt = xc<=16 ? 12-(xc-2)*(10/14) : 2+(xc-16)*(10/14);
+      const y0=Math.ceil(yt);
+      g.fillStyle = i%2 ? '#fffbe8' : awning;
+      g.fillRect(x0,y0,4,12-y0);
+      g.fillStyle = 'rgba(0,0,0,.08)'; g.fillRect(x0,y0,4,1);
+    }
+    g.fillStyle = '#6b4423'; g.fillRect(2,11,28,3);             // front beam
+    for (let i=0;i<7;i++){ const x=4+i*4;                       // scalloped valance
+      g.fillStyle = i%2 ? '#fffbe8' : awning;
+      g.beginPath(); g.arc(x,14,2,0,7); g.fill(); }
+    g.fillStyle = '#8a5a2b'; g.fillRect(6,22,20,8);             // counter
+    g.fillStyle = '#c9a878'; g.fillRect(6,22,20,2);
+    g.fillStyle = '#6b4423';
+    for (let x=11;x<26;x+=5) g.fillRect(x,24,1,6);
+    g.fillStyle = '#e05a4e'; g.fillRect(8,19,3,3); g.fillRect(12,19,3,3);   // apples
+    g.fillStyle = '#3f7a2e'; g.fillRect(9,18,1,1); g.fillRect(13,18,1,1);
+    g.fillStyle = '#b06030'; g.fillRect(16,19,4,3);             // potted flower
+    g.fillStyle = '#f0a0c0'; g.fillRect(16,16,4,3);
+    g.fillStyle = '#e8b93c'; g.fillRect(17,17,2,1);
+    g.fillStyle = '#e0a860'; g.fillRect(22,19,4,3); g.fillRect(23,18,2,1);  // bread
+    g.fillStyle = '#8a6a4a'; g.fillRect(4,17,24,1);             // bunting string
+    const bunt=['#e87aa0','#e8b93c','#5a8ac9','#fffbe8'];
+    for (let i=0;i<6;i++){ g.fillStyle=bunt[i%4]; g.fillRect(5+i*4,18,3,3); }
   });
 }
-const stallA = stallTile('#c95a5a'), stallB = stallTile('#5a8ac9'), stallC = stallTile('#e8b93c');
-const houseWall = px(TILE,TILE,(g)=>{ g.fillStyle='#f2e4c4'; g.fillRect(0,0,TILE,TILE); g.fillStyle='#d9c49a'; g.fillRect(0,0,TILE,3); g.fillRect(0,29,TILE,3); g.fillStyle='#b89a6a'; for(let x=8;x<TILE;x+=16) g.fillRect(x,0,2,TILE); });
-const houseRoof = px(TILE,TILE,(g)=>{ g.fillStyle='#a86a4a'; g.fillRect(0,0,TILE,TILE); g.fillStyle='#8a5238'; for(let y=0;y<TILE;y+=8) g.fillRect(0,y,TILE,3); });
-const cafeWall = px(TILE,TILE,(g)=>{ g.fillStyle='#f7ead0'; g.fillRect(0,0,TILE,TILE); g.fillStyle='#e0cba0'; g.fillRect(0,0,TILE,3); g.fillStyle='#c9a878'; for(let x=0;x<TILE;x+=16) g.fillRect(x,3,2,26); });
-const cafeRoof = px(TILE,TILE,(g)=>{ g.fillStyle='#c96a4a'; g.fillRect(0,0,TILE,TILE); g.fillStyle='#a85238'; for(let y=0;y<TILE;y+=8) g.fillRect(0,y,TILE,3); });
-const doorTileH = px(TILE,TILE,(g)=>{ g.drawImage(pathTile,0,0); g.fillStyle='#5d3a17'; g.fillRect(10,4,12,24); g.fillStyle='#7a4f28'; g.fillRect(10,4,12,3); g.fillStyle='#ffd76e'; g.fillRect(19,15,3,3); });
-const windowTile = px(TILE,TILE,(g)=>{ g.clearRect(0,0,TILE,TILE); g.fillStyle='#5d3a17'; g.fillRect(6,8,20,14); g.fillStyle='#ffe9a8'; g.fillRect(8,10,16,10); g.fillStyle='#5d3a17'; g.fillRect(15,10,2,10); g.fillRect(8,14,16,2); });
+const stallA = stallTile('#e87aa0'), stallB = stallTile('#5a8ac9'), stallC = stallTile('#e8b93c');
+// Home walls (Batch 2): cream plaster + timber frame, lit window, flower box
+const houseWall = px(TILE,TILE,(g)=>{
+  g.fillStyle = '#f2e4c4'; g.fillRect(0,0,TILE,TILE);          // warm plaster
+  g.fillStyle = '#e8d4ae';
+  for (let i=0;i<6;i++){ const x=(i*11+3)%26+2, y=(i*7+5)%24+4; g.fillRect(x,y,2,2); }
+  g.fillStyle = '#6b4423';                                     // timber frame
+  g.fillRect(0,0,TILE,4); g.fillRect(0,28,TILE,4);
+  g.fillRect(0,0,4,TILE); g.fillRect(28,0,4,TILE);
+  g.fillStyle = '#a06a35';
+  g.fillRect(0,0,TILE,1); g.fillRect(0,0,1,TILE);
+  g.fillStyle = '#5d3a17'; g.fillRect(9,8,14,13);               // window frame
+  g.fillStyle = '#ffe9a8'; g.fillRect(11,10,10,9);             // warm panes
+  g.fillStyle = '#fff6d8'; g.fillRect(11,10,4,4);
+  g.fillStyle = '#5d3a17'; g.fillRect(15,10,2,9); g.fillRect(11,13,10,2);
+  g.fillStyle = '#8a5a2b'; g.fillRect(8,21,16,2);               // sill
+  g.fillStyle = '#3f7a2e';                                     // flower-box leaves
+  for (let x=8;x<24;x+=4) g.fillRect(x,22,3,2);
+  const blooms=['#f0a0c0','#e05a4e','#ffffff','#e8b93c'];
+  for (let i=0;i<4;i++){ const x=9+i*4;
+    g.fillStyle=blooms[i]; g.fillRect(x,19,3,3);
+    g.fillStyle='rgba(255,255,255,.6)'; g.fillRect(x,19,1,1); }
+  g.fillStyle = '#8a5a2b'; g.fillRect(8,24,16,4);               // box
+  g.fillStyle = '#a06a35'; g.fillRect(8,24,16,1);
+  g.fillStyle = '#5d3a17';
+  for (let x=12;x<24;x+=6) g.fillRect(x,24,1,4);
+});
+// Home roof (Batch 2): terracotta shingle courses, ridge cap, eave
+const houseRoof = px(TILE,TILE,(g)=>{
+  const P = BOARD_PALETTE;
+  g.fillStyle = P.roofTerracotta; g.fillRect(0,0,TILE,TILE);
+  for (let r=0;r<6;r++){ const y=r*6;
+    g.fillStyle = 'rgba(255,255,255,.16)'; g.fillRect(0,y,TILE,1);
+    g.fillStyle = '#8a4a24'; g.fillRect(0,y+5,TILE,1);
+    const off=(r%2)*8;
+    for (let x=off;x<TILE;x+=16) g.fillRect(x,y+1,1,4);
+  }
+  g.fillStyle = '#d08a4a'; g.fillRect(0,0,TILE,4);              // ridge cap
+  g.fillStyle = '#8a4a24'; g.fillRect(0,4,TILE,1);
+  g.fillStyle = 'rgba(255,255,255,.25)'; g.fillRect(0,0,TILE,1);
+  g.fillStyle = '#7a3f1f'; g.fillRect(0,28,TILE,4);             // eave shadow
+  g.fillStyle = '#e8a860'; g.fillRect(0,28,TILE,1);             // eave trim
+});
+// Cafe walls (Batch 2): cream + timber, shop window with goods on shelves
+const cafeWall = px(TILE,TILE,(g)=>{
+  g.fillStyle = '#f7ead0'; g.fillRect(0,0,TILE,TILE);
+  g.fillStyle = '#efe0c2';
+  for (let i=0;i<5;i++){ const x=(i*13+5)%26+2, y=(i*9+3)%24+4; g.fillRect(x,y,2,2); }
+  g.fillStyle = '#7a4f28';
+  g.fillRect(0,0,TILE,4); g.fillRect(0,28,TILE,4);
+  g.fillRect(0,0,4,TILE); g.fillRect(28,0,4,TILE);
+  g.fillStyle = '#a06a35'; g.fillRect(0,0,TILE,1); g.fillRect(0,0,1,TILE);
+  g.fillStyle = '#5d3a17'; g.fillRect(6,7,20,15);               // shop window
+  g.fillStyle = '#ffe9a8'; g.fillRect(8,9,16,11);
+  g.fillStyle = '#fff6d8'; g.fillRect(8,9,6,5);
+  g.fillStyle = '#c9a878'; g.fillRect(8,15,16,1);               // shelf
+  g.fillStyle = '#e05a4e'; g.fillRect(9,11,3,4);                // jars
+  g.fillStyle = '#e8b93c'; g.fillRect(14,11,3,4);
+  g.fillStyle = '#6aa84f'; g.fillRect(19,11,3,4);
+  g.fillStyle = 'rgba(255,255,255,.5)';
+  g.fillRect(9,11,1,4); g.fillRect(14,11,1,4); g.fillRect(19,11,1,4);
+  g.fillStyle = '#c9a878'; g.fillRect(8,18,16,1);
+  g.fillStyle = '#e0a860'; g.fillRect(10,16,5,2); g.fillRect(17,16,5,2);  // bread
+  g.fillStyle = '#5d3a17'; g.fillRect(15,9,2,11); g.fillRect(8,13,16,2);  // mullions
+  g.fillStyle = '#8a5a2b'; g.fillRect(6,22,20,2);               // sill
+});
+// Cafe roof (Batch 2): warm brown shingle courses
+const cafeRoof = px(TILE,TILE,(g)=>{
+  g.fillStyle = '#a86a42'; g.fillRect(0,0,TILE,TILE);
+  for (let r=0;r<6;r++){ const y=r*6;
+    g.fillStyle = 'rgba(255,255,255,.14)'; g.fillRect(0,y,TILE,1);
+    g.fillStyle = '#7c4a28'; g.fillRect(0,y+5,TILE,1);
+    const off=((r+1)%2)*8;
+    for (let x=off;x<TILE;x+=16) g.fillRect(x,y+1,1,4);
+  }
+  g.fillStyle = '#c98a52'; g.fillRect(0,0,TILE,4);
+  g.fillStyle = '#7c4a28'; g.fillRect(0,4,TILE,1);
+  g.fillStyle = '#6e3f22'; g.fillRect(0,28,TILE,4);
+  g.fillStyle = '#e0a868'; g.fillRect(0,28,TILE,1);
+});
+// Home door (Batch 2): planked wood, iron hinges, brass knob, lintel, step
+const doorTileH = px(TILE,TILE,(g)=>{
+  g.drawImage(pathTile,0,0);
+  g.fillStyle = '#b8a888'; g.fillRect(8,28,16,4);
+  g.fillStyle = '#d8d0c0'; g.fillRect(8,28,16,1);
+  g.fillStyle = '#4a2c14'; g.fillRect(9,3,14,26);
+  g.fillStyle = '#7a4f28'; g.fillRect(11,5,10,23);
+  g.fillStyle = '#5d3a17';
+  for (const x of [13,16,19]) g.fillRect(x,5,1,23);
+  g.fillStyle = '#8a5a2b';
+  for (const x of [12,15,18]) g.fillRect(x,5,1,23);
+  g.fillStyle = '#3a3a40'; g.fillRect(11,8,4,2); g.fillRect(11,20,4,2);
+  g.fillStyle = '#d4a940'; g.fillRect(18,15,3,3);
+  g.fillStyle = '#ffe9a8'; g.fillRect(18,15,1,1);
+  g.fillStyle = '#6b4423'; g.fillRect(8,1,16,3);
+  g.fillStyle = '#a06a35'; g.fillRect(8,1,16,1);
+});
+// Night overlay for the home window (Batch 2): halo + relit panes over houseWall
+const windowTile = px(TILE,TILE,(g)=>{
+  g.clearRect(0,0,TILE,TILE);
+  g.fillStyle = 'rgba(255,205,110,.25)'; g.fillRect(5,4,22,22);
+  g.fillStyle = 'rgba(255,205,110,.30)'; g.fillRect(7,6,18,18);
+  g.fillStyle = '#5d3a17'; g.fillRect(9,8,14,13);
+  g.fillStyle = '#ffd76e'; g.fillRect(11,10,10,9);
+  g.fillStyle = '#fff3c4'; g.fillRect(12,11,5,6);
+  g.fillStyle = '#5d3a17'; g.fillRect(15,10,2,9); g.fillRect(11,13,10,2);
+  g.fillStyle = 'rgba(255,255,255,.55)';
+  for (let i=0;i<4;i++) g.fillRect(9+i*4,19,3,1);
+});
+// Cafe counter (Batch 2): striped awning, hanging cup-sign, counter with goods
 const counterTile = px(TILE,TILE,(g)=>{
   g.drawImage(pathTile,0,0);
-  g.fillStyle='#6b4423'; g.fillRect(2,14,28,14);
-  g.fillStyle='#8a5a2b'; g.fillRect(2,14,28,4);
-  for (let i=0;i<4;i++){ g.fillStyle = i%2 ? '#fffbe8' : '#c95a5a'; g.fillRect(1+i*8,0,8,8); }
-  g.fillStyle='#6b4423'; g.fillRect(1,7,30,2);
-  g.fillStyle='#e8b93c'; g.fillRect(6,10,4,4); g.fillStyle='#6aa84f'; g.fillRect(20,10,4,4);
+  g.fillStyle = '#6b4423'; g.fillRect(2,8,3,18); g.fillRect(27,8,3,18);
+  g.fillStyle = '#8a5a2b'; g.fillRect(2,8,1,18); g.fillRect(27,8,1,18);
+  for (let i=0;i<8;i++){ g.fillStyle = i%2 ? '#fffbe8' : '#c95a5a'; g.fillRect(i*4,0,4,8); }
+  for (let i=0;i<8;i++){ g.fillStyle = i%2 ? '#fffbe8' : '#c95a5a';
+    g.beginPath(); g.arc(i*4+2,8,2,0,7); g.fill(); }
+  g.fillStyle = '#6b4423'; g.fillRect(0,10,32,2);
+  g.fillStyle = '#3a3a40'; g.fillRect(11,12,1,2); g.fillRect(20,12,1,2);  // chains
+  g.fillStyle = '#7a4f28'; g.fillRect(10,14,12,6);              // hanging sign
+  g.fillStyle = '#a06a35'; g.fillRect(10,14,12,1); g.fillRect(10,14,1,6);
+  g.fillStyle = '#e8b93c'; g.fillRect(13,16,6,3);               // cup emblem
+  g.fillStyle = '#fff3c4'; g.fillRect(13,16,6,1);
+  g.fillStyle = '#e8b93c'; g.fillRect(19,16,1,3);
+  g.fillStyle = '#8a5a2b'; g.fillRect(2,23,28,9);               // counter
+  g.fillStyle = '#c9a878'; g.fillRect(2,23,28,2);
+  g.fillStyle = '#6b4423';
+  for (let x=7;x<30;x+=6) g.fillRect(x,25,1,7);
+  g.fillStyle = '#e0a860'; g.fillRect(4,19,5,4); g.fillRect(6,18,3,2);   // bread
+  g.fillStyle = '#fffbe8'; g.fillRect(24,19,3,4);               // cups
+  g.fillStyle = '#e8b93c'; g.fillRect(27,19,2,4);
+  g.fillStyle = '#f0a0c0'; g.fillRect(14,20,4,3);               // little cake
+  g.fillStyle = '#e87aa0'; g.fillRect(14,20,4,1);
 });
+// Cafe table (Batch 2): striped parasol, round table with cups
 const tableTile = px(TILE,TILE,(g)=>{ g.clearRect(0,0,TILE,TILE);
-  g.fillStyle='#8a5a2b'; g.fillRect(14,16,4,12); g.fillStyle='#a06a35'; g.fillRect(8,28,16,3);
-  g.fillStyle='#c9a878'; g.fillRect(6,10,20,8); g.fillStyle='#fffbe8'; g.fillRect(6,10,20,2);
-  g.fillStyle='#e05a4e'; g.fillRect(13,6,6,5);
+  for (let i=0;i<5;i++){ g.fillStyle = i%2 ? '#fffbe8' : '#e05a4e'; g.fillRect(6+i*4,4,4,6); }
+  for (let i=0;i<5;i++){ g.fillStyle = i%2 ? '#fffbe8' : '#e05a4e';
+    g.beginPath(); g.arc(8+i*4,10,2,0,7); g.fill(); }
+  g.fillStyle = '#6b4423'; g.fillRect(15,10,2,10);
+  g.fillStyle = '#8a5a2b'; g.beginPath(); g.arc(16,22,7,0,7); g.fill();
+  g.fillStyle = '#c9a878'; g.beginPath(); g.arc(16,22,6,0,7); g.fill();
+  g.fillStyle = '#e8d0a0'; g.beginPath(); g.arc(15,21,3,0,7); g.fill();
+  g.fillStyle = '#fffbe8'; g.fillRect(11,18,3,3);
+  g.fillStyle = '#e8b93c'; g.fillRect(19,18,3,3);
+  g.fillStyle = '#6b4423'; g.fillRect(14,26,4,4);
+  g.fillStyle = '#8a5a2b'; g.fillRect(10,29,12,3);
 });
-const churchWall = px(TILE,TILE,(g)=>{ g.fillStyle='#b9b3a8'; g.fillRect(0,0,TILE,TILE); g.fillStyle='#a09a8e'; g.fillRect(0,0,TILE,4); g.fillRect(0,28,TILE,4); g.fillStyle='#8f897d'; for(let x=0;x<TILE;x+=16) g.fillRect(x,4,2,24); });
-const churchRoof = px(TILE,TILE,(g)=>{ g.fillStyle='#8a4f3a'; g.fillRect(0,0,TILE,TILE); g.fillStyle='#74402e'; for(let y=0;y<TILE;y+=8) g.fillRect(0,y,TILE,3); });
+// Church walls (Batch 2): warm ashlar stone + tall arched stained-glass lancet
+const churchWall = px(TILE,TILE,(g)=>{
+  g.fillStyle = '#d9d2c2'; g.fillRect(0,0,TILE,TILE);          // warm light stone
+  g.fillStyle = '#b8ab94';                                     // ashlar courses
+  for (let y=7;y<TILE;y+=8) g.fillRect(0,y,TILE,1);
+  for (let r=0;r<4;r++){ const y0=r*8, off=(r%2)*8;
+    for (let x=off;x<TILE;x+=16) g.fillRect(x,y0,1,8); }
+  g.fillStyle = 'rgba(255,255,255,.20)'; g.fillRect(0,0,TILE,1);
+  g.fillStyle = '#c4bba6';                                      // window surround
+  g.fillRect(9,10,14,18);
+  g.beginPath(); g.arc(16,10,7,0,7); g.fill();
+  g.fillStyle = '#232a44';                                     // dark recess
+  g.fillRect(11,12,10,16);
+  g.beginPath(); g.arc(16,12,5,0,7); g.fill();
+  g.fillStyle = '#4a8ad9'; g.fillRect(11,12,3,16);             // blue pane
+  g.fillStyle = '#e8b93c'; g.fillRect(14,12,4,16);             // gold pane
+  g.fillStyle = '#e87aa0'; g.fillRect(18,12,3,16);             // pink pane
+  g.fillStyle = '#7ab5e8'; g.beginPath(); g.arc(16,12,5,Math.PI,0); g.fill();  // arch panes
+  g.fillStyle = '#e8b93c'; g.beginPath(); g.arc(16,12,3,Math.PI,0); g.fill();
+  g.fillStyle = '#e87aa0'; g.beginPath(); g.arc(16,12,2,Math.PI,0); g.fill();
+  g.fillStyle = '#1a2340';                                     // leading
+  g.fillRect(13,12,1,16); g.fillRect(17,12,1,16);
+  g.fillRect(11,19,10,1);
+  g.fillStyle = 'rgba(255,255,255,.35)'; g.fillRect(12,13,2,7); // glass shine
+  g.fillStyle = '#b8ab94'; g.fillRect(8,28,16,2);               // sill
+  g.fillStyle = '#e8e0d0'; g.fillRect(8,28,16,1);
+  g.fillStyle = 'rgba(0,0,0,.10)'; g.fillRect(0,30,TILE,2);
+});
+// Church roof (Batch 2): crown of tall blue-gray spires, each cross-topped
+const churchRoof = px(TILE,TILE,(g)=>{
+  const P = BOARD_PALETTE;
+  g.fillStyle = '#4a6a86'; g.fillRect(0,0,TILE,TILE);          // roof plane behind the spires
+  g.fillStyle = '#42566e';
+  for (let y=6;y<TILE;y+=6) g.fillRect(0,y,TILE,1);            // plane seams
+  g.fillStyle = 'rgba(255,255,255,.10)';
+  for (let y=0;y<TILE;y+=6) g.fillRect(0,y,TILE,1);
+  g.fillStyle = P.spireBlue;                                   // steep spire body
+  for (let y=1;y<32;y++){ const hw=1+((y-1)/31)*10; g.fillRect(Math.round(16-hw), y, Math.round(hw*2), 1); }
+  g.fillStyle = '#42566e';                                     // right shade face
+  for (let y=1;y<32;y++){ const hw=1+((y-1)/31)*10; g.fillRect(16, y, Math.round(hw), 1); }
+  g.fillStyle = '#8aa5bd';                                     // left light ticks
+  for (let y=3;y<30;y+=3){ const hw=1+((y-1)/31)*10; g.fillRect(Math.round(16-hw), y, 2, 1); }
+  g.fillStyle = '#a8c0d8'; g.fillRect(15,2,2,28);               // ridge highlight
+  g.fillStyle = 'rgba(0,0,0,.18)';                              // spire shingle courses
+  for (const y of [8,14,20,26]){ const hw=1+((y-1)/31)*10; g.fillRect(Math.round(16-hw), y, Math.round(hw*2), 1); }
+  g.fillStyle = P.gold; g.fillRect(15,0,2,7); g.fillRect(12,2,8,2);   // cross on top
+  g.fillStyle = '#ffe9a8'; g.fillRect(15,0,1,7);
+  g.fillStyle = '#3a4a5e'; g.fillRect(0,29,TILE,3);             // eave shadow
+  g.fillStyle = '#9ab5cc'; g.fillRect(0,29,TILE,1);             // eave trim
+});
 const churchFloor = px(TILE,TILE,(g)=>{ g.fillStyle='#cbb98f'; g.fillRect(0,0,TILE,TILE); g.fillStyle='#bfa87f'; for(let x=0;x<TILE;x+=16) for(let y=0;y<TILE;y+=16) g.fillRect(x,y,8,8); });
 const pewTile = px(TILE,TILE,(g)=>{ g.drawImage(churchFloor,0,0); g.fillStyle='#7a4f28'; g.fillRect(2,10,TILE-4,10); g.fillStyle='#5f3d1f'; g.fillRect(2,10,TILE-4,3); });
 const altarTile = px(TILE,TILE,(g)=>{ g.drawImage(churchFloor,0,0); g.fillStyle='#e8e0cc'; g.fillRect(6,14,20,12); g.fillStyle='#c9bfa8'; g.fillRect(6,14,20,3); g.fillStyle='#ffd76e'; g.fillRect(14,4,4,10); g.fillRect(11,7,10,3); });
 const standTile = px(TILE,TILE,(g)=>{ g.drawImage(churchFloor,0,0); g.fillStyle='#7a4f28'; g.fillRect(12,12,8,14); g.fillStyle='#f5eeda'; g.fillRect(8,6,16,8); g.fillStyle='#c9bfa8'; g.fillRect(15,6,2,8); });
-const doorMat = px(TILE,TILE,(g)=>{ g.drawImage(pathTile,0,0); g.fillStyle='#8a4f3a'; g.fillRect(4,4,TILE-8,TILE-8); g.fillStyle='#a86a4a'; g.fillRect(8,8,TILE-16,TILE-16); });
+// Church door (Batch 2, also interior exits): arched wooden door, stone surround, cross
+const doorMat = px(TILE,TILE,(g)=>{
+  const P = BOARD_PALETTE;
+  g.drawImage(pathTile,0,0);
+  g.fillStyle = '#c9c0ac';                                     // stone arch surround
+  g.fillRect(8,8,16,20);
+  g.beginPath(); g.arc(16,8,8,0,7); g.fill();
+  g.fillStyle = '#a89e88'; g.fillRect(8,8,2,20);
+  g.fillStyle = '#4a2c14';                                     // arched wooden door
+  g.fillRect(11,11,10,17);
+  g.beginPath(); g.arc(16,11,5,0,7); g.fill();
+  g.fillStyle = '#5d3a17';
+  g.fillRect(12,12,8,16);
+  g.beginPath(); g.arc(16,12,4,0,7); g.fill();
+  g.fillStyle = '#3a2410';
+  for (const x of [14,17,20]) g.fillRect(x,12,1,16);            // plank grooves
+  g.fillStyle = '#3a3a40';
+  g.fillRect(12,16,2,2); g.fillRect(18,16,2,2);
+  g.fillRect(12,24,2,2); g.fillRect(18,24,2,2);                 // iron studs
+  g.fillStyle = P.gold; g.fillRect(15,17,2,6);                 // pull handle
+  g.fillStyle = '#a89e88'; g.fillRect(6,28,20,4);               // threshold
+  g.fillStyle = '#d8d0c0'; g.fillRect(6,28,20,1);
+  g.fillStyle = P.gold; g.fillRect(15,0,2,6); g.fillRect(12,2,8,2);  // cross above
+  g.fillStyle = '#ffe9a8'; g.fillRect(15,0,1,6);
+});
+// Ruin pillar (Batch 2): broken capital, carved glowing band, moss
 const pillarTile = px(TILE,TILE,(g)=>{ g.clearRect(0,0,TILE,TILE);
-  g.fillStyle='#9a9aa5'; g.fillRect(10,8,12,20); g.fillStyle='#7c7c88'; g.fillRect(10,8,4,20); g.fillStyle='#b5b5c0'; g.fillRect(8,4,16,5);
+  g.fillStyle = '#9a9aa5'; g.fillRect(10,8,12,20);
+  g.fillStyle = '#7c7c88'; g.fillRect(10,8,4,20);
+  g.fillStyle = '#b5b5c0'; g.fillRect(18,8,4,20);
+  g.fillStyle = '#a8a8b2'; g.fillRect(8,4,14,5);
+  g.fillStyle = '#c9c9d4'; g.fillRect(8,4,14,1);
+  g.fillStyle = '#8a8a92'; g.fillRect(10,14,12,3);
+  g.fillStyle = '#ffd76e'; g.fillRect(10,14,12,1);
+  g.fillStyle = '#5a5a62'; g.fillRect(16,18,1,8); g.fillRect(12,10,3,1);
+  g.fillStyle = '#4a8f3c'; g.fillRect(10,24,12,4); g.fillRect(10,8,3,5);
+  g.fillStyle = '#6ab04c'; g.fillRect(11,25,3,2); g.fillRect(19,9,2,3);
+  g.fillStyle = '#7c7c88'; g.fillRect(8,28,16,4);
+  g.fillStyle = '#a8a8b2'; g.fillRect(8,28,16,1);
+});
+// ---- Batch 2 NEW (defined, not placed — the layout batch places them) ----
+// Waterfall: white-blue cascade with foam over mossy rocks (32x64)
+const waterfallTile = px(32,64,(g)=>{
+  const P = BOARD_PALETTE;
+  g.fillStyle = '#8a8a92'; g.fillRect(0,0,32,10);               // rocky lip
+  g.fillStyle = '#6e6e78'; g.fillRect(0,8,32,2);
+  g.fillStyle = '#a8a8b2'; g.fillRect(0,0,32,2);
+  g.fillStyle = '#4a8f3c'; g.fillRect(2,1,4,3); g.fillRect(24,2,5,3); g.fillRect(12,0,3,2);
+  g.fillStyle = '#8a8a92'; g.fillRect(0,10,6,54); g.fillRect(26,10,6,54);  // side rocks
+  g.fillStyle = '#6e6e78'; g.fillRect(4,10,2,54); g.fillRect(26,10,2,54);
+  g.fillStyle = '#a8a8b2'; g.fillRect(0,10,2,54); g.fillRect(30,10,2,54);
+  g.fillStyle = '#4a8f3c'; g.fillRect(1,20,4,6); g.fillRect(27,40,4,8); g.fillRect(0,52,5,5);
+  g.fillStyle = P.waterAzure; g.fillRect(6,8,20,56);            // falling water
+  for (let y=8;y<64;y+=2){
+    const off=Math.round(2*Math.sin(y/5));
+    g.fillStyle = '#bfe4ff'; g.fillRect(9+off,y,3,2);
+    g.fillStyle = '#ffffff'; g.fillRect(15+off,y,2,2);
+    g.fillStyle = P.waterDeep; g.fillRect(20+off,y,3,2);
+  }
+  g.fillStyle = '#ffffff';                                      // foam bursts
+  for (const f of [[12,24],[19,36],[13,46]]){ g.beginPath(); g.arc(f[0],f[1],3,0,7); g.fill(); }
+  g.fillStyle = '#bfe4ff';
+  for (const f of [[12,24],[19,36],[13,46]]){ g.beginPath(); g.arc(f[0]+3,f[1]+2,2,0,7); g.fill(); }
+  g.fillStyle = '#ffffff'; g.fillRect(6,56,20,8);               // churn at the base
+  g.beginPath(); g.arc(11,57,4,0,7); g.fill();
+  g.beginPath(); g.arc(20,58,5,0,7); g.fill();
+  g.fillStyle = '#bfe4ff'; g.fillRect(6,60,20,4);
+  g.beginPath(); g.arc(15,56,3,0,7); g.fill();
+  g.fillStyle = 'rgba(255,255,255,.8)';
+  g.fillRect(8,52,2,2); g.fillRect(22,50,2,2); g.fillRect(16,44,2,2);
+});
+// Ruin gateway: mossy stone arch with dark opening, broken crown (64x64)
+const ruinArch = px(64,64,(g)=>{
+  const P = BOARD_PALETTE;
+  g.clearRect(0,0,64,64);
+  for (const px0 of [6,42]){                                    // piers
+    g.fillStyle = '#9a9aa5'; g.fillRect(px0,20,16,44);
+    g.fillStyle = '#7c7c88'; g.fillRect(px0,20,4,44);
+    g.fillStyle = '#b5b5c0'; g.fillRect(px0+12,20,4,44);
+    g.fillStyle = '#c9c9d4'; g.fillRect(px0,20,16,2);
+    g.fillStyle = '#6e6e78'; g.fillRect(px0+3,30,10,2);
+    g.fillStyle = '#ffd76e'; g.fillRect(px0+3,30,10,1);
+    g.fillStyle = '#6e6e78'; g.fillRect(px0+7,40,2,16);
+    g.fillStyle = '#ffca55'; g.fillRect(px0+7,40,1,16);
+    g.fillStyle = '#4a8f3c'; g.fillRect(px0,56,16,8); g.fillRect(px0,20,5,8);
+    g.fillStyle = '#6ab04c'; g.fillRect(px0+2,58,5,3); g.fillRect(px0+9,22,4,4);
+  }
+  g.fillStyle = '#a8a8b2'; g.beginPath(); g.arc(32,30,20,0,7); g.fill();   // arch band
+  g.fillStyle = '#8a8a92';                                                 // voussoir seams
+  for (let i=0;i<=10;i++){ const a=Math.PI+i*(Math.PI/10);
+    g.fillRect(Math.round(32+16*Math.cos(a)), Math.round(30+16*Math.sin(a)), 2, 2); }
+  g.fillStyle = '#c9c9d4'; g.fillRect(29,8,6,9);                // keystone
+  g.fillStyle = '#8a8a92'; g.fillRect(29,8,6,1); g.fillRect(29,16,6,1);
+  g.fillStyle = P.uiNavy; g.beginPath(); g.arc(32,32,13,0,7); g.fill();    // dark opening
+  g.fillStyle = '#26304f'; g.beginPath(); g.arc(32,34,9,0,7); g.fill();
+  g.fillStyle = 'rgba(160,200,255,.25)';
+  g.fillRect(28,26,2,8); g.fillRect(34,30,2,6);
+  g.clearRect(16,10,8,7); g.clearRect(41,7,9,8); g.clearRect(27,4,5,5);    // broken crown
+  g.fillStyle = '#8a8a92'; g.fillRect(8,58,9,6); g.fillRect(48,60,8,4);     // rubble
+  g.fillStyle = '#a8a8b2'; g.fillRect(8,58,9,2); g.fillRect(48,60,8,1);
+  g.fillStyle = '#4a8f3c'; g.fillRect(9,62,4,2); g.fillRect(50,60,3,2);
 });
 // home interior tiles
 const woodFloor = px(TILE,TILE,(g)=>{ g.fillStyle='#c9a06a'; g.fillRect(0,0,TILE,TILE); g.fillStyle='#b8905c'; for(let y=0;y<TILE;y+=8) g.fillRect(0,y,TILE,2); });

@@ -116,6 +116,51 @@ const artChecks = [
 ];
 for (const [label, needle] of artChecks) ok('art contains ' + label, pageHtml.includes(needle));
 
+// ---------- Batch 2: board-style buildings art (static page) ----------
+console.log('batch2 buildings art (static page):');
+const b2Checks = [
+  ['church spire painter', 'const churchRoof'],
+  ['spire blue-gray body', "g.fillStyle = P.spireBlue;"],
+  ['cross atop spire', "g.fillRect(15,0,2,7); g.fillRect(12,2,8,2);"],
+  ['church ashlar stone wall', 'const churchWall'],
+  ['stained-glass blue pane', "'#4a8ad9'"],
+  ['stained-glass gold pane', "'#e8b93c'"],
+  ['stained-glass pink pane', "'#e87aa0'"],
+  ['window arch panes', 'g.arc(16,12,5,Math.PI,0)'],
+  ['terracotta house roof', 'const houseRoof'],
+  ['house roof uses palette terracotta', 'g.fillStyle = P.roofTerracotta;'],
+  ['timber-frame house wall', 'const houseWall'],
+  ['house flower box', "const blooms=['#f0a0c0','#e05a4e','#ffffff','#e8b93c']"],
+  ['night window halo', "'rgba(255,205,110,.25)'"],
+  ['home plank door', 'const doorTileH'],
+  ['church arched door', 'const doorMat'],
+  ['cross above church door', "g.fillRect(15,0,2,6); g.fillRect(12,2,8,2);"],
+  ['cafe roof painter', 'const cafeRoof'],
+  ['cafe shop window', 'const cafeWall'],
+  ['cafe counter painter', 'const counterTile'],
+  ['cafe hanging cup sign', '// hanging sign'],
+  ['cafe parasol table', 'const tableTile'],
+  ['market stall painter fn', 'function stallTile(awning)'],
+  ['pink stall awning', "stallTile('#e87aa0')"],
+  ['blue stall awning', "stallTile('#5a8ac9')"],
+  ['peaked stall canopy', '// peaked canopy'],
+  ['stall bunting', '// bunting string'],
+  ['tiered fountain', 'const fountainTile'],
+  ['fountain upper tier', '// upper tier'],
+  ['mossy carved ruin stone', 'const stoneTile'],
+  ['carved golden grooves', '// carved grooves'],
+  ['stoneGlow behavior kept', "g.fillStyle='rgba(255,230,120,0.55)'"],
+  ['ruin pillar painter', 'const pillarTile'],
+  ['waterfall painter (32x64)', 'const waterfallTile = px(32,64'],
+  ['waterfall foam', '// foam bursts'],
+  ['ruin arch gateway (64x64)', 'const ruinArch = px(64,64'],
+  ['ruin arch dark opening', '// dark opening'],
+  ['ruin arch broken crown', '// broken crown'],
+  ['batch2 marker', 'BATCH2: board-style buildings art'],
+  ['batch2 js marker', 'TIKVAH-BATCH2-BUILDINGS-ART'],
+];
+for (const [label, needle] of b2Checks) ok('art contains ' + label, pageHtml.includes(needle));
+
 // ---------- Beauty pass: lighting / particles / animation / UI / staging ----------
 console.log('beauty pass (static page):');
 const beautyChecks = [
