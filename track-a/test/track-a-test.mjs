@@ -24,6 +24,11 @@ const VERSE_TEXTS = new Set([
   'The LORD is my shepherd; I shall not want.',
 ]);
 
+// character look used by Ariel's client in tests
+const LOOK_A = { skin: '#c68a5a', hair: 'curly', hairColor: '#d9c08a', outfit: '#9a6ac9', dress: true, accessory: 'flower' };
+const LOOK_A2 = { skin: '#6e452a', hair: 'bun', hairColor: '#2e1c10', outfit: '#4a8ac9', dress: false, accessory: 'hat' };
+function lookEq(a, b) { return a && b && a.skin===b.skin && a.hair===b.hair && a.hairColor===b.hairColor && a.outfit===b.outfit && a.dress===b.dress && a.accessory===b.accessory; }
+
 let pass = 0, fail = 0;
 function ok(name, cond, detail='') {
   if (cond) { pass++; console.log(`  PASS ${name}`); }
@@ -33,7 +38,7 @@ function ok(name, cond, detail='') {
 // ---------- server ----------
 console.log('starting server...');
 const srv = spawn('node', ['server.js'], {
-  cwd: ROOT, env: { ...process.env, PORT: String(PORT), CROP_GROW_MS: '1500', FISH_WAIT_MIN: '800', FISH_WAIT_MAX: '1200', FISH_CATCH_WINDOW: '3000' },
+  cwd: ROOT, env: { ...process.env, PORT: String(PORT), CROP_GROW_MS: '1500', FISH_WAIT_MIN: '800', FISH_WAIT_MAX: '1200', FISH_CATCH_WINDOW: '3000', DAY_MS: '45000' },
   stdio: ['ignore', 'pipe', 'pipe'],
 });
 srv.stderr.on('data', d => process.stderr.write('[srv] ' + d));
@@ -54,9 +59,9 @@ class C {
     this.ws.on('message', (raw) => {
       const m = JSON.parse(raw.toString());
       this.msgs.push(m);
-      if (m.t === 'joined') { this.state.you = m.you; this.state.code = m.code; m.players.forEach(p => this.state.players.set(p.id, p)); this.state.farm = m.farm; this.state.ruinOpen = m.ruin.open; }
+      if (m.t === 'joined') { this.state.you = m.you; this.state.code = m.code; m.players.forEach(p => this.state.players.set(p.id, p)); this.state.farm = m.farm; this.state.ruinOpen = m.ruin.open; this.state.npcs = new Map(m.npcs.map(n => [n.name, n])); }
       if (m.t === 'join' || m.t === 'player') this.state.players.set(m.p.id, m.p);
-      if (m.t === 'tick') m.players.forEach(p => this.state.players.set(p.id, p));
+      if (m.t === 'tick') { m.players.forEach(p => this.state.players.set(p.id, p)); if (m.npcs) m.npcs.forEach(n => this.state.npcs.set(n.name, n)); }
       if (m.t === 'leave') this.state.players.delete(m.id);
       if (m.t === 'farm') this.state.farm = m.farm;
       if (m.t === 'ruin-open') this.state.ruinOpen = true;
@@ -94,15 +99,25 @@ try {
   // ---------- 1. create + join same room ----------
   console.log('room flow:');
   const a = new C('Ariel'); await a.connect();
-  a.send({ t: 'create', name: 'Ariel' });
+  a.send({ t: 'create', name: 'Ariel', look: LOOK_A });
   ok('create room -> joined', await a.waitFor(() => !!a.state.code, 3000));
   const code = a.state.code;
   ok('room code is 4 letters', /^[A-Z]{4}$/.test(code || ''), 'got: ' + code);
+  ok('creator look stored on self', lookEq(a.state.you.look, LOOK_A), JSON.stringify(a.state.you.look));
 
   const b = new C('Friend'); await b.connect();
   b.send({ t: 'join', name: 'Friend', code });
   ok('second player joins same code', await b.waitFor(() => b.state.players.size === 2, 3000));
   ok('both see 2 players', await a.waitFor(() => a.state.players.size === 2, 3000));
+  ok('look visible to other player', await b.waitFor(() => lookEq(b.state.players.get(a.state.you.id)?.look, LOOK_A), 3000));
+
+  // ---------- 1b. day/night sync ----------
+  console.log('day sync:');
+  ok('day heartbeat reaches A', await a.waitFor(() => a.msgs.some(m => m.t === 'day'), 4000));
+  ok('day heartbeat reaches B', await b.waitFor(() => b.msgs.some(m => m.t === 'day'), 4000));
+  const da = a.lastOf('day'), db = b.lastOf('day');
+  ok('both clients share the same day number', da && db && da.n === db.n, `${da?.n} vs ${db?.n}`);
+  ok('phase is a valid time of day', ['morning','day','sunset','night'].includes(da?.phase), da?.phase);
 
   // ---------- 2. movement sync + speed cap ----------
   console.log('movement:');
@@ -161,6 +176,104 @@ try {
   a.send({ t: 'interact' }); // exit
   ok('exit church', await a.waitFor(() => a.me()?.inside === false, 2000));
 
+  // ---------- 6b. NPC dialogue (Hannah) ----------
+  // Hannah wanders, so walk to her live position and retry the greeting if she drifted.
+  console.log('villagers:');
+  let say = null;
+  for (let attempt = 0; attempt < 3 && !say; attempt++) {
+    const h = a.state.npcs.get('Hannah');
+    ok('Hannah is in the village', !!h);
+    if (await walkTo(a, h.x, h.y, 15000)) {
+      a.send({ t: 'interact' }); // talk
+      say = await a.waitFor(() => a.msgs.some(m => m.t === 'say'), 2000) ? a.lastOf('say') : null;
+    }
+  }
+  ok('Hannah speaks', !!say && say.name === 'Hannah' && say.text.length > 10, say?.text);
+  ok('dialogue visible to BOTH players', await b.waitFor(() => b.msgs.some(m => m.t === 'say'), 2000));
+  ok('friendship heart recorded', say && say.hearts === 1, 'hearts=' + say?.hearts);
+  ok('greeting counts toward the day rhythm', await a.waitFor(() => a.lastOf('day')?.rhythm?.greet === true, 3000));
+
+  // ---------- 6c. cooking (B farms a second plot, cooks at the cafe, gives to A) ----------
+  console.log('cooking:');
+  const PLOT1 = { x: 10*TILE+16, y: 9*TILE+16 };   // FARM_PLOTS[2]
+  ok('B walks to plot 2', await walkTo(b, PLOT1.x, PLOT1.y, 15000));
+  b.send({ t: 'interact' }); // plant
+  ok('B plants', await b.waitFor(() => b.state.farm[2]?.stage === 'planted', 2000));
+  b.send({ t: 'interact' }); // water
+  ok('B waters', await b.waitFor(() => b.state.farm[2]?.stage === 'growing', 2000));
+  ok('B crop grows', await b.waitFor(() => b.state.farm[2]?.stage === 'ready', 8000));
+  b.send({ t: 'interact' }); // harvest -> produce
+  ok('B harvests produce', await b.waitFor(() => b.me()?.inv?.produce >= 1, 3000));
+  const CAFE = { x: 26*TILE+16, y: 17*TILE+16 };
+  ok('B walks to cafe counter', await walkTo(b, CAFE.x, CAFE.y, 15000));
+  b.send({ t: 'interact' }); // -> cook menu offered
+  ok('cook menu offered near cafe', await b.waitFor(() => b.msgs.some(m => m.t === 'menu' && m.kind === 'cook'), 2000));
+  b.send({ t: 'cook', action: 'cook' });
+  const cooked = await b.waitFor(() => b.msgs.some(m => m.t === 'cooked'), 2000) ? b.lastOf('cooked') : null;
+  ok('cook turns produce+fish into a meal', !!cooked && b.me()?.inv?.meals === 1, cooked?.meal);
+  ok('cooking counts toward the day rhythm', await b.waitFor(() => b.lastOf('day')?.rhythm?.cook === true, 3000));
+  ok('A walks to cafe', await walkTo(a, CAFE.x, CAFE.y + 32, 15000));
+  b.send({ t: 'cook', action: 'give' });
+  const gift = await a.waitFor(() => a.msgs.some(m => m.t === 'gift'), 3000) ? a.lastOf('gift') : null;
+  ok('give shares the meal with the nearby player', !!gift && gift.from === 'Friend' && gift.to === 'Ariel', JSON.stringify(gift));
+  ok('A received the meal', await a.waitFor(() => a.me()?.inv?.meals === 1, 2000));
+
+  // ---------- 6d. church candle + worship -> garden blooms ----------
+  console.log('candle & worship:');
+  ok('A walks back to church door', await walkTo(a, CHURCH_DOOR.x, CHURCH_DOOR.y + 8, 15000));
+  a.send({ t: 'interact' }); // enter
+  ok('re-enter church', await a.waitFor(() => a.me()?.inside === true, 2000));
+  const CANDLE = { x: 24*TILE+16, y: 20*TILE+16 };
+  ok('walk to candle stand', await walkTo(a, CANDLE.x, CANDLE.y));
+  a.send({ t: 'interact' }); // light candle
+  const candle = await a.waitFor(() => a.msgs.some(m => m.t === 'candle'), 2000) ? a.lastOf('candle') : null;
+  ok('candle lit and shared', !!candle && candle.count === 1, 'count=' + candle?.count);
+  ok('candle visible to B', await b.waitFor(() => b.msgs.some(m => m.t === 'candle'), 2000));
+  ok('walk to altar', await walkTo(a, 20*TILE+16, 20*TILE+16));
+  a.send({ t: 'interact' }); // pray -> worship (candles are lit)
+  ok('worship moment fires for both', await b.waitFor(() => b.msgs.some(m => m.t === 'worship'), 3000));
+  // rhythm now complete: farm (4), fish (5), cook (6c), greet (6b), candle (6d)
+  ok('garden blooms when the day rhythm is complete (A)', await a.waitFor(() => a.msgs.some(m => m.t === 'garden-bloom'), 4000));
+  ok('garden blooms when the day rhythm is complete (B)', await b.waitFor(() => b.msgs.some(m => m.t === 'garden-bloom'), 4000));
+  const bloom = a.lastOf('garden-bloom');
+  ok('bloom message is warm, not preachy', !!bloom && /bloom/i.test(bloom.message) && !/repent|sin|hell/i.test(bloom.message), bloom?.message);
+
+  // ---------- 6e. home interior: enter, sleep, decorate, wardrobe, exit ----------
+  console.log('home:');
+  ok('walk to church exit', await walkTo(a, 20*TILE+16, 24*TILE+16));
+  a.send({ t: 'interact' });
+  ok('exit church', await a.waitFor(() => a.me()?.inside === false, 2000));
+  const HOME_DOOR = { x: 11*TILE+16, y: 17*TILE+16 };
+  ok('walk to home door', await walkTo(a, HOME_DOOR.x, HOME_DOOR.y + 24, 15000));
+  a.send({ t: 'interact' }); // enter home
+  ok('enter home interior', await a.waitFor(() => a.me()?.inside === true && a.me()?.place === 'home', 2000));
+  const BED = { x: 29*TILE+16, y: 18*TILE+16 };
+  ok('walk to bed', await walkTo(a, BED.x, BED.y));
+  const dayBefore = a.lastOf('day')?.n || 1;
+  a.send({ t: 'interact' }); // sleep
+  ok('sleep advances to a new day (A)', await a.waitFor(() => (a.lastOf('day')?.n || 0) > dayBefore, 3000));
+  ok('sleep advances to a new day (B)', await b.waitFor(() => (b.lastOf('day')?.n || 0) > dayBefore, 3000));
+  ok('new day resets the rhythm', (a.lastOf('day')?.rhythm && Object.values(a.lastOf('day').rhythm).every(v => v === false)) === true);
+  const RUG = { x: 29*TILE+16, y: 21*TILE+16 };
+  ok('walk to rug', await walkTo(a, RUG.x, RUG.y));
+  a.send({ t: 'interact' }); // decorate
+  const decor = await a.waitFor(() => a.msgs.some(m => m.t === 'decor'), 2000) ? a.lastOf('decor') : null;
+  ok('decorate cycles the rug', !!decor && decor.rug === 1, 'rug=' + decor?.rug);
+  const WARDROBE = { x: 32*TILE+16, y: 21*TILE+16 };
+  ok('walk to wardrobe', await walkTo(a, WARDROBE.x, WARDROBE.y));
+  a.send({ t: 'interact' }); // -> creator menu
+  ok('wardrobe offers change-clothes', await a.waitFor(() => a.msgs.some(m => m.t === 'menu' && m.kind === 'creator'), 2000));
+  a.send({ t: 'look', look: LOOK_A2 });
+  ok('new look applied and visible to B', await b.waitFor(() => lookEq(b.state.players.get(a.state.you.id)?.look, LOOK_A2), 3000));
+  const HEARTH = { x: 35*TILE+16, y: 18*TILE+16 };
+  ok('walk to hearth', await walkTo(a, HEARTH.x, HEARTH.y));
+  a.send({ t: 'interact' }); // -> cook menu at home
+  ok('hearth offers cooking', await a.waitFor(() => a.msgs.some(m => m.t === 'menu' && m.kind === 'cook'), 2000));
+  const HOME_EXIT = { x: 32*TILE+16, y: 24*TILE+16 };
+  ok('walk to home exit', await walkTo(a, HOME_EXIT.x, HOME_EXIT.y));
+  a.send({ t: 'interact' }); // exit home
+  ok('exit home', await a.waitFor(() => a.me()?.inside === false && a.me()?.place === null, 2000));
+
   // ---------- 7. SIGNATURE: ruin opens when both stand on stones ----------
   console.log('ruin:');
   ok('A walks to stone A', await walkTo(a, STONE_A.x, STONE_A.y, 15000));
@@ -188,6 +301,14 @@ try {
   const pa = r.players.find(p => p.id === a.state.you.id);
   ok('players respawn at village center', Math.hypot(pa.x - GARDEN.x, pa.y - GARDEN.y) < 40, `${pa.x},${pa.y}`);
   ok('no duplicate ending after reset', await sleep(1200).then(() => !a.msgs.slice(a.msgs.findIndex(m=>m.t==='reset')).some(m => m.t === 'ending')));
+  // life-sim state also resets
+  const rd = a.lastOf('reset');
+  ok('reset restores day 1', rd.day.n === 1, 'day=' + rd.day.n);
+  ok('reset clears the day rhythm', Object.values(rd.day.rhythm).every(v => v === false), JSON.stringify(rd.day.rhythm));
+  ok('reset clears candles', rd.candles === 0, 'candles=' + rd.candles);
+  ok('reset un-blooms the garden', rd.garden.bloomed === false);
+  ok('reset clears inventories', rd.players.every(p => p.inv.produce === 0 && p.inv.fish === 0 && p.inv.meals === 0));
+  ok('villagers still present after reset', rd.npcs.length === 3, rd.npcs.map(n=>n.name).join(','));
 
   // ---------- 8. negative: invalid room codes + room cap ----------
   console.log('negative tests:');
@@ -227,6 +348,9 @@ try {
   g.ws.send('this is not json{{{');
   g.send({ t: 'nope' });
   g.send({});
+  g.send({ t: 'look', look: { skin: 'nope', hair: 'mohawk' } });
+  const badLook = await g.waitFor(() => g.msgs.some(m => m.t === 'error' && m.code === 'bad-look'), 2000);
+  ok('invalid look rejected', badLook);
   await sleep(500);
   const stillAlive = g.ws.readyState === 1;
   g.send({ t: 'emote', id: 'wave' });

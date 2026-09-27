@@ -1,5 +1,9 @@
 // Tikvah — Track A competition build. Authoritative Node.js + WebSocket server.
 // Serves the static client from ./public and hosts game rooms with short codes.
+//
+// Life-sim layer (2026-09-27 sprint): character looks, home interior, day/night,
+// cooking, church candles + worship, villager NPCs with dialogue, and a gentle
+// shared day rhythm (farm, fish, cook, greet, candle) that blooms the Garden of Hope.
 import http from 'http';
 import fs from 'fs';
 import path from 'path';
@@ -19,24 +23,84 @@ export const RUIN_STONE_RADIUS = 40;               // px
 export const MAX_NAME_LEN = 16;
 
 // Village layout (tile coords)
-export const FARM_PLOTS = [ {tx:6,ty:9}, {tx:8,ty:9}, {tx:6,ty:11}, {tx:8,ty:11} ];
+export const FARM_PLOTS = [ {tx:6,ty:9}, {tx:8,ty:9}, {tx:10,ty:9}, {tx:6,ty:11}, {tx:8,ty:11}, {tx:10,ty:11} ];
 export const DOCK = { tx: 33, ty: 20 };            // fishing spot
 export const CHURCH_DOOR = { tx: 20, ty: 5 };      // press E near door -> enter
 export const CHURCH_EXIT = { tx: 20, ty: 24 };     // interior exit spot
-export const PRAY_SPOT = { tx: 20, ty: 20 };       // interior: pray
+export const PRAY_SPOT = { tx: 20, ty: 20 };       // interior: pray / worship
 export const VERSE_STAND = { tx: 16, ty: 20 };     // interior: read one verse
+export const CANDLE_STAND = { tx: 24, ty: 20 };    // interior: light a candle
 export const STONE_A = { tx: 4, ty: 22 };
 export const STONE_B = { tx: 35, ty: 3 };
 export const SPAWN = { tx: 20, ty: 14 };
+// Home (exterior)
+export const HOME_DOOR = { tx: 11, ty: 17 };       // press E near door -> enter home
+// Home interior (separate tile region, drawn instead of the world).
+// Spots are on a 3-tile grid so their 56px interact zones never overlap.
+// (walkTo stops within 30px of a target; 96px spacing keeps every stop unambiguous.)
+export const HOME_EXIT = { tx: 32, ty: 24 };
+export const SLEEP_SPOT = { tx: 29, ty: 18 };      // bed
+export const HEARTH = { tx: 35, ty: 18 };          // cook spot (home)
+export const WARDROBE = { tx: 32, ty: 21 };        // change clothes
+export const RUG_SPOT = { tx: 29, ty: 21 };        // decorate: cycle rug color
+export const SIT_SPOT = { tx: 35, ty: 21 };        // sit
+export const PRAY_NOOK = { tx: 32, ty: 18 };       // pray at home
+// Cafe (exterior cook spot)
+export const CAFE_COUNTER = { tx: 26, ty: 17 };
 
 const CROP_GROW_MS = parseInt(process.env.CROP_GROW_MS || '45000', 10); // watered -> ready
 const FISH_WAIT_MIN = parseInt(process.env.FISH_WAIT_MIN || '3000', 10);
 const FISH_WAIT_MAX = parseInt(process.env.FISH_WAIT_MAX || '7000', 10);
 const FISH_CATCH_WINDOW = parseInt(process.env.FISH_CATCH_WINDOW || '2500', 10);
+const DAY_MS = parseInt(process.env.DAY_MS || '480000', 10); // one full day/night cycle (8 min)
+const WORSHIP_COOLDOWN_MS = 20000;
+const MAX_CANDLES = 12;
 
 const VERSES = [
   { ref: 'Jeremiah 29:11', text: 'For I know the thoughts that I think toward you, saith the LORD, thoughts of peace, and not of evil, to give you an expected end.' },
   { ref: 'Psalm 23:1', text: 'The LORD is my shepherd; I shall not want.' },
+];
+
+// ---------- Character looks ----------
+const LOOK_ENUMS = {
+  skin: ['#f2c99a', '#e0ac7e', '#c68a5a', '#9a6540', '#6e452a'],
+  hair: ['long', 'short', 'curly', 'bun'],
+  hairColor: ['#2e1c10', '#4a2c14', '#8a5a2b', '#d9c08a', '#a34a2e'],
+  outfit: ['#4a8ac9', '#c96a4a', '#6aa84f', '#9a6ac9', '#c9a44a'],
+  accessory: ['none', 'hat', 'flower'],
+};
+export function defaultLook() {
+  return { skin: LOOK_ENUMS.skin[0], hair: 'long', hairColor: LOOK_ENUMS.hairColor[1],
+           outfit: LOOK_ENUMS.outfit[0], dress: false, accessory: 'none' };
+}
+export function validLook(l) {
+  if (!l || typeof l !== 'object') return false;
+  for (const k of Object.keys(LOOK_ENUMS)) {
+    if (!LOOK_ENUMS[k].includes(l[k])) return false;
+  }
+  return typeof l.dress === 'boolean';
+}
+function sanitizeLook(l) { return validLook(l) ? { skin: l.skin, hair: l.hair, hairColor: l.hairColor, outfit: l.outfit, dress: l.dress, accessory: l.accessory } : defaultLook(); }
+
+// ---------- Villagers ----------
+export const NPC_DEFS = [
+  { name: 'Hannah', hx: 20, hy: 11, r: 2.5, lines: [
+    "It's always good to see you around. The town feels brighter when you're here.",
+    'I planted marigolds by the plaza this morning. Small things grow, you know.',
+    'If you ever need a quiet moment, the church candles are always lit for you.',
+    'I dreamt the garden bloomed again last night. Maybe today is the day.',
+    'You have a kind way about you. This village is lucky to have you.',
+  ]},
+  { name: 'Elias', hx: 26, hy: 9, r: 2, lines: [
+    "Fresh bread, friend! Well — the bread is imaginary, but the welcome is real.",
+    'A village is just people who keep showing up for each other.',
+    "Take your time browsing. Nobody's in a hurry in Tikvah.",
+  ]},
+  { name: 'Miriam', hx: 23, hy: 16, r: 2, lines: [
+    "I saved you a seat by the window. The light is lovely at this hour.",
+    'Cooking for someone is my favorite way to say I care.',
+    'Evening settles soft here. Stay a while.',
+  ]},
 ];
 
 // ---------- Room state ----------
@@ -53,14 +117,30 @@ function newCode() {
 
 function createRoom() {
   const code = newCode();
+  const now = Date.now();
   const room = {
-    code, id: ++roomSeq, createdAt: Date.now(),
+    code, id: ++roomSeq, createdAt: now,
     players: new Map(),   // ws -> player
     sockets: new Set(),
     farm: FARM_PLOTS.map(p => ({ tx: p.tx, ty: p.ty, stage: 'empty', t: 0 })),
     ruin: { open: false },
     ending: { done: false },
-    fox: { x: 15*TILE, y: 18*TILE, tx: 15*TILE, ty: 18*TILE, nextMove: Date.now()+2000 },
+    fox: { x: 15*TILE, y: 18*TILE, tx: 15*TILE, ty: 18*TILE, nextMove: now+2000 },
+    npcs: NPC_DEFS.map(d => ({
+      name: d.name, lines: d.lines, hx: d.hx, hy: d.hy, r: d.r,
+      x: d.hx*TILE + TILE/2, y: d.hy*TILE + TILE/2,
+      tx: d.hx*TILE + TILE/2, ty: d.hy*TILE + TILE/2,
+      nextMove: now + 1500 + Math.random()*3000,
+      line: 0, hearts: {},   // hearts: playerId -> 0..5
+    })),
+    npcMoved: true,
+    day: { n: 1, start: now },
+    rhythm: { farm: false, fish: false, cook: false, greet: false, candle: false },
+    candles: 0,
+    lastWorship: 0,
+    garden: { bloomed: false },
+    home: { rug: 0 },
+    tickCount: 0,
     seq: 0,
   };
   rooms.set(code, room);
@@ -68,6 +148,15 @@ function createRoom() {
 }
 
 function dist(ax, ay, bx, by) { return Math.hypot(ax-bx, ay-by); }
+
+export function dayPhase(room, now = Date.now()) {
+  const frac = (((now - room.day.start) % DAY_MS) + DAY_MS) % DAY_MS / DAY_MS;
+  if (frac < 0.22) return 'morning';
+  if (frac < 0.60) return 'day';
+  if (frac < 0.78) return 'sunset';
+  return 'night';
+}
+const PHASE_LABEL = { morning: 'Morning', day: 'Day', sunset: 'Sunset', night: 'Night' };
 
 // ---------- Messaging helpers ----------
 function send(ws, msg) { if (ws.readyState === 1) ws.send(JSON.stringify(msg)); }
@@ -78,16 +167,19 @@ function broadcast(room, msg, except) {
 function err(ws, code, message) { send(ws, { t: 'error', code, message }); }
 
 // ---------- Game logic ----------
-function addPlayer(room, ws, name) {
+function addPlayer(room, ws, name, look) {
   const p = {
     id: 'p' + Math.random().toString(36).slice(2, 9),
     name: String(name || 'Traveler').slice(0, MAX_NAME_LEN) || 'Traveler',
+    look: sanitizeLook(look),
     x: SPAWN.tx*TILE + TILE/2, y: SPAWN.ty*TILE + TILE/2,
     dir: 'down', moving: false,
     ix: 0, iy: 0,                       // current input vector
     emote: null, emoteAt: 0,
-    inside: false,                       // inside church
+    inside: false,                       // inside any interior
+    place: null,                         // 'church' | 'home' | null
     fishing: null,                       // {state:'cast', biteAt, windowUntil} | null
+    inv: { produce: 0, fish: 0, meals: 0 },
   };
   room.players.set(ws, p);
   room.sockets.add(ws);
@@ -95,9 +187,21 @@ function addPlayer(room, ws, name) {
 }
 
 function playerPublic(p) {
-  return { id: p.id, name: p.name, x: Math.round(p.x), y: Math.round(p.y),
+  return { id: p.id, name: p.name, look: p.look,
+           x: Math.round(p.x), y: Math.round(p.y),
            dir: p.dir, moving: p.moving, emote: p.emote, emoteAt: p.emoteAt,
-           inside: p.inside, fishing: p.fishing ? p.fishing.state : null };
+           inside: p.inside, place: p.place,
+           fishing: p.fishing ? p.fishing.state : null,
+           inv: { ...p.inv } };
+}
+
+function npcPublic(n) {
+  return { name: n.name, x: Math.round(n.x), y: Math.round(n.y) };
+}
+
+function dayPublic(room) {
+  const phase = dayPhase(room);
+  return { n: room.day.n, phase, label: PHASE_LABEL[phase], rhythm: { ...room.rhythm } };
 }
 
 function farmPublic(room) {
@@ -115,27 +219,123 @@ function nearestPlot(room, p) {
   return best;
 }
 
+function nearestNpc(room, p, range = INTERACT_RANGE) {
+  let best = null, bd = range;
+  for (const n of room.npcs) {
+    const d = dist(p.x, p.y, n.x, n.y);
+    if (d <= bd) { bd = d; best = n; }
+  }
+  return best;
+}
+
 function near(p, tx, ty, range = INTERACT_RANGE) {
   const c = { x: tx*TILE + TILE/2, y: ty*TILE + TILE/2 };
   return dist(p.x, p.y, c.x, c.y) <= range;
 }
 
+function nearCookSpot(p) {
+  if (!p.inside && near(p, CAFE_COUNTER.tx, CAFE_COUNTER.ty)) return true;
+  if (p.inside && p.place === 'home' && near(p, HEARTH.tx, HEARTH.ty)) return true;
+  return false;
+}
+
+function setRhythm(room, key) {
+  if (room.rhythm[key]) return;
+  room.rhythm[key] = true;
+  broadcast(room, { t: 'day', ...dayPublic(room) });
+  checkBloom(room);
+}
+
+function checkBloom(room) {
+  const r = room.rhythm;
+  if (!room.garden.bloomed && r.farm && r.fish && r.cook && r.greet && r.candle) {
+    room.garden.bloomed = true;
+    broadcast(room, { t: 'garden-bloom',
+      message: 'The Garden of Hope blooms — tended with love, day after day. 🌸' });
+  }
+}
+
+function enterChurch(room, ws, p) {
+  p.inside = true; p.place = 'church';
+  p.x = CHURCH_EXIT.tx*TILE+TILE/2; p.y = CHURCH_EXIT.ty*TILE+TILE/2;
+  broadcast(room, {t:'player', p: playerPublic(p)});
+  return {ok:true, action:'enter-church'};
+}
+function enterHome(room, ws, p) {
+  p.inside = true; p.place = 'home';
+  p.x = HOME_EXIT.tx*TILE+TILE/2; p.y = HOME_EXIT.ty*TILE+TILE/2;
+  broadcast(room, {t:'player', p: playerPublic(p)});
+  return {ok:true, action:'enter-home'};
+}
+function exitInterior(room, ws, p, doorTx, doorTy) {
+  p.inside = false; p.place = null;
+  p.x = doorTx*TILE+TILE/2; p.y = (doorTy+1)*TILE+TILE/2;
+  broadcast(room, {t:'player', p: playerPublic(p)});
+}
+
 function handleInteract(room, ws, p) {
   const now = Date.now();
-  if (p.inside) {
-    if (near(p, CHURCH_EXIT.tx, CHURCH_EXIT.ty)) { p.inside = false; p.x = CHURCH_DOOR.tx*TILE+TILE/2; p.y = (CHURCH_DOOR.ty+2)*TILE+TILE/2; broadcast(room, {t:'player', p: playerPublic(p)}); return {ok:true, action:'exit-church'}; }
-    if (near(p, PRAY_SPOT.tx, PRAY_SPOT.ty)) { p.emote='pray'; p.emoteAt=now; broadcast(room, {t:'player', p: playerPublic(p)}); return {ok:true, action:'pray'}; }
+  // ---- interiors ----
+  if (p.inside && p.place === 'church') {
+    if (near(p, CHURCH_EXIT.tx, CHURCH_EXIT.ty)) { exitInterior(room, ws, p, CHURCH_DOOR.tx, CHURCH_DOOR.ty); return {ok:true, action:'exit-church'}; }
+    if (near(p, PRAY_SPOT.tx, PRAY_SPOT.ty)) {
+      p.emote='pray'; p.emoteAt=now; broadcast(room, {t:'player', p: playerPublic(p)});
+      // Worship moment: candles are lit -> a shared gentle beat
+      if (room.candles > 0 && now - room.lastWorship > WORSHIP_COOLDOWN_MS) {
+        room.lastWorship = now;
+        broadcast(room, {t:'worship', by: p.name});
+      }
+      return {ok:true, action:'pray'};
+    }
     if (near(p, VERSE_STAND.tx, VERSE_STAND.ty)) { const v = VERSES[Math.floor(Math.random()*VERSES.length)]; broadcast(room, {t:'verse', ref: v.ref, text: v.text, by: p.name}); return {ok:true, action:'read'}; }
+    if (near(p, CANDLE_STAND.tx, CANDLE_STAND.ty)) {
+      if (room.candles >= MAX_CANDLES) return {ok:false, reason:'candles-full'};
+      room.candles++;
+      setRhythm(room, 'candle');
+      broadcast(room, {t:'candle', count: room.candles, by: p.name});
+      return {ok:true, action:'candle'};
+    }
     return {ok:false, reason:'nothing-nearby'};
   }
+  if (p.inside && p.place === 'home') {
+    if (near(p, HOME_EXIT.tx, HOME_EXIT.ty)) { exitInterior(room, ws, p, HOME_DOOR.tx, HOME_DOOR.ty); return {ok:true, action:'exit-home'}; }
+    if (near(p, SLEEP_SPOT.tx, SLEEP_SPOT.ty)) {
+      room.day.n++; room.day.start = now;
+      room.rhythm = { farm: false, fish: false, cook: false, greet: false, candle: false };
+      broadcast(room, { t: 'day', ...dayPublic(room) });
+      broadcast(room, { t: 'slept', by: p.name, n: room.day.n });
+      return {ok:true, action:'sleep'};
+    }
+    if (near(p, HEARTH.tx, HEARTH.ty)) { send(ws, {t:'menu', kind:'cook'}); return {ok:true, action:'cook-menu'}; }
+    if (near(p, WARDROBE.tx, WARDROBE.ty)) { send(ws, {t:'menu', kind:'creator'}); return {ok:true, action:'creator-menu'}; }
+    if (near(p, RUG_SPOT.tx, RUG_SPOT.ty)) {
+      room.home.rug = (room.home.rug + 1) % 4;
+      broadcast(room, {t:'decor', rug: room.home.rug, by: p.name});
+      return {ok:true, action:'decorate'};
+    }
+    if (near(p, SIT_SPOT.tx, SIT_SPOT.ty)) { p.emote='sit'; p.emoteAt=now; broadcast(room, {t:'player', p: playerPublic(p)}); return {ok:true, action:'sit'}; }
+    if (near(p, PRAY_NOOK.tx, PRAY_NOOK.ty)) { p.emote='pray'; p.emoteAt=now; broadcast(room, {t:'player', p: playerPublic(p)}); return {ok:true, action:'pray'}; }
+    return {ok:false, reason:'nothing-nearby'};
+  }
+  // ---- outside ----
   // church door -> enter
-  if (near(p, CHURCH_DOOR.tx, CHURCH_DOOR.ty)) { p.inside = true; p.x = CHURCH_EXIT.tx*TILE+TILE/2; p.y = CHURCH_EXIT.ty*TILE+TILE/2; broadcast(room, {t:'player', p: playerPublic(p)}); return {ok:true, action:'enter-church'}; }
+  if (near(p, CHURCH_DOOR.tx, CHURCH_DOOR.ty)) return enterChurch(room, ws, p);
+  // home door -> enter home
+  if (near(p, HOME_DOOR.tx, HOME_DOOR.ty)) return enterHome(room, ws, p);
+  // cafe counter -> cooking menu
+  if (near(p, CAFE_COUNTER.tx, CAFE_COUNTER.ty)) { send(ws, {t:'menu', kind:'cook'}); return {ok:true, action:'cook-menu'}; }
   // farm
   const plot = nearestPlot(room, p);
   if (plot) {
     if (plot.stage === 'empty') { plot.stage = 'planted'; }
     else if (plot.stage === 'planted') { plot.stage = 'growing'; plot.t = now; }
-    else if (plot.stage === 'ready') { plot.stage = 'empty'; broadcast(room, {t:'harvest', by: p.name}); }
+    else if (plot.stage === 'ready') {
+      plot.stage = 'empty';
+      p.inv.produce++;
+      setRhythm(room, 'farm');
+      broadcast(room, {t:'harvest', by: p.name});
+      broadcast(room, {t:'player', p: playerPublic(p)});
+    }
     else return {ok:false, reason:'growing'};
     broadcast(room, {t:'farm', farm: farmPublic(room)});
     return {ok:true, action:'farm-' + plot.stage};
@@ -148,7 +348,11 @@ function handleInteract(room, ws, p) {
       return {ok:true, action:'cast'};
     }
     if (p.fishing.state === 'bite' && now <= p.fishing.windowUntil) {
-      p.fishing = null; broadcast(room, {t:'catch', by: p.name}); broadcast(room, {t:'player', p: playerPublic(p)});
+      p.fishing = null;
+      p.inv.fish++;
+      setRhythm(room, 'fish');
+      broadcast(room, {t:'catch', by: p.name});
+      broadcast(room, {t:'player', p: playerPublic(p)});
       return {ok:true, action:'catch'};
     }
     return {ok:false, reason:'no-bite'};
@@ -159,7 +363,58 @@ function handleInteract(room, ws, p) {
     broadcast(room, {t:'pet', by: p.name});
     return {ok:true, action:'pet'};
   }
+  // villager -> talk
+  const npc = nearestNpc(room, p);
+  if (npc) {
+    const text = npc.lines[npc.line % npc.lines.length];
+    npc.line++;
+    const hearts = Math.min(5, (npc.hearts[p.id] || 0) + 1);
+    npc.hearts[p.id] = hearts;
+    setRhythm(room, 'greet');
+    broadcast(room, {t:'say', name: npc.name, text, hearts, by: p.name});
+    return {ok:true, action:'talk'};
+  }
   return {ok:false, reason:'nothing-nearby'};
+}
+
+function handleCook(room, ws, p, action) {
+  if (!nearCookSpot(p)) { send(ws, {t:'cook-fail', reason:'not-near-cook'}); return; }
+  if (action === 'cook') {
+    if (p.inv.produce < 1 || p.inv.fish < 1) { send(ws, {t:'cook-fail', reason:'need-produce-and-fish'}); return; }
+    p.inv.produce--; p.inv.fish--; p.inv.meals++;
+    setRhythm(room, 'cook');
+    broadcast(room, {t:'cooked', by: p.name, meal: 'Harvest Stew', meals: p.inv.meals});
+    broadcast(room, {t:'player', p: playerPublic(p)});
+  } else if (action === 'eat') {
+    if (p.inv.meals < 1) { send(ws, {t:'cook-fail', reason:'no-meal'}); return; }
+    p.inv.meals--;
+    broadcast(room, {t:'ate', by: p.name});
+    broadcast(room, {t:'player', p: playerPublic(p)});
+  } else if (action === 'give') {
+    if (p.inv.meals < 1) { send(ws, {t:'cook-fail', reason:'no-meal'}); return; }
+    // nearest other player first
+    let best = null, bd = 110;
+    for (const [, q] of room.players) {
+      if (q === p) continue;
+      const d = dist(p.x, p.y, q.x, q.y);
+      if (d <= bd) { bd = d; best = q; }
+    }
+    if (best) {
+      p.inv.meals--; best.inv.meals++;
+      broadcast(room, {t:'gift', from: p.name, to: best.name, meal: 'Harvest Stew'});
+      broadcast(room, {t:'player', p: playerPublic(p)});
+      broadcast(room, {t:'player', p: playerPublic(best)});
+    } else {
+      const npc = nearestNpc(room, p, 110);
+      if (!npc) { send(ws, {t:'cook-fail', reason:'nobody-nearby'}); return; }
+      p.inv.meals--;
+      npc.hearts[p.id] = Math.min(5, (npc.hearts[p.id] || 0) + 1);
+      broadcast(room, {t:'gift', from: p.name, to: npc.name, meal: 'Harvest Stew'});
+      broadcast(room, {t:'player', p: playerPublic(p)});
+    }
+  } else {
+    err(ws, 'bad-cook', 'Unknown cooking action');
+  }
 }
 
 function tickRoom(room) {
@@ -188,10 +443,27 @@ function tickRoom(room) {
       p.fishing = null; broadcast(room, {t:'player', p: playerPublic(p)});
     }
   }
-  if (moved) {
-    const players = [...room.players.values()].map(playerPublic);
-    broadcast(room, { t: 'tick', players });
+  // villagers wander (slow, cozy)
+  for (const n of room.npcs) {
+    if (now >= n.nextMove) {
+      const hx = n.hx*TILE+TILE/2, hy = n.hy*TILE+TILE/2;
+      n.tx = Math.max((n.hx-n.r)*TILE, Math.min((n.hx+n.r)*TILE, n.x + (Math.random()-0.5)*4*TILE));
+      n.ty = Math.max((n.hy-n.r)*TILE, Math.min((n.hy+n.r)*TILE, n.y + (Math.random()-0.5)*4*TILE));
+      n.tx = Math.max(hx - n.r*TILE, Math.min(hx + n.r*TILE, n.tx));
+      n.ty = Math.max(hy - n.r*TILE, Math.min(hy + n.r*TILE, n.ty));
+      n.nextMove = now + 4000 + Math.random()*6000;
+    }
+    const dx = n.tx - n.x, dy = n.ty - n.y, l = Math.hypot(dx, dy);
+    if (l > 4) { n.x += dx/l*28*dt; n.y += dy/l*28*dt; room.npcMoved = true; }
   }
+  if (moved || room.npcMoved) {
+    const msg = { t: 'tick', players: [...room.players.values()].map(playerPublic) };
+    if (room.npcMoved) { msg.npcs = room.npcs.map(npcPublic); room.npcMoved = false; }
+    broadcast(room, msg);
+  }
+  // day/night heartbeat (1s)
+  room.tickCount++;
+  if (room.tickCount % 20 === 0) broadcast(room, { t: 'day', ...dayPublic(room) });
   // crops
   let farmChanged = false;
   for (const f of room.farm) {
@@ -233,6 +505,18 @@ function tickRoom(room) {
         message: 'Two travelers. One village. A hope discovered together.'});
     }
   }
+}
+
+function joinedPayload(room, p, code) {
+  return { t: 'joined', code, you: playerPublic(p),
+           players: [...room.players.values()].map(playerPublic),
+           farm: farmPublic(room), ruin: room.ruin, ending: room.ending.done,
+           fox: {x: Math.round(room.fox.x), y: Math.round(room.fox.y)},
+           npcs: room.npcs.map(npcPublic),
+           day: dayPublic(room),
+           candles: room.candles,
+           garden: { bloomed: room.garden.bloomed },
+           home: { rug: room.home.rug } };
 }
 
 // ---------- HTTP (static client) ----------
@@ -284,11 +568,9 @@ wss.on('connection', (ws, req) => {
           if (!name.trim()) { err(ws, 'bad-name', 'Name required'); return; }
           if (ws.room) { err(ws, 'in-room', 'Already in a room'); return; }
           const room = createRoom();
-          const p = addPlayer(room, ws, name);
+          const p = addPlayer(room, ws, name, m.look);
           ws.room = room;
-          send(ws, { t: 'joined', code: room.code, you: playerPublic(p),
-                     players: [...room.players.values()].map(playerPublic),
-                     farm: farmPublic(room), ruin: room.ruin, ending: room.ending.done, fox: {x: Math.round(room.fox.x), y: Math.round(room.fox.y)} });
+          send(ws, joinedPayload(room, p, room.code));
           broadcast(room, {t:'join', p: playerPublic(p)}, ws);
           break;
         }
@@ -300,11 +582,9 @@ wss.on('connection', (ws, req) => {
           if (ws.room) { err(ws, 'in-room', 'Already in a room'); return; }
           const room = rooms.get(code);
           if (room.players.size >= 2) { err(ws, 'room-full', 'Room is full'); return; }
-          const p = addPlayer(room, ws, name);
+          const p = addPlayer(room, ws, name, m.look);
           ws.room = room;
-          send(ws, { t: 'joined', code, you: playerPublic(p),
-                     players: [...room.players.values()].map(playerPublic),
-                     farm: farmPublic(room), ruin: room.ruin, ending: room.ending.done, fox: {x: Math.round(room.fox.x), y: Math.round(room.fox.y)} });
+          send(ws, joinedPayload(room, p, code));
           broadcast(room, {t:'join', p: playerPublic(p)}, ws);
           break;
         }
@@ -327,6 +607,22 @@ wss.on('connection', (ws, req) => {
           if (!r.ok) send(ws, { t: 'interact-fail', reason: r.reason });
           break;
         }
+        case 'cook': {
+          if (!ws.room) return;
+          const p = ws.room.players.get(ws);
+          if (!p) return;
+          handleCook(ws.room, ws, p, String(m.action || ''));
+          break;
+        }
+        case 'look': {
+          if (!ws.room) return;
+          const p = ws.room.players.get(ws);
+          if (!p) return;
+          if (!validLook(m.look)) { err(ws, 'bad-look', 'Invalid appearance'); return; }
+          p.look = sanitizeLook(m.look);
+          broadcast(ws.room, {t:'player', p: playerPublic(p)});
+          break;
+        }
         case 'emote': {
           if (!ws.room) return;
           const p = ws.room.players.get(ws);
@@ -341,18 +637,37 @@ wss.on('connection', (ws, req) => {
           if (!ws.room) return;
           const room = ws.room;
           // reset the shared world for a fresh run
+          const now2 = Date.now();
           room.farm = FARM_PLOTS.map(p => ({ tx: p.tx, ty: p.ty, stage: 'empty', t: 0 }));
           room.ruin.open = false;
           room.ending.done = false;
+          room.day = { n: 1, start: now2 };
+          room.rhythm = { farm: false, fish: false, cook: false, greet: false, candle: false };
+          room.candles = 0;
+          room.lastWorship = 0;
+          room.garden.bloomed = false;
+          room.home.rug = 0;
+          room.npcs = NPC_DEFS.map(d => ({
+            name: d.name, lines: d.lines, hx: d.hx, hy: d.hy, r: d.r,
+            x: d.hx*TILE + TILE/2, y: d.hy*TILE + TILE/2,
+            tx: d.hx*TILE + TILE/2, ty: d.hy*TILE + TILE/2,
+            nextMove: now2 + 1500 + Math.random()*3000,
+            line: 0, hearts: {},
+          }));
+          room.npcMoved = true;
           for (const [, p] of room.players) {
             p.x = SPAWN.tx*TILE + TILE/2; p.y = SPAWN.ty*TILE + TILE/2;
             p.dir = 'down'; p.moving = false; p.ix = 0; p.iy = 0;
-            p.emote = null; p.emoteAt = 0; p.inside = false; p.fishing = null;
+            p.emote = null; p.emoteAt = 0; p.inside = false; p.place = null; p.fishing = null;
+            p.inv = { produce: 0, fish: 0, meals: 0 };
           }
+          const r = joinedPayload(room, [...room.players.values()][0] || { id:'', name:'' }, room.code);
           broadcast(room, { t: 'reset',
             players: [...room.players.values()].map(playerPublic),
             farm: farmPublic(room), ruin: room.ruin,
-            fox: { x: Math.round(room.fox.x), y: Math.round(room.fox.y) } });
+            fox: { x: Math.round(room.fox.x), y: Math.round(room.fox.y) },
+            npcs: r.npcs, day: r.day, candles: room.candles,
+            garden: r.garden, home: r.home });
           break;
         }
         default: err(ws, 'unknown', 'Unknown message type');

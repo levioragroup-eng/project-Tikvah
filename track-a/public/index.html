@@ -11,10 +11,11 @@
   #wrap { position:fixed; inset:0; display:flex; align-items:center; justify-content:center; }
   canvas#game { image-rendering: pixelated; background:#5da24a; display:none; }
   /* landing */
-  #menu { position:absolute; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center;
-    background: radial-gradient(ellipse at 50% 30%, #3f7a52 0%, #274d33 60%, #1a2b1e 100%); z-index:10; padding:16px; text-align:center; }
-  #menu h1 { font-size:52px; margin:0 0 4px; letter-spacing:6px; color:#ffe9a8; text-shadow:3px 3px 0 #7a4b1f, 6px 6px 0 rgba(0,0,0,.35); }
-  #menu p.sub { color:#dff3d8; margin:0 0 24px; font-style:italic; }
+  #menu { position:absolute; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:flex-start;
+    background: radial-gradient(ellipse at 50% 30%, #3f7a52 0%, #274d33 60%, #1a2b1e 100%); z-index:10; padding:20px 16px;
+    text-align:center; overflow-y:auto; }
+  #menu h1 { font-size:52px; margin:6px 0 4px; letter-spacing:6px; color:#ffe9a8; text-shadow:3px 3px 0 #7a4b1f, 6px 6px 0 rgba(0,0,0,.35); }
+  #menu p.sub { color:#dff3d8; margin:0 0 14px; font-style:italic; }
   #menu input { font-size:20px; padding:12px 16px; border-radius:12px; border:3px solid #7a4b1f; width:min(320px,80vw);
     text-align:center; margin-bottom:12px; background:#fffbe8; color:#333; }
   #menu .row { display:flex; gap:12px; flex-wrap:wrap; justify-content:center; }
@@ -22,16 +23,36 @@
     background:linear-gradient(#ffd76e,#f0a840); color:#4a2c0c; font-weight:bold; box-shadow:0 4px 0 #5d3a17; }
   button.big:active { transform:translateY(3px); box-shadow:0 1px 0 #5d3a17; }
   button.ghost { background:rgba(255,255,255,.15); color:#fff; border-color:#fff; box-shadow:none; }
+  button.small { font-size:15px; padding:8px 16px; }
   #joinRow { display:none; margin-top:12px; }
-  #menu .hint { margin-top:18px; font-size:13px; color:#bfe0b4; max-width:420px; }
+  #menu .hint { margin-top:16px; font-size:13px; color:#bfe0b4; max-width:440px; line-height:1.6; padding-bottom:24px; }
+  /* character creator */
+  #creatorWrap { display:none; background:rgba(255,251,232,.96); color:#3a2a12; border-radius:16px; border:3px solid #7a4b1f;
+    padding:14px 16px; margin-bottom:14px; width:min(430px,92vw); }
+  #creatorWrap h3 { margin:0 0 8px; color:#7a4b1f; font-size:18px; letter-spacing:1px; }
+  #creatorTop { display:flex; gap:14px; align-items:flex-start; justify-content:center; }
+  #preview { width:72px; height:108px; image-rendering:pixelated; background:#dff3d8; border-radius:10px; border:2px solid #7a4b1f; flex:none; }
+  #creatorOpts { flex:1; min-width:0; text-align:left; }
+  .crow { margin-bottom:7px; }
+  .crow > span { display:block; font-size:11px; font-weight:bold; color:#7a4b1f; margin-bottom:3px; text-transform:uppercase; letter-spacing:1px; }
+  .swatches { display:flex; gap:6px; flex-wrap:wrap; }
+  .sw { width:30px; height:30px; border-radius:8px; border:2px solid #b9a888; cursor:pointer; font-size:10px; font-weight:bold;
+    display:flex; align-items:center; justify-content:center; color:#3a2a12; background:#fff; padding:0; }
+  .sw.sel { border-color:#7a4b1f; box-shadow:0 0 0 2px #ffd76e; }
+  .sw.txt { width:auto; padding:0 10px; height:30px; font-size:12px; }
   /* HUD */
-  #hud { position:absolute; top:0; left:0; right:0; display:none; justify-content:space-between; align-items:center;
+  #hud { position:absolute; top:0; left:0; right:0; display:none; justify-content:space-between; align-items:flex-start;
     padding:8px 12px; z-index:5; pointer-events:none; }
-  #roomcode { background:rgba(0,0,0,.55); padding:6px 14px; border-radius:10px; font-size:18px; letter-spacing:3px; font-weight:bold; color:#ffe9a8; }
-  #toast { position:absolute; top:56px; left:50%; transform:translateX(-50%); background:rgba(20,30,20,.85);
+  #hudLeft { display:flex; flex-direction:column; gap:4px; }
+  #roomcode { background:rgba(0,0,0,.55); padding:6px 14px; border-radius:10px; font-size:18px; letter-spacing:3px; font-weight:bold; color:#ffe9a8; align-self:flex-start; }
+  #dayInfo { background:rgba(0,0,0,.45); padding:4px 10px; border-radius:8px; font-size:12px; color:#dff3d8; align-self:flex-start; }
+  #rhythm { display:flex; gap:4px; background:rgba(0,0,0,.45); padding:4px 8px; border-radius:8px; font-size:14px; align-self:flex-start; }
+  #rhythm span { opacity:.28; filter:grayscale(1); }
+  #rhythm span.done { opacity:1; filter:none; }
+  #toast { position:absolute; top:76px; left:50%; transform:translateX(-50%); background:rgba(20,30,20,.85);
     padding:10px 20px; border-radius:12px; font-size:16px; z-index:6; display:none; text-align:center; max-width:90vw; }
   #tutorial { position:absolute; bottom:86px; left:50%; transform:translateX(-50%); background:rgba(20,30,20,.88);
-    padding:12px 22px; border-radius:14px; font-size:15px; z-index:6; text-align:center; line-height:1.7; border:2px solid #ffe9a8; }
+    padding:12px 22px; border-radius:14px; font-size:clamp(13px, 2.6vw, 15px); z-index:6; text-align:center; line-height:1.7; border:2px solid #ffe9a8; max-width:92vw; }
   /* touch controls */
   #joy { position:absolute; left:18px; bottom:18px; width:120px; height:120px; border-radius:50%;
     background:rgba(255,255,255,.12); border:2px solid rgba(255,255,255,.35); display:none; z-index:7; }
@@ -39,7 +60,7 @@
     background:rgba(255,255,255,.45); transform:translate(-50%,-50%); }
   #btnE { position:absolute; right:18px; bottom:30px; width:84px; height:84px; border-radius:50%; display:none; z-index:7;
     background:linear-gradient(#ffd76e,#f0a840); border:3px solid #5d3a17; font-size:30px; font-weight:bold; color:#4a2c0c; }
-  #emotes { position:absolute; right:14px; top:64px; display:none; flex-direction:column; gap:8px; z-index:7; }
+  #emotes { position:absolute; right:14px; top:100px; display:none; flex-direction:column; gap:8px; z-index:7; }
   #emotes button { width:48px; height:48px; border-radius:50%; font-size:22px; background:rgba(0,0,0,.5);
     border:2px solid rgba(255,255,255,.4); }
   /* verse panel */
@@ -50,6 +71,28 @@
   #verse .ref { font-weight:bold; font-size:20px; margin-bottom:12px; color:#7a4b1f; }
   #verse .text { font-style:italic; font-size:17px; line-height:1.6; }
   #verse button { margin-top:18px; }
+  /* generic panel (cook menu etc.) */
+  #panel { position:absolute; inset:0; display:none; align-items:center; justify-content:center; z-index:20;
+    background:rgba(10,15,10,.55); padding:20px; }
+  #panel .card { background:#fffbe8; color:#3a2a12; border-radius:16px; padding:22px 24px; width:min(380px,92vw); text-align:center;
+    border:4px solid #7a4b1f; box-shadow:0 10px 40px rgba(0,0,0,.5); }
+  #panel h3 { margin:0 0 4px; color:#7a4b1f; font-size:22px; }
+  #panel .sub { font-size:13px; color:#8a7a5a; margin:0 0 14px; font-style:italic; }
+  #panel .inv { font-size:14px; margin-bottom:12px; color:#5a4a2a; }
+  #panel .btns { display:flex; flex-direction:column; gap:10px; }
+  #panel .btns button { font-size:17px; padding:11px; border-radius:12px; border:2px solid #5d3a17; cursor:pointer;
+    background:linear-gradient(#ffd76e,#f0a840); color:#4a2c0c; font-weight:bold; }
+  #panel .btns button.ghostb { background:rgba(0,0,0,.06); color:#5a4a2a; border-color:#b9a888; box-shadow:none; }
+  /* dialogue */
+  #dialogue { position:absolute; left:50%; bottom:110px; transform:translateX(-50%); display:none; z-index:18;
+    width:min(460px,92vw); background:#fffbe8; color:#3a2a12; border-radius:14px; border:3px solid #7a4b1f;
+    padding:14px 18px; box-shadow:0 8px 30px rgba(0,0,0,.45); }
+  #dialogue .who { font-weight:bold; color:#7a4b1f; font-size:16px; margin-bottom:6px; }
+  #dialogue .who .hearts { color:#e06a8a; font-size:14px; }
+  #dialogue .line { font-size:15px; line-height:1.55; font-style:italic; }
+  #dialogue .next { font-size:11px; color:#8a7a5a; margin-top:8px; text-align:right; }
+  /* sleep fade */
+  #fade { position:absolute; inset:0; background:#000; opacity:0; pointer-events:none; transition:opacity 1.2s; z-index:25; }
   /* ending overlay */
   #ending { position:absolute; inset:0; display:none; align-items:center; justify-content:center; z-index:30;
     background:radial-gradient(ellipse at 50% 35%, rgba(90,140,90,.96) 0%, rgba(30,60,35,.97) 70%); padding:20px; }
@@ -62,8 +105,7 @@
   /* mute */
   #muteBtn { pointer-events:auto; background:rgba(0,0,0,.55); color:#ffe9a8; border:2px solid rgba(255,233,168,.6);
     border-radius:10px; font-size:18px; padding:6px 12px; cursor:pointer; }
-  #hudHint { color:#dff3d8; font-size:13px; pointer-events:none; }
-  #tutorial { font-size:clamp(13px, 2.6vw, 15px); }
+  #hudHint { color:#dff3d8; font-size:13px; pointer-events:none; text-align:right; }
   #err { color:#ffb3a7; min-height:22px; margin-top:8px; font-size:15px; }
 </style>
 </head>
@@ -72,16 +114,37 @@
   <canvas id="game"></canvas>
 
   <div id="hud">
-    <div id="roomcode">····</div>
+    <div id="hudLeft">
+      <div id="roomcode">····</div>
+      <div id="dayInfo">Day 1 · Morning</div>
+      <div id="rhythm" title="Today's village rhythm">
+        <span data-k="farm">🌾</span><span data-k="fish">🎣</span><span data-k="cook">🍲</span><span data-k="greet">👋</span><span data-k="candle">🕯️</span>
+      </div>
+    </div>
     <div id="hudHint">E = interact · 1 wave · 2 heart</div>
     <button id="muteBtn" title="Sound on/off">🔊</button>
   </div>
   <div id="toast"></div>
-  <div id="tutorial">Walk with <b>WASD / arrows</b> · Press <b>E</b> to interact<br>Find the <b>ancient ruin</b> with a friend — stand on both glowing stones together,<br>then step into the garden to complete your story ✨</div>
+  <div id="tutorial">Walk with <b>WASD / arrows</b> · Press <b>E</b> to interact<br>Live the village rhythm each day — <b>farm, fish, cook, greet, light a candle</b> —<br>and the <b>Garden of Hope</b> will bloom 🌸<br>Find the <b>ancient ruin</b> with a friend: stand on both glowing stones together ✨</div>
 
   <div id="menu">
     <h1>TIKVAH</h1>
     <p class="sub">A place to grow, a story to live.</p>
+    <div id="creatorWrap">
+      <h3>Create Your Character</h3>
+      <div id="creatorTop">
+        <canvas id="preview" width="32" height="48"></canvas>
+        <div id="creatorOpts">
+          <div class="crow"><span>Skin</span><div class="swatches" id="swSkin"></div></div>
+          <div class="crow"><span>Hair style</span><div class="swatches" id="swHair"></div></div>
+          <div class="crow"><span>Hair color</span><div class="swatches" id="swHairColor"></div></div>
+          <div class="crow"><span>Outfit</span><div class="swatches" id="swOutfit"></div></div>
+          <div class="crow"><span>Style</span><div class="swatches" id="swDress"></div></div>
+          <div class="crow"><span>Accessory</span><div class="swatches" id="swAcc"></div></div>
+        </div>
+      </div>
+    </div>
+    <button class="big ghost small" id="btnCustomize" style="margin-bottom:12px">🎨 Customize appearance</button>
     <input id="name" maxlength="16" placeholder="Your name" autocomplete="off">
     <div class="row">
       <button class="big" id="btnCreate">Create Room</button>
@@ -92,18 +155,29 @@
       <button class="big" id="btnJoin">Join</button>
     </div>
     <div id="err"></div>
-    <div class="hint">Two players, one village. Farm, fish, pray — and discover the ancient ruin together. No accounts, no downloads.</div>
+    <div class="hint">Two players, one village. Each day, live the rhythm — tend the farm, catch a fish, cook a meal, greet a friend, light a candle — and the Garden of Hope will bloom. No accounts, no downloads.</div>
   </div>
 
   <div id="joy"><div id="stick"></div></div>
   <button id="btnE">E</button>
   <div id="emotes"><button data-e="wave">👋</button><button data-e="heart">❤️</button></div>
 
+  <div id="dialogue"><div class="who"><span id="dName"></span> <span class="hearts" id="dHearts"></span></div><div class="line" id="dText"></div><div class="next">Press E to continue</div></div>
+
+  <div id="panel"><div class="card">
+    <h3 id="pTitle"></h3>
+    <p class="sub" id="pSub"></p>
+    <div class="inv" id="pInv"></div>
+    <div class="btns" id="pBtns"></div>
+  </div></div>
+
   <div id="verse"><div class="card">
     <div class="ref" id="vref"></div>
     <div class="text" id="vtext"></div>
     <button class="big" id="vclose">Amen</button>
   </div></div>
+
+  <div id="fade"></div>
 
   <div id="ending"><div class="card">
     <div class="stars">✨🌿✨</div>
@@ -116,11 +190,15 @@
 
 <script>
 'use strict';
-// ================= Net =================
+// ================= Net & state =================
 const WS_URL = (location.protocol === 'https:' ? 'wss://' : 'ws://') + location.host;
 let ws = null, myId = null, code = null;
-let players = new Map(), farm = [], ruinOpen = false, fox = {x:0,y:0};
+let players = new Map(), npcs = new Map(), farm = [], ruinOpen = false, fox = {x:0,y:0};
 let fishing = null, biteFlash = 0;
+let day = { n: 1, phase: 'morning', label: 'Morning', rhythm: { farm:false, fish:false, cook:false, greet:false, candle:false } };
+let candles = 0, gardenBloomed = false, homeRug = 0;
+let sayFlash = null;       // {name, until} — dialogue bubble over NPC
+let worshipFlash = 0;
 
 function connect() {
   ws = new WebSocket(WS_URL);
@@ -138,29 +216,50 @@ function onMsg(m) {
     case 'joined':
       code = m.code; myId = m.you.id;
       players = new Map(m.players.map(p => [p.id, p]));
+      npcs = new Map(m.npcs.map(n => [n.name, n]));
       farm = m.farm; ruinOpen = m.ruin.open; fox = m.fox;
+      day = m.day; candles = m.candles; gardenBloomed = m.garden.bloomed; homeRug = m.home.rug;
       document.getElementById('menu').style.display = 'none';
       document.getElementById('game').style.display = 'block';
       document.getElementById('hud').style.display = 'flex';
       document.getElementById('roomcode').textContent = 'ROOM ' + code;
+      updateDayHud();
       if (isTouch) {
         document.getElementById('joy').style.display='block'; document.getElementById('btnE').style.display='block'; document.getElementById('emotes').style.display='flex';
         document.getElementById('hudHint').textContent = 'Joystick = walk · E = interact';
-        document.getElementById('tutorial').innerHTML = 'Walk with the <b>joystick</b> · Tap <b>E</b> to interact<br>Find the <b>ancient ruin</b> with a friend — stand on both glowing stones together,<br>then step into the garden to complete your story ✨';
+        document.getElementById('tutorial').innerHTML = 'Walk with the <b>joystick</b> · Tap <b>E</b> to interact<br>Live the village rhythm — <b>farm, fish, cook, greet, light a candle</b> —<br>and the <b>Garden of Hope</b> will bloom 🌸<br>Find the <b>ancient ruin</b> with a friend ✨';
       }
       updateMuteIcon();
       if (m.ending) showEnding('Two travelers. One village. A hope discovered together.');
       resize(); break;
     case 'join': players.set(m.p.id, m.p); toast(m.p.name + ' joined the village 🌿'); break;
     case 'leave': players.delete(m.id); break;
-    case 'tick': m.players.forEach(p => players.set(p.id, p)); break;
+    case 'tick': m.players.forEach(p => players.set(p.id, p)); if (m.npcs) m.npcs.forEach(n => npcs.set(n.name, n)); break;
     case 'player': players.set(m.p.id, m.p); break;
     case 'farm': farm = m.farm; break;
     case 'fox': fox = m; break;
+    case 'day': day = m; updateDayHud(); break;
+    case 'candle': candles = m.count; toast('🕯️ ' + m.by + ' lit a candle'); candleGlow(); break;
+    case 'worship': worshipFlash = Date.now(); worshipChord(); toast('🙏 A moment of worship'); break;
+    case 'garden-bloom':
+      gardenBloomed = true; burst = 200;
+      toast('🌸 ' + m.message); bloomChime(); break;
     case 'harvest': toast('🌾 ' + m.by + ' harvested a crop!'); chime(); break;
     case 'catch': toast('🐟 ' + m.by + ' caught a fish!'); fishing = null; chime(); break;
     case 'bite': if (m.player === myId) { biteFlash = Date.now(); toast('❗ TAP E NOW!'); } break;
     case 'pet': toast('🦊 ' + m.by + ' petted the fox'); break;
+    case 'say': sayFlash = { name: m.name, until: Date.now() + 6000 }; showDialogue(m.name, m.text, m.hearts); break;
+    case 'menu': if (m.kind === 'cook') openCookPanel(); else if (m.kind === 'creator') openCreator(); break;
+    case 'cooked': toast('🍲 ' + m.by + ' cooked Harvest Stew!'); chime(); break;
+    case 'ate': toast('😋 ' + m.by + ' enjoyed a warm meal'); break;
+    case 'gift': toast('🎁 ' + m.from + ' gave a meal to ' + m.to + ' 💛'); chime(); break;
+    case 'cook-fail':
+      toast(m.reason === 'need-produce-and-fish' ? 'You need 1 produce + 1 fish to cook.' :
+            m.reason === 'no-meal' ? 'No meals to share yet — cook something first.' :
+            m.reason === 'nobody-nearby' ? 'No one nearby to share with.' : 'Nothing to do here — walk closer.');
+      break;
+    case 'slept': sleepFade(); toast('🌙 ' + m.by + ' rested — Day ' + m.n + ' dawns'); break;
+    case 'decor': homeRug = m.rug; toast('🏠 ' + m.by + ' redecorated the rug'); break;
     case 'verse': showVerse(m.ref, m.text); break;
     case 'interact-fail': if (m.reason === 'nothing-nearby') toast('Nothing to do here — walk closer.'); break;
     case 'ruin-open':
@@ -174,9 +273,14 @@ function onMsg(m) {
       break;
     case 'reset':
       players = new Map(m.players.map(p => [p.id, p]));
+      npcs = new Map(m.npcs.map(n => [n.name, n]));
       farm = m.farm; ruinOpen = m.ruin.open; fox = m.fox;
+      day = m.day; candles = m.candles; gardenBloomed = m.garden.bloomed; homeRug = m.home.rug;
+      updateDayHud();
       document.getElementById('ending').style.display = 'none';
       document.getElementById('verse').style.display = 'none';
+      document.getElementById('panel').style.display = 'none';
+      document.getElementById('dialogue').style.display = 'none';
       burst = 0; particles.length = 0;
       toast('🌱 A new beginning — the village awaits.');
       break;
@@ -184,19 +288,128 @@ function onMsg(m) {
   }
 }
 
+function updateDayHud() {
+  document.getElementById('dayInfo').textContent = 'Day ' + day.n + ' · ' + (day.label || day.phase);
+  document.querySelectorAll('#rhythm span').forEach(s => {
+    s.classList.toggle('done', !!(day.rhythm && day.rhythm[s.dataset.k]));
+  });
+}
+
+// ================= Character creator =================
+const LOOK_OPTS = {
+  skin: ['#f2c99a', '#e0ac7e', '#c68a5a', '#9a6540', '#6e452a'],
+  hair: ['long', 'short', 'curly', 'bun'],
+  hairColor: ['#2e1c10', '#4a2c14', '#8a5a2b', '#d9c08a', '#a34a2e'],
+  outfit: ['#4a8ac9', '#c96a4a', '#6aa84f', '#9a6ac9', '#c9a44a'],
+  dress: [false, true],
+  accessory: ['none', 'hat', 'flower'],
+};
+const LOOK_LABELS = {
+  hair: { long:'Long', short:'Short', curly:'Curly', bun:'Bun' },
+  dress: { false:'Tunic', true:'Dress' },
+  accessory: { none:'None', hat:'Hat', flower:'Flower' },
+};
+let look = { skin: LOOK_OPTS.skin[0], hair: 'long', hairColor: LOOK_OPTS.hairColor[1], outfit: LOOK_OPTS.outfit[0], dress: false, accessory: 'none' };
+try {
+  const saved = JSON.parse(localStorage.getItem('tikvah_look') || 'null');
+  if (saved && LOOK_OPTS.skin.includes(saved.skin) && LOOK_OPTS.hair.includes(saved.hair) &&
+      LOOK_OPTS.hairColor.includes(saved.hairColor) && LOOK_OPTS.outfit.includes(saved.outfit) &&
+      typeof saved.dress === 'boolean' && LOOK_OPTS.accessory.includes(saved.accessory)) look = saved;
+} catch(e) {}
+function saveLook() { try { localStorage.setItem('tikvah_look', JSON.stringify(look)); } catch(e) {} }
+
+function buildCreator() {
+  const mk = (id, values, cur, fmt, set) => {
+    const el = document.getElementById(id); el.innerHTML = '';
+    values.forEach(v => {
+      const b = document.createElement('button');
+      b.className = 'sw' + (fmt(v) === 'txt' ? ' txt' : '') + (cur === v ? ' sel' : '');
+      if (fmt(v) === 'color') b.style.background = v;
+      else b.textContent = fmt(v);
+      b.onclick = () => { set(v); saveLook(); buildCreator(); drawPreview(); };
+      el.appendChild(b);
+    });
+  };
+  mk('swSkin', LOOK_OPTS.skin, look.skin, v => 'color', v => look.skin = v);
+  mk('swHair', LOOK_OPTS.hair, look.hair, v => LOOK_LABELS.hair[v], v => look.hair = v);
+  mk('swHairColor', LOOK_OPTS.hairColor, look.hairColor, v => 'color', v => look.hairColor = v);
+  mk('swOutfit', LOOK_OPTS.outfit, look.outfit, v => 'color', v => look.outfit = v);
+  mk('swDress', LOOK_OPTS.dress, look.dress, v => LOOK_LABELS.dress[v], v => look.dress = v);
+  mk('swAcc', LOOK_OPTS.accessory, look.accessory, v => LOOK_LABELS.accessory[v], v => look.accessory = v);
+}
+function drawPreview() {
+  const c = document.getElementById('preview'), g = c.getContext('2d');
+  g.imageSmoothingEnabled = false; g.clearRect(0,0,32,48);
+  g.drawImage(lookSprite(look), 0, 0, 32, 48);
+}
+document.getElementById('btnCustomize').onclick = () => {
+  const w = document.getElementById('creatorWrap');
+  const open = w.style.display !== 'block';
+  w.style.display = open ? 'block' : 'none';
+  document.getElementById('btnCustomize').textContent = open ? '✔ Done customizing' : '🎨 Customize appearance';
+  if (open) { buildCreator(); drawPreview(); }
+};
+// in-game creator (wardrobe) — reuses the menu creator as an overlay, sends look to server on Done
+function openCreator() {
+  const menu = document.getElementById('menu');
+  const w = document.getElementById('creatorWrap');
+  const bc = document.getElementById('btnCustomize');
+  menu.style.display = 'flex';
+  menu.style.background = 'rgba(10,15,10,.78)';
+  menu.querySelector('h1').style.display = 'none';
+  menu.querySelector('p.sub').style.display = 'none';
+  menu.querySelector('#menuTitle') && (menu.querySelector('#menuTitle').style.display = 'none');
+  bc.style.display = 'none';
+  document.getElementById('name').style.display = 'none';
+  document.querySelector('#menu .row').style.display = 'none';
+  document.getElementById('joinRow').style.display = 'none';
+  document.querySelector('#menu .hint').style.display = 'none';
+  w.style.display = 'block';
+  buildCreator(); drawPreview();
+  // add a Done row if not present
+  let doneBtn = document.getElementById('creatorDone');
+  if (!doneBtn) {
+    doneBtn = document.createElement('button');
+    doneBtn.id = 'creatorDone';
+    doneBtn.className = 'big';
+    doneBtn.style.marginTop = '10px';
+    doneBtn.textContent = '✔ Done';
+    w.appendChild(doneBtn);
+  }
+  doneBtn.onclick = () => {
+    send({ t: 'look', look });
+    menu.style.display = 'none';
+    menu.style.background = '';
+    menu.querySelector('h1').style.display = '';
+    menu.querySelector('p.sub').style.display = '';
+    bc.style.display = '';
+    document.getElementById('name').style.display = '';
+    document.querySelector('#menu .row').style.display = '';
+    document.querySelector('#menu .hint').style.display = '';
+    w.style.display = 'none';
+    toast('🧥 New look!');
+  };
+}
+
 // ================= Input =================
 const keys = {};
 addEventListener('keydown', (e) => {
   if (['ArrowUp','ArrowDown','ArrowLeft','ArrowRight',' '].includes(e.key)) e.preventDefault();
   keys[e.key.toLowerCase()] = true;
-  if (e.key === 'e' || e.key === 'E') doInteract();
+  if (e.key === 'e' || e.key === 'E') {
+    if (document.getElementById('dialogue').style.display === 'block') closeDialogue();
+    else if (document.getElementById('panel').style.display !== 'flex') doInteract();
+  }
   if (e.key === '1') send({t:'emote', id:'wave'});
   if (e.key === '2') send({t:'emote', id:'heart'});
   hideTutorial();
 });
 addEventListener('keyup', (e) => { keys[e.key.toLowerCase()] = false; });
 function doInteract() { send({t:'interact'}); hideTutorial(); }
-document.getElementById('btnE').addEventListener('click', doInteract);
+document.getElementById('btnE').addEventListener('click', () => {
+  if (document.getElementById('dialogue').style.display === 'block') closeDialogue();
+  else doInteract();
+});
 document.querySelectorAll('#emotes button').forEach(b =>
   b.addEventListener('click', () => send({t:'emote', id: b.dataset.e})));
 
@@ -222,15 +435,14 @@ function tone(freq, delay, dur, type, vol) {
   o.connect(g); g.connect(c.destination);
   o.start(t); o.stop(t + dur + 0.05);
 }
-function chime() { tone(659.25, 0, 0.5); tone(987.77, 0.12, 0.7); }                 // harvest / catch
-function ruinPad() {                                                                  // ruin opens: warm chord
-  [130.81, 196.0, 261.63, 329.63].forEach((f, i) => tone(f, i * 0.18, 4.0, 'triangle', 0.07));
-}
-function endingMotif() {                                                              // ending: gentle ascent
-  [261.63, 329.63, 392.0, 523.25, 392.0, 523.25, 659.25].forEach((f, i) => tone(f, i * 0.4, 1.4, 'sine', 0.11));
-}
+function chime() { tone(659.25, 0, 0.5); tone(987.77, 0.12, 0.7); }
+function bloomChime() { [523.25, 659.25, 783.99, 1046.5].forEach((f, i) => tone(f, i * 0.15, 1.2, 'sine', 0.1)); }
+function candleGlow() { tone(880, 0, 0.8, 'sine', 0.06); tone(1174.66, 0.1, 1.0, 'sine', 0.05); }
+function worshipChord() { [196.0, 261.63, 329.63, 392.0].forEach((f, i) => tone(f, i * 0.25, 3.5, 'triangle', 0.07)); }
+function ruinPad() { [130.81, 196.0, 261.63, 329.63].forEach((f, i) => tone(f, i * 0.18, 4.0, 'triangle', 0.07)); }
+function endingMotif() { [261.63, 329.63, 392.0, 523.25, 392.0, 523.25, 659.25].forEach((f, i) => tone(f, i * 0.4, 1.4, 'sine', 0.11)); }
 let lastStep = 0;
-function maybeStep(now, moving) {                                                     // soft footsteps
+function maybeStep(now, moving) {
   if (!moving || muted) return;
   if (now - lastStep > 320) {
     lastStep = now;
@@ -254,12 +466,54 @@ document.getElementById('muteBtn').addEventListener('click', () => {
   if (!muted) chime();
 });
 
-// ================= Ending =================
+// ================= Ending / panels / dialogue =================
 function showEnding(message) {
   document.getElementById('endingMsg').textContent = message || 'Hope lives here — discovered together.';
   document.getElementById('ending').style.display = 'flex';
 }
 document.getElementById('btnAgain').addEventListener('click', () => send({t:'play-again'}));
+
+function openPanel(title, sub, invHtml, buttons) {
+  document.getElementById('pTitle').textContent = title;
+  document.getElementById('pSub').textContent = sub || '';
+  document.getElementById('pInv').innerHTML = invHtml || '';
+  const box = document.getElementById('pBtns'); box.innerHTML = '';
+  buttons.forEach(b => {
+    const btn = document.createElement('button');
+    btn.textContent = b.label;
+    if (b.ghost) btn.className = 'ghostb';
+    btn.onclick = () => { document.getElementById('panel').style.display = 'none'; if (b.fn) b.fn(); };
+    box.appendChild(btn);
+  });
+  document.getElementById('panel').style.display = 'flex';
+}
+function myInvHtml() {
+  const me = players.get(myId);
+  const inv = me && me.inv ? me.inv : { produce: 0, fish: 0, meals: 0 };
+  return '🌾 ' + inv.produce + ' produce · 🐟 ' + inv.fish + ' fish · 🍲 ' + inv.meals + ' meals';
+}
+function openCookPanel() {
+  openPanel('Cooking', 'Turn the day\'s harvest into something warm.', myInvHtml(), [
+    { label: '🍲 Cook Harvest Stew (1 🌾 + 1 🐟)', fn: () => send({ t: 'cook', action: 'cook' }) },
+    { label: '😋 Eat a meal', fn: () => send({ t: 'cook', action: 'eat' }) },
+    { label: '🎁 Give a meal to someone nearby', fn: () => send({ t: 'cook', action: 'give' }) },
+    { label: '✕ Close', ghost: true, fn: () => {} },
+  ]);
+}
+function showDialogue(name, text, hearts) {
+  document.getElementById('dName').textContent = name;
+  document.getElementById('dHearts').textContent = '❤'.repeat(Math.max(0, hearts || 0)) || '';
+  document.getElementById('dText').textContent = '\u201C' + text + '\u201D';
+  document.getElementById('dialogue').style.display = 'block';
+  if (hearts >= 3) setTimeout(() => toast('💛 ' + name + ' considers you a true friend'), 600);
+}
+function closeDialogue() { document.getElementById('dialogue').style.display = 'none'; }
+document.getElementById('dialogue').addEventListener('click', closeDialogue);
+function sleepFade() {
+  const f = document.getElementById('fade');
+  f.style.opacity = '1';
+  setTimeout(() => { f.style.opacity = '0'; }, 1400);
+}
 
 // virtual joystick
 const isTouch = ('ontouchstart' in window) || navigator.maxTouchPoints > 0;
@@ -300,7 +554,7 @@ setInterval(() => {
 document.getElementById('btnCreate').onclick = () => {
   const name = document.getElementById('name').value.trim();
   if (!name) return document.getElementById('err').textContent = 'Enter your name first.';
-  connect(); pending.push({t:'create', name});
+  connect(); pending.push({t:'create', name, look});
 };
 document.getElementById('btnJoinShow').onclick = () => {
   document.getElementById('joinRow').style.display = 'block';
@@ -310,7 +564,7 @@ document.getElementById('btnJoin').onclick = () => {
   const c = document.getElementById('code').value.trim().toUpperCase();
   if (!name) return document.getElementById('err').textContent = 'Enter your name first.';
   if (!/^[A-Z]{4}$/.test(c)) return document.getElementById('err').textContent = 'Enter the 4-letter room code.';
-  connect(); pending.push({t:'join', name, code: c});
+  connect(); pending.push({t:'join', name, code: c, look});
 };
 function showVerse(ref, text) {
   document.getElementById('vref').textContent = ref + ' (KJV)';
@@ -334,19 +588,6 @@ const ctx = cv.getContext('2d');
 ctx.imageSmoothingEnabled = false;
 let camX = 0, camY = 0;
 
-function resize() {
-  const w = innerWidth, h = innerHeight;
-  // camera viewport: half the world on landscape, tighter zoom on portrait phones
-  const portrait = h > w;
-  const VW = portrait ? 480 : 640, VH = portrait ? 600 : 448;
-  const s = Math.min(w / VW, h / VH);
-  cv.width = VW; cv.height = VH;
-  cv.style.width = Math.max(1, Math.floor(VW * s)) + 'px';
-  cv.style.height = Math.max(1, Math.floor(VH * s)) + 'px';
-  // camera follows the player (see loop); world is 1280x896
-}
-addEventListener('resize', resize);
-
 function px(w, h, fn) {
   const c = document.createElement('canvas'); c.width = w; c.height = h;
   const g = c.getContext('2d'); fn(g, w, h);
@@ -354,7 +595,54 @@ function px(w, h, fn) {
 }
 const rnd = (a) => Math.floor(Math.random()*a);
 
-// tile sprites
+// ---- character sprite from a look ----
+function lookSprite(lk) {
+  return px(16, 24, (g) => {
+    const skin = lk.skin || '#f2c99a', hairC = lk.hairColor || '#4a2c14',
+          tunic = lk.outfit || '#4a8ac9', hair = lk.hair || 'long';
+    // legs + shoes
+    if (lk.dress) { g.fillStyle = '#3a2c1e'; g.fillRect(5,21,2,3); g.fillRect(9,21,2,3); }
+    else {
+      g.fillStyle = '#4a3a28'; g.fillRect(4,18,3,5); g.fillRect(9,18,3,5);
+      g.fillStyle = '#3a2c1e'; g.fillRect(4,22,3,2); g.fillRect(9,22,3,2);
+    }
+    // outfit
+    g.fillStyle = tunic;
+    if (lk.dress) { g.fillRect(4,12,8,5); g.fillRect(3,16,10,6); }
+    else g.fillRect(3,12,10,7);
+    // arms
+    g.fillStyle = skin; g.fillRect(1,12,2,5); g.fillRect(13,12,2,5);
+    // face
+    g.fillStyle = skin; g.fillRect(4,6,8,6);
+    g.fillStyle = '#333'; g.fillRect(6,8,2,2); g.fillRect(10,8,2,2);
+    // hair
+    g.fillStyle = hairC;
+    if (hair === 'long') { g.fillRect(3,1,10,5); g.fillRect(2,5,12,3); g.fillRect(2,6,2,9); g.fillRect(12,6,2,9); }
+    else if (hair === 'short') { g.fillRect(3,1,10,5); g.fillRect(2,4,12,3); }
+    else if (hair === 'curly') { g.fillRect(2,1,12,6); g.fillRect(4,0,8,2); g.fillRect(1,4,2,4); g.fillRect(13,4,2,4); }
+    else if (hair === 'bun') { g.fillRect(3,2,10,4); g.fillRect(2,5,12,2); g.fillRect(6,0,4,2); }
+    // accessory
+    if (lk.accessory === 'hat') {
+      g.fillStyle = '#d9b978'; g.fillRect(3,0,10,3); g.fillRect(0,3,16,2);
+      g.fillStyle = '#8a5a2b'; g.fillRect(3,2,10,1);
+    } else if (lk.accessory === 'flower') {
+      g.fillStyle = '#ff9ec4'; g.fillRect(11,1,3,3);
+      g.fillStyle = '#ffe066'; g.fillRect(12,2,1,1);
+    }
+  });
+}
+const npcLooks = {
+  Hannah: { skin:'#9a6540', hair:'long', hairColor:'#1e1e1e', outfit:'#c96a4a', dress:true, accessory:'flower' },
+  Elias:  { skin:'#e0ac7e', hair:'short', hairColor:'#8a5a2b', outfit:'#6aa84f', dress:false, accessory:'none' },
+  Miriam: { skin:'#f2c99a', hair:'bun', hairColor:'#d9c08a', outfit:'#9a6ac9', dress:true, accessory:'none' },
+};
+const npcSprites = {};
+function npcSprite(name) {
+  if (!npcSprites[name]) npcSprites[name] = lookSprite(npcLooks[name] || look);
+  return npcSprites[name];
+}
+
+// ---- terrain tiles ----
 function grassTile(variant) {
   return px(TILE, TILE, (g) => {
     g.fillStyle = '#6db354'; g.fillRect(0,0,TILE,TILE);
@@ -362,7 +650,7 @@ function grassTile(variant) {
     for (let i=0;i<8;i++) g.fillRect(rnd(TILE), rnd(TILE), 3, 3);
     g.fillStyle = '#7cc165';
     for (let i=0;i<5;i++) g.fillRect(rnd(TILE), rnd(TILE), 2, 4);
-    if (variant === 1) { // flowers
+    if (variant === 1) {
       g.fillStyle = '#ff9ec4';
       for (let i=0;i<3;i++){ const x=rnd(24)+4, y=rnd(24)+4;
         g.fillRect(x,y,3,3); g.fillStyle='#ffe066'; g.fillRect(x+1,y+1,1,1); g.fillStyle='#ff9ec4'; }
@@ -371,8 +659,10 @@ function grassTile(variant) {
 }
 const grassA = grassTile(0), grassB = grassTile(1);
 const pathTile = px(TILE,TILE,(g)=>{ g.fillStyle='#d9b978'; g.fillRect(0,0,TILE,TILE); g.fillStyle='#c9a866'; for(let i=0;i<6;i++) g.fillRect(rnd(TILE),rnd(TILE),4,3); });
+const plazaTile = px(TILE,TILE,(g)=>{ g.fillStyle='#cfc39a'; g.fillRect(0,0,TILE,TILE); g.fillStyle='#bfb489'; for(let x=0;x<TILE;x+=8) for(let y=0;y<TILE;y+=8) g.fillRect(x+3,y+3,2,2); });
 const waterTile = px(TILE,TILE,(g)=>{ g.fillStyle='#4a9ed6'; g.fillRect(0,0,TILE,TILE); g.fillStyle='#6db8e8'; for(let i=0;i<4;i++) g.fillRect(rnd(TILE),rnd(TILE),8,2); });
 const sandTile = px(TILE,TILE,(g)=>{ g.fillStyle='#e8d49a'; g.fillRect(0,0,TILE,TILE); g.fillStyle='#dcc484'; for(let i=0;i<5;i++) g.fillRect(rnd(TILE),rnd(TILE),3,3); });
+const bridgeTile = px(TILE,TILE,(g)=>{ g.fillStyle='#4a9ed6'; g.fillRect(0,0,TILE,TILE); g.fillStyle='#8a5a2b'; g.fillRect(0,6,TILE,20); g.fillStyle='#a06a35'; for(let x=0;x<TILE;x+=8) g.fillRect(x,6,5,20); g.fillStyle='#5d3a17'; g.fillRect(0,6,TILE,3); g.fillRect(0,23,TILE,3); });
 const dockTile = px(TILE,TILE,(g)=>{ g.fillStyle='#8a5a2b'; g.fillRect(0,0,TILE,TILE); g.fillStyle='#a06a35'; for(let y=0;y<TILE;y+=8) g.fillRect(0,y,TILE,6); g.fillStyle='#5d3a17'; for(let y=0;y<TILE;y+=8) g.fillRect(0,y+6,TILE,2); });
 const soilTile = px(TILE,TILE,(g)=>{ g.fillStyle='#7a4f28'; g.fillRect(0,0,TILE,TILE); g.fillStyle='#5f3d1f'; for(let y=4;y<TILE;y+=8) g.fillRect(2,y,TILE-4,3); });
 const cropTiles = {
@@ -380,8 +670,8 @@ const cropTiles = {
   growing: px(TILE,TILE,(g)=>{ g.drawImage(soilTile,0,0); g.fillStyle='#5da244'; for(let i=0;i<5;i++){const x=4+rnd(20),y=4+rnd(14); g.fillRect(x,y,3,7); g.fillRect(x-2,y+2,7,2);} }),
   ready: px(TILE,TILE,(g)=>{ g.drawImage(soilTile,0,0); g.fillStyle='#e8b93c'; for(let i=0;i<5;i++){const x=4+rnd(20),y=4+rnd(12); g.fillRect(x,y,4,6); g.fillStyle='#c9922a'; g.fillRect(x+1,y+2,2,2); g.fillStyle='#e8b93c';} }),
 };
-const stoneTile = px(TILE,TILE,(g)=>{ // ruin stone
-  g.fillStyle='rgba(0,0,0,0)'; g.clearRect(0,0,TILE,TILE);
+const stoneTile = px(TILE,TILE,(g)=>{
+  g.clearRect(0,0,TILE,TILE);
   g.fillStyle='#9a9aa5'; g.fillRect(8,6,16,22); g.fillStyle='#7c7c88'; g.fillRect(8,6,4,22);
   g.fillStyle='#b5b5c0'; g.fillRect(11,9,4,4); g.fillRect(16,15,5,3);
 });
@@ -392,182 +682,468 @@ const gardenTile = px(TILE,TILE,(g)=>{
   const cols=['#ff9ec4','#ff6b8a','#ffe066','#ffffff','#c49aff'];
   for(let i=0;i<7;i++){ const x=rnd(26)+3,y=rnd(26)+3; g.fillStyle=cols[rnd(cols.length)]; g.fillRect(x,y,4,4); g.fillStyle='#3f7a2e'; g.fillRect(x+1,y+4,2,3); }
 });
+const bloomTile = px(TILE,TILE,(g)=>{
+  g.fillStyle='#79bd5e'; g.fillRect(0,0,TILE,TILE);
+  const cols=['#ff9ec4','#ff6b8a','#ffe066','#ffffff','#c49aff','#ffb347'];
+  for(let i=0;i<12;i++){ const x=rnd(26)+3,y=rnd(24)+3; g.fillStyle=cols[rnd(cols.length)]; g.fillRect(x,y,4,4); g.fillStyle='#ffe066'; g.fillRect(x+1,y+1,2,2); g.fillStyle='#3f7a2e'; g.fillRect(x+1,y+4,2,4); }
+});
+
+// ---- decor sprites ----
+function treeTile(v) {
+  return px(TILE, TILE, (g) => {
+    g.clearRect(0,0,TILE,TILE);
+    g.fillStyle = '#5d3a17'; g.fillRect(14,22,4,10);
+    if (v === 0) { // pine
+      g.fillStyle = '#2e6b34'; g.fillRect(8,14,16,9); g.fillRect(10,7,12,9); g.fillRect(13,1,6,8);
+      g.fillStyle = '#3f8a3e'; g.fillRect(10,9,4,4); g.fillRect(13,3,3,4);
+    } else { // round
+      g.fillStyle = '#2e6b34'; g.fillRect(7,8,18,14); g.fillRect(10,4,12,8);
+      g.fillStyle = '#4d9a4a'; g.fillRect(10,9,6,5); g.fillRect(12,5,5,4);
+      g.fillStyle = '#ff9ec4'; g.fillRect(9,12,2,2); g.fillRect(20,10,2,2);
+    }
+  });
+}
+const treeA = treeTile(0), treeB = treeTile(1);
+const flowerTile = px(TILE,TILE,(g)=>{ g.clearRect(0,0,TILE,TILE);
+  const cols=['#ff9ec4','#ffe066','#ffffff','#ff6b8a'];
+  for(let i=0;i<5;i++){ const x=4+rnd(22),y=8+rnd(16); g.fillStyle='#3f7a2e'; g.fillRect(x+1,y+3,2,5); g.fillStyle=cols[rnd(4)]; g.fillRect(x,y,4,4); }
+});
+const fenceTile = px(TILE,TILE,(g)=>{ g.clearRect(0,0,TILE,TILE);
+  g.fillStyle='#8a5a2b'; g.fillRect(2,10,TILE-4,4); g.fillRect(4,6,4,20); g.fillRect(TILE-8,6,4,20);
+  g.fillStyle='#a06a35'; g.fillRect(2,10,TILE-4,1);
+});
+const lampTile = px(TILE,TILE,(g)=>{ g.clearRect(0,0,TILE,TILE);
+  g.fillStyle='#3a3a3a'; g.fillRect(14,10,4,20); g.fillRect(10,28,12,3);
+  g.fillStyle='#ffd76e'; g.fillRect(11,3,10,8);
+  g.fillStyle='#3a3a3a'; g.fillRect(11,3,10,2); g.fillRect(10,0,12,3);
+});
+const fountainTile = px(TILE,TILE,(g)=>{
+  g.fillStyle='#9a9aa5'; g.fillRect(4,20,24,9); g.fillStyle='#7c7c88'; g.fillRect(4,26,24,3);
+  g.fillStyle='#6db8e8'; g.fillRect(7,18,18,4);
+  g.fillStyle='#9a9aa5'; g.fillRect(14,8,4,12);
+  g.fillStyle='#6db8e8'; g.fillRect(10,5,12,4);
+  g.fillStyle='#bfe4ff'; g.fillRect(12,6,3,2);
+});
+function stallTile(awning) {
+  return px(TILE,TILE,(g)=>{
+    g.clearRect(0,0,TILE,TILE);
+    g.fillStyle='#6b4423'; g.fillRect(4,12,3,18); g.fillRect(25,12,3,18);
+    for (let i=0;i<4;i++){ g.fillStyle = i%2 ? '#fffbe8' : awning; g.fillRect(2+i*7,4,7,9); }
+    g.fillStyle='#6b4423'; g.fillRect(2,12,28,2);
+    g.fillStyle='#8a5a2b'; g.fillRect(6,22,20,8);
+    const goods=['#e05a4e','#e8b93c','#6aa84f'];
+    for(let i=0;i<6;i++){ g.fillStyle=goods[i%3]; g.fillRect(8+i*3,19,3,3); }
+  });
+}
+const stallA = stallTile('#c95a5a'), stallB = stallTile('#5a8ac9'), stallC = stallTile('#e8b93c');
+const houseWall = px(TILE,TILE,(g)=>{ g.fillStyle='#f2e4c4'; g.fillRect(0,0,TILE,TILE); g.fillStyle='#d9c49a'; g.fillRect(0,0,TILE,3); g.fillRect(0,29,TILE,3); g.fillStyle='#b89a6a'; for(let x=8;x<TILE;x+=16) g.fillRect(x,0,2,TILE); });
+const houseRoof = px(TILE,TILE,(g)=>{ g.fillStyle='#a86a4a'; g.fillRect(0,0,TILE,TILE); g.fillStyle='#8a5238'; for(let y=0;y<TILE;y+=8) g.fillRect(0,y,TILE,3); });
+const cafeWall = px(TILE,TILE,(g)=>{ g.fillStyle='#f7ead0'; g.fillRect(0,0,TILE,TILE); g.fillStyle='#e0cba0'; g.fillRect(0,0,TILE,3); g.fillStyle='#c9a878'; for(let x=0;x<TILE;x+=16) g.fillRect(x,3,2,26); });
+const cafeRoof = px(TILE,TILE,(g)=>{ g.fillStyle='#c96a4a'; g.fillRect(0,0,TILE,TILE); g.fillStyle='#a85238'; for(let y=0;y<TILE;y+=8) g.fillRect(0,y,TILE,3); });
+const doorTileH = px(TILE,TILE,(g)=>{ g.drawImage(pathTile,0,0); g.fillStyle='#5d3a17'; g.fillRect(10,4,12,24); g.fillStyle='#7a4f28'; g.fillRect(10,4,12,3); g.fillStyle='#ffd76e'; g.fillRect(19,15,3,3); });
+const windowTile = px(TILE,TILE,(g)=>{ g.clearRect(0,0,TILE,TILE); g.fillStyle='#5d3a17'; g.fillRect(6,8,20,14); g.fillStyle='#ffe9a8'; g.fillRect(8,10,16,10); g.fillStyle='#5d3a17'; g.fillRect(15,10,2,10); g.fillRect(8,14,16,2); });
+const counterTile = px(TILE,TILE,(g)=>{
+  g.drawImage(pathTile,0,0);
+  g.fillStyle='#6b4423'; g.fillRect(2,14,28,14);
+  g.fillStyle='#8a5a2b'; g.fillRect(2,14,28,4);
+  for (let i=0;i<4;i++){ g.fillStyle = i%2 ? '#fffbe8' : '#c95a5a'; g.fillRect(1+i*8,0,8,8); }
+  g.fillStyle='#6b4423'; g.fillRect(1,7,30,2);
+  g.fillStyle='#e8b93c'; g.fillRect(6,10,4,4); g.fillStyle='#6aa84f'; g.fillRect(20,10,4,4);
+});
+const tableTile = px(TILE,TILE,(g)=>{ g.clearRect(0,0,TILE,TILE);
+  g.fillStyle='#8a5a2b'; g.fillRect(14,16,4,12); g.fillStyle='#a06a35'; g.fillRect(8,28,16,3);
+  g.fillStyle='#c9a878'; g.fillRect(6,10,20,8); g.fillStyle='#fffbe8'; g.fillRect(6,10,20,2);
+  g.fillStyle='#e05a4e'; g.fillRect(13,6,6,5);
+});
 const churchWall = px(TILE,TILE,(g)=>{ g.fillStyle='#b9b3a8'; g.fillRect(0,0,TILE,TILE); g.fillStyle='#a09a8e'; g.fillRect(0,0,TILE,4); g.fillRect(0,28,TILE,4); g.fillStyle='#8f897d'; for(let x=0;x<TILE;x+=16) g.fillRect(x,4,2,24); });
 const churchRoof = px(TILE,TILE,(g)=>{ g.fillStyle='#8a4f3a'; g.fillRect(0,0,TILE,TILE); g.fillStyle='#74402e'; for(let y=0;y<TILE;y+=8) g.fillRect(0,y,TILE,3); });
 const churchFloor = px(TILE,TILE,(g)=>{ g.fillStyle='#cbb98f'; g.fillRect(0,0,TILE,TILE); g.fillStyle='#bfa87f'; for(let x=0;x<TILE;x+=16) for(let y=0;y<TILE;y+=16) g.fillRect(x,y,8,8); });
 const pewTile = px(TILE,TILE,(g)=>{ g.drawImage(churchFloor,0,0); g.fillStyle='#7a4f28'; g.fillRect(2,10,TILE-4,10); g.fillStyle='#5f3d1f'; g.fillRect(2,10,TILE-4,3); });
 const altarTile = px(TILE,TILE,(g)=>{ g.drawImage(churchFloor,0,0); g.fillStyle='#e8e0cc'; g.fillRect(6,14,20,12); g.fillStyle='#c9bfa8'; g.fillRect(6,14,20,3); g.fillStyle='#ffd76e'; g.fillRect(14,4,4,10); g.fillRect(11,7,10,3); });
 const standTile = px(TILE,TILE,(g)=>{ g.drawImage(churchFloor,0,0); g.fillStyle='#7a4f28'; g.fillRect(12,12,8,14); g.fillStyle='#f5eeda'; g.fillRect(8,6,16,8); g.fillStyle='#c9bfa8'; g.fillRect(15,6,2,8); });
-const doorMat = px(TILE,TILE,(g)=>{ g.drawImage(churchFloor,0,0); g.fillStyle='#8a4f3a'; g.fillRect(4,4,TILE-8,TILE-8); g.fillStyle='#a86a4a'; g.fillRect(8,8,TILE-16,TILE-16); });
-
-// player sprite 16x24, palette varies by index
-function playerSprite(pal) {
-  return px(16, 24, (g) => {
-    const skin='#f2c99a', hair=pal.hair, tunic=pal.tunic, pants='#5a4632';
-    g.fillStyle=hair; g.fillRect(3,1,10,5); g.fillRect(2,4,12,3);       // hair
-    g.fillStyle=skin; g.fillRect(4,6,8,6);                                // face
-    g.fillStyle='#333'; g.fillRect(6,8,2,2); g.fillRect(10,8,2,2);        // eyes
-    g.fillStyle=tunic; g.fillRect(3,12,10,7);                             // tunic
-    g.fillStyle=skin; g.fillRect(1,12,2,5); g.fillRect(13,12,2,5);         // arms
-    g.fillStyle=pants; g.fillRect(4,19,3,5); g.fillRect(9,19,3,5);         // legs
-    g.fillStyle='#3a2c1e'; g.fillRect(4,22,3,2); g.fillRect(9,22,3,2);     // shoes
-  });
-}
-const pals = [
-  {hair:'#4a2c14', tunic:'#4a8ac9'}, {hair:'#1e1e1e', tunic:'#c96a4a'},
-  {hair:'#8a5a2b', tunic:'#6aa84f'}, {hair:'#d9c08a', tunic:'#9a6ac9'},
-  {hair:'#5d3a17', tunic:'#c9a44a'}, {hair:'#2e2e2e', tunic:'#4ac9b2'},
-  {hair:'#7a2e2e', tunic:'#c94a6a'}, {hair:'#3a5a2e', tunic:'#7a8ac9'},
-];
+const doorMat = px(TILE,TILE,(g)=>{ g.drawImage(pathTile,0,0); g.fillStyle='#8a4f3a'; g.fillRect(4,4,TILE-8,TILE-8); g.fillStyle='#a86a4a'; g.fillRect(8,8,TILE-16,TILE-16); });
+const pillarTile = px(TILE,TILE,(g)=>{ g.clearRect(0,0,TILE,TILE);
+  g.fillStyle='#9a9aa5'; g.fillRect(10,8,12,20); g.fillStyle='#7c7c88'; g.fillRect(10,8,4,20); g.fillStyle='#b5b5c0'; g.fillRect(8,4,16,5);
+});
+// home interior tiles
+const woodFloor = px(TILE,TILE,(g)=>{ g.fillStyle='#c9a06a'; g.fillRect(0,0,TILE,TILE); g.fillStyle='#b8905c'; for(let y=0;y<TILE;y+=8) g.fillRect(0,y,TILE,2); });
+const homeWall = px(TILE,TILE,(g)=>{ g.fillStyle='#d9c4a0'; g.fillRect(0,0,TILE,TILE); g.fillStyle='#c4ab84'; g.fillRect(0,0,TILE,4); g.fillRect(0,28,TILE,4); });
+const bedTile = px(TILE,TILE,(g)=>{ g.drawImage(woodFloor,0,0);
+  g.fillStyle='#7a4f28'; g.fillRect(2,8,28,20); g.fillStyle='#f5eeda'; g.fillRect(4,4,12,10);
+  g.fillStyle='#c96a6a'; g.fillRect(4,12,24,14); g.fillStyle='#b05858'; g.fillRect(4,12,24,3);
+});
+const hearthTile = px(TILE,TILE,(g)=>{ g.drawImage(woodFloor,0,0);
+  g.fillStyle='#8a8a92'; g.fillRect(4,10,24,18); g.fillStyle='#5a5a62'; g.fillRect(8,14,16,12);
+  g.fillStyle='#3a3a40'; g.fillRect(8,20,16,6);
+});
+const wardrobeTile = px(TILE,TILE,(g)=>{ g.drawImage(woodFloor,0,0);
+  g.fillStyle='#6b4423'; g.fillRect(4,2,24,28); g.fillStyle='#8a5a2b'; g.fillRect(6,4,20,24);
+  g.fillStyle='#4a2c14'; g.fillRect(15,4,2,24); g.fillStyle='#ffd76e'; g.fillRect(12,15,2,3); g.fillRect(18,15,2,3);
+});
+const tableInTile = px(TILE,TILE,(g)=>{ g.drawImage(woodFloor,0,0);
+  g.fillStyle='#8a5a2b'; g.fillRect(6,10,20,6); g.fillRect(13,16,6,12);
+  g.fillStyle='#fffbe8'; g.fillRect(12,6,8,5); g.fillStyle='#e8b93c'; g.fillRect(13,7,3,3);
+});
+const chairTile = px(TILE,TILE,(g)=>{ g.drawImage(woodFloor,0,0);
+  g.fillStyle='#6b4423'; g.fillRect(10,14,12,6); g.fillRect(10,6,3,10); g.fillRect(19,6,3,10);
+});
+const nookTile = px(TILE,TILE,(g)=>{ g.drawImage(homeWall,0,0);
+  g.fillStyle='#7a4f28'; g.fillRect(6,18,20,4);
+  g.fillStyle='#fffbe8'; g.fillRect(13,10,6,8); g.fillStyle='#ffd76e'; g.fillRect(15,6,2,5);
+});
+const RUG_COLORS = ['#c96a6a', '#6a9ac9', '#6aa84f', '#9a6ac9'];
+const rugTile = (i) => px(TILE,TILE,(g)=>{ g.drawImage(woodFloor,0,0);
+  g.fillStyle=RUG_COLORS[i%4]; g.fillRect(2,6,28,20); g.fillStyle='rgba(255,255,255,.25)'; g.fillRect(5,9,22,14);
+});
+const rugTiles = [rugTile(0), rugTile(1), rugTile(2), rugTile(3)];
 const foxSprite = px(16, 12, (g) => {
-  g.fillStyle='#e08a3c'; g.fillRect(2,4,10,6);            // body
-  g.fillStyle='#f2b26a'; g.fillRect(10,2,5,6);            // head
-  g.fillStyle='#e08a3c'; g.fillRect(10,0,2,3); g.fillRect(13,0,2,3); // ears
-  g.fillStyle='#333'; g.fillRect(12,4,2,2);               // eye
-  g.fillStyle='#fff'; g.fillRect(2,6,2,4);               // tail tip
-  g.fillStyle='#8a4f1f'; g.fillRect(4,10,2,2); g.fillRect(8,10,2,2); // feet
+  g.fillStyle='#e08a3c'; g.fillRect(2,4,10,6);
+  g.fillStyle='#f2b26a'; g.fillRect(10,2,5,6);
+  g.fillStyle='#e08a3c'; g.fillRect(10,0,2,3); g.fillRect(13,0,2,3);
+  g.fillStyle='#333'; g.fillRect(12,4,2,2);
+  g.fillStyle='#fff'; g.fillRect(2,6,2,4);
+  g.fillStyle='#8a4f1f'; g.fillRect(4,10,2,2); g.fillRect(8,10,2,2);
 });
 
-// ================= Map =================
-// base terrain per tile
+// ================= Map layout =================
+const FARM_RECT = { x0:5, y0:8, x1:11, y1:12 };
+const CHURCH = {x0:17, y0:2, x1:23, y1:4, door:{tx:20,ty:5}};
+const HOME = {x0:10, y0:15, x1:12, y1:16, door:{tx:11,ty:17}};
+const CAFE = {x0:25, y0:15, x1:27, y1:16, counter:{tx:26,ty:17}};
+const STONES = [{tx:4,ty:22},{tx:35,ty:3}];
+const LAMPS = [{tx:18,ty:12},{tx:22,ty:16},{tx:19,ty:7},{tx:11,ty:18},{tx:26,ty:18}];
+const STALLS = [{tx:24,ty:10,s:stallA},{tx:26,ty:10,s:stallB},{tx:28,ty:10,s:stallC}];
+const FLOWERS = [[13,12],[16,17],[23,11],[28,15],[12,22],[7,15],[33,8],[3,25],[15,5],[29,22]];
+const ZONE_LABELS = [
+  {tx:11, ty:13, text:'Your House'}, {tx:8, ty:7, text:'Farms'},
+  {tx:26, ty:8, text:'Market'}, {tx:26, ty:13, text:'Café'},
+  {tx:20, ty:6, text:'Church'}, {tx:3, ty:3, text:'Forest'},
+  {tx:4, ty:20, text:'Ruins'}, {tx:35, ty:5, text:'Ruins'},
+  {tx:30, ty:18, text:'River'},
+];
+
 function baseTile(tx, ty) {
-  // river: vertical band x=30..31
-  if (tx === 30 || tx === 31) return 'water';
+  // river band
+  if (tx === 30 || tx === 31) return (ty === 14) ? 'bridge' : 'water';
   if (tx === 29 || tx === 32) return 'sand';
-  // dock planks at (33,20) reaching toward river
-  // path: from spawn (20,14) up to church (20,6) and east to dock
-  if (ty === 14 && tx >= 18 && tx <= 32) return 'path';
+  // paths
+  if (ty === 14 && tx >= 11 && tx <= 32) return 'path';
   if (tx === 20 && ty >= 6 && ty <= 14) return 'path';
   if (tx >= 29 && tx <= 33 && ty === 20) return 'path';
+  if (tx === 11 && ty >= 14 && ty <= 18) return 'path';
+  if (ty === 18 && tx >= 11 && tx <= 27) return 'path';
+  if (tx === 26 && ty >= 14 && ty <= 18) return 'path';
+  // plaza
+  if (tx >= 18 && tx <= 22 && ty >= 12 && ty <= 16) return 'plaza';
   return 'grass';
 }
-const FARM = [{tx:6,ty:9},{tx:8,ty:9},{tx:6,ty:11},{tx:8,ty:11}];
-const CHURCH = {x0:17, y0:2, x1:23, y1:4, door:{tx:20,ty:5}};
-const STONES = [{tx:4,ty:22},{tx:35,ty:3}];
+function isTree(tx, ty) {
+  if (tx >= 1 && tx <= 5 && ty >= 4 && ty <= 24) return (tx*13 + ty*7) % 4 !== 3;
+  if (tx >= 34 && tx <= 39 && ty >= 6 && ty <= 20) return (tx*11 + ty*5) % 5 !== 4;
+  if ((tx*7 + ty*13) % 23 === 0 && baseTile(tx,ty) === 'grass' &&
+      !(tx>=17&&tx<=23&&ty<=6) && !(tx>=10&&tx<=12&&ty>=14&&ty<=18) &&
+      !(tx>=25&&tx<=27&&ty>=14&&ty<=19) && !(tx>=24&&tx<=28&&ty>=9&&ty<=11))
+    return true;
+  return false;
+}
+function isFence(tx, ty) {
+  const onH = (ty === FARM_RECT.y0 || ty === FARM_RECT.y1) && tx >= FARM_RECT.x0 && tx <= FARM_RECT.x1;
+  const onV = (tx === FARM_RECT.x0 || tx === FARM_RECT.x1) && ty >= FARM_RECT.y0 && ty <= FARM_RECT.y1;
+  if (!onH && !onV) return false;
+  // gate on the east side
+  if (tx === FARM_RECT.x1 && (ty === 10)) return false;
+  return true;
+}
+
+function drawLabel(g, tx, ty, text) {
+  const x = tx*TILE + TILE/2, y = ty*TILE + TILE/2;
+  g.font = 'bold 10px monospace'; g.textAlign = 'center';
+  const w = g.measureText(text).width + 12;
+  g.fillStyle = 'rgba(20,30,20,.55)';
+  g.fillRect(x - w/2, y - 9, w, 16);
+  g.fillStyle = '#ffe9a8'; g.fillText(text, x, y + 3);
+}
 
 function drawWorld(g, now) {
-  const inside = players.get(myId)?.inside;
-  for (let ty=0; ty<WH; ty++) for (let tx=0; tx<WH && tx<WW; tx++) {
+  const me = players.get(myId);
+  const inside = me && me.inside, place = me && me.place;
+  const night = day.phase === 'night' || day.phase === 'sunset';
+  for (let ty=0; ty<WH; ty++) for (let tx=0; tx<WW; tx++) {
     const x = tx*TILE, y = ty*TILE;
-    if (inside) { drawInterior(g, tx, ty, x, y); continue; }
+    if (inside) {
+      if (place === 'home') drawHomeInterior(g, tx, ty, x, y, now);
+      else drawChurchInterior(g, tx, ty, x, y, now);
+      continue;
+    }
     const b = baseTile(tx, ty);
     if (b === 'water') g.drawImage(waterTile, x, y);
     else if (b === 'sand') g.drawImage(sandTile, x, y);
     else if (b === 'path') g.drawImage(pathTile, x, y);
+    else if (b === 'plaza') g.drawImage(plazaTile, x, y);
+    else if (b === 'bridge') g.drawImage(bridgeTile, x, y);
     else g.drawImage(((tx*7+ty*13)%5===0) ? grassB : grassA, x, y);
-    // dock
-    if (tx===33 && ty===20) g.drawImage(dockTile, x, y);
+    // garden: ruin-open reveal, fuller bloom after the day rhythm completes
+    if (tx>=18 && tx<=22 && ty>=12 && ty<=16 && !(tx===20&&ty===14)) {
+      if (gardenBloomed) g.drawImage(bloomTile, x, y);
+      else if (ruinOpen && (tx+ty)%2===0) g.drawImage(gardenTile, x, y);
+    }
     // farm plots
     const f = farm.find(f => f.tx===tx && f.ty===ty);
     if (f) {
       if (f.stage==='empty') g.drawImage(soilTile, x, y);
       else g.drawImage(cropTiles[f.stage] || soilTile, x, y);
     }
+    if (isFence(tx,ty)) g.drawImage(fenceTile, x, y);
+    if (isTree(tx,ty)) g.drawImage(((tx+ty)%2===0) ? treeA : treeB, x, y-8);
     // church building
     if (tx>=CHURCH.x0 && tx<=CHURCH.x1 && ty>=CHURCH.y0-1 && ty<=CHURCH.y1) {
       if (ty===CHURCH.y0-1) g.drawImage(churchRoof, x, y);
-      else g.drawImage(churchWall, x, y);
+      else {
+        g.drawImage(churchWall, x, y);
+        if (night && (tx===18||tx===22) && ty===3) { g.fillStyle='rgba(255,214,120,.85)'; g.fillRect(x+9,y+9,14,14); }
+      }
     }
     if (tx===CHURCH.door.tx && ty===CHURCH.door.ty) { g.drawImage(pathTile,x,y); g.drawImage(doorMat,x,y); }
-    // ruin stones
+    // home
+    if (tx>=HOME.x0 && tx<=HOME.x1 && ty>=HOME.y0-1 && ty<=HOME.y1) {
+      if (ty===HOME.y0-1) g.drawImage(houseRoof, x, y);
+      else {
+        g.drawImage(houseWall, x, y);
+        if (night && tx===10 && ty===15) g.drawImage(windowTile, x, y);
+      }
+    }
+    if (tx===HOME.door.tx && ty===HOME.door.ty) { g.drawImage(pathTile,x,y); g.drawImage(doorTileH,x,y); }
+    // cafe
+    if (tx>=CAFE.x0 && tx<=CAFE.x1 && ty>=CAFE.y0-1 && ty<=CAFE.y1) {
+      if (ty===CAFE.y0-1) g.drawImage(cafeRoof, x, y);
+      else g.drawImage(cafeWall, x, y);
+    }
+    if (tx===CAFE.counter.tx && ty===CAFE.counter.ty) g.drawImage(counterTile, x, y);
+    if ((tx===25||tx===27) && ty===19) g.drawImage(tableTile, x, y);
+    // market stalls
+    for (const s of STALLS) if (s.tx===tx && s.ty===ty) g.drawImage(s.s, x, y);
+    // fountain
+    if (tx===24 && ty===13) {
+      g.drawImage(fountainTile, x, y);
+      g.fillStyle = 'rgba(190,228,255,.9)';
+      const o = Math.sin(now/300)*2;
+      g.fillRect(x+14, y+1+o, 2, 3); g.fillRect(x+18, y+3-o, 2, 3);
+    }
+    // lamps
+    for (const l of LAMPS) if (l.tx===tx && l.ty===ty) g.drawImage(lampTile, x, y-8);
+    // dock
+    if (tx===33 && ty===20) g.drawImage(dockTile, x, y);
+    // flowers
+    for (const fl of FLOWERS) if (fl[0]===tx && fl[1]===ty) g.drawImage(flowerTile, x, y);
+    // ruin pillars + stones
+    if ((tx===3 && ty===20) || (tx===36 && ty===4)) g.drawImage(pillarTile, x, y);
     for (const s of STONES) if (s.tx===tx && s.ty===ty) {
       g.drawImage(ruinOpen ? stoneGlow : stoneTile, x, y);
-      if (!ruinOpen) { // glow pulse
+      if (!ruinOpen) {
         g.fillStyle = `rgba(160,220,255,${0.25+0.2*Math.sin(now/400)})`;
         g.fillRect(x+6, y+4, 20, 26);
       }
     }
-    // garden revealed at center plaza when open
-    if (ruinOpen && tx>=18 && tx<=22 && ty>=12 && ty<=16 && !(tx===20&&ty===14)) {
-      if ((tx+ty)%2===0) g.drawImage(gardenTile, x, y);
-    }
   }
-  if (ruinOpen) {
-    // light rays
+  // zone labels
+  if (!inside) {
+    for (const l of ZONE_LABELS) drawLabel(g, l.tx, l.ty, l.text);
+    if (gardenBloomed || ruinOpen) drawLabel(g, 20, 11, 'Garden of Hope');
+  }
+  if (ruinOpen && !inside) {
     g.fillStyle = `rgba(255,240,180,${0.10+0.05*Math.sin(now/500)})`;
     g.fillRect(18*TILE, 12*TILE, 5*TILE, 5*TILE);
   }
+  if (worshipFlash && Date.now() - worshipFlash < 4000 && inside) {
+    g.fillStyle = `rgba(255,236,170,${0.22 * (1 - (Date.now()-worshipFlash)/4000)})`;
+    g.fillRect(14*TILE, 17*TILE, 13*TILE, 10*TILE);
+  }
 }
-function drawInterior(g, tx, ty, x, y) {
-  // small chapel: floor everywhere, walls border, pews, altar, stand, exit mat
+
+function drawChurchInterior(g, tx, ty, x, y, now) {
   const border = tx===14||tx===26||ty===17||ty===26;
   if (border) g.drawImage(churchWall, x, y);
   else g.drawImage(churchFloor, x, y);
   if ((tx===17||tx===23) && (ty===20||ty===22)) g.drawImage(pewTile, x, y);
   if (tx===20 && ty===20) g.drawImage(altarTile, x, y);
   if (tx===16 && ty===20) g.drawImage(standTile, x, y);
+  if (tx===24 && ty===20) { // candle stand
+    g.drawImage(churchFloor, x, y);
+    g.fillStyle='#5d3a17'; g.fillRect(8,18,16,10); g.fillRect(13,10,6,10);
+    g.fillStyle='#e8e0cc'; g.fillRect(6,8,20,4);
+    const n = Math.min(candles, 8);
+    for (let i=0;i<n;i++) {
+      const cx = 8 + i*2.2;
+      g.fillStyle='#fffbe8'; g.fillRect(cx, 4, 2, 5);
+      const fl = 2 + Math.sin(now/150 + i)*0.8;
+      g.fillStyle='#ffca55'; g.fillRect(cx, 2-fl, 2, 2+fl);
+    }
+    if (n>0) { const gr=g.createRadialGradient(x+16,y+8,2,x+16,y+8,30); gr.addColorStop(0,'rgba(255,200,90,.35)'); gr.addColorStop(1,'rgba(255,200,90,0)'); g.fillStyle=gr; g.fillRect(x-16,y-24,64,64); }
+  }
   if (tx===20 && ty===24) g.drawImage(doorMat, x, y);
 }
 
-// ================= Render loop =================
+function drawHomeInterior(g, tx, ty, x, y, now) {
+  // home interior lives in tile region x 28..38, y 17..26.
+  // Interact spots sit on a 3-tile grid (see server.js) so their zones never overlap.
+  const inR = tx>=28 && tx<=38 && ty>=17 && ty<=26;
+  if (!inR) { g.drawImage(woodFloor, x, y); return; }
+  const border = tx===28||tx===38||ty===17||ty===26;
+  if (border) g.drawImage(homeWall, x, y);
+  else g.drawImage(woodFloor, x, y);
+  if (tx===29 && ty===18) g.drawImage(bedTile, x, y);          // sleep
+  if (tx===32 && ty===18) g.drawImage(nookTile, x, y);         // pray nook
+  if (tx===35 && ty===18) { // hearth with animated fire
+    g.drawImage(hearthTile, x, y);
+    const fl = Math.sin(now/120)*2;
+    g.fillStyle='#ff8a3c'; g.fillRect(x+12, y+20+fl, 8, 6);
+    g.fillStyle='#ffd76e'; g.fillRect(x+14, y+22+fl, 4, 4);
+    const gr=g.createRadialGradient(x+16,y+20,2,x+16,y+20,34); gr.addColorStop(0,'rgba(255,150,60,.30)'); gr.addColorStop(1,'rgba(255,150,60,0)'); g.fillStyle=gr; g.fillRect(x-18,y-14,68,68);
+  }
+  if (tx>=28 && tx<=29 && ty>=20 && ty<=21) g.drawImage(rugTiles[homeRug % 4], x, y); // rug (decorate)
+  if (tx===32 && ty===21) g.drawImage(wardrobeTile, x, y);    // change clothes
+  if (tx===35 && ty===21) g.drawImage(chairTile, x, y);        // sit
+  if (tx===35 && ty===24) g.drawImage(tableInTile, x, y);      // side table (decor)
+  if (tx===28 && ty===24) { // wall lamp (decor)
+    g.drawImage(homeWall, x, y);
+    g.fillStyle='#3a3a3a'; g.fillRect(x+14,y+10,4,16);
+    g.fillStyle='#ffd76e'; g.fillRect(x+11,y+4,10,8);
+  }
+  if (tx===32 && ty===24) g.drawImage(doorMat, x, y);          // exit
+}
+
+// ================= Entities & render loop =================
 let burst = 0;
 const particles = [];
+const spriteCache = new Map();
+function spriteFor(lk) {
+  const k = JSON.stringify(lk || {});
+  if (!spriteCache.has(k)) {
+    if (spriteCache.size > 40) spriteCache.clear();
+    spriteCache.set(k, lookSprite(lk || {}));
+  }
+  return spriteCache.get(k);
+}
+const EMOJI = { wave: '👋', heart: '❤️', pray: '🙏', sit: '💤' };
+
+function drawNameTag(g, x, y, name, color) {
+  g.font = '10px monospace'; g.textAlign = 'center';
+  const label = name.slice(0, 12);
+  const w = g.measureText(label).width + 8;
+  g.fillStyle = 'rgba(0,0,0,.6)'; g.fillRect(x - w/2, y - 38, w, 12);
+  g.fillStyle = color || '#fff'; g.fillText(label, x, y - 29);
+}
+
 function loop(now) {
   requestAnimationFrame(loop);
   if (!myId) return;
   ctx.clearRect(0,0,cv.width,cv.height);
   const me = players.get(myId);
-  // camera centers player, clamped
   const vw = cv.width, vh = cv.height;
   if (me) {
     camX = Math.max(0, Math.min(WW*TILE - vw, me.x - vw/2));
     camY = Math.max(0, Math.min(WH*TILE - vh, me.y - vh/2));
   }
+  const inside = me && me.inside;
   ctx.save();
-  // zoom: draw at 2x by scaling context? We sized canvas = world px; camera via translate + clip
   ctx.translate(-camX, -camY);
   drawWorld(ctx, now);
-  // fox
-  ctx.drawImage(foxSprite, fox.x-8, fox.y-10);
+  const night = day.phase === 'night' || day.phase === 'sunset';
+
+  if (!inside) {
+    // fox
+    ctx.drawImage(foxSprite, fox.x-8, fox.y-10);
+    // villagers
+    for (const n of npcs.values()) {
+      const bob = Math.sin(now/500 + n.x)*1;
+      ctx.drawImage(npcSprite(n.name), Math.round(n.x-8), Math.round(n.y-22+bob));
+      drawNameTag(ctx, n.x, n.y, n.name, '#ffe9a8');
+      if (sayFlash && sayFlash.name === n.name && Date.now() < sayFlash.until) {
+        ctx.font = '16px monospace'; ctx.textAlign = 'center';
+        ctx.fillStyle = '#fff'; ctx.fillText('💬', n.x, n.y - 44 + Math.sin(now/300)*2);
+      }
+    }
+  }
   // players sorted by y
   const list = [...players.values()].sort((a,b)=>a.y-b.y);
-  list.forEach((p, i) => {
-    const spr = playerSprite(pals[i % pals.length]);
+  list.forEach((p) => {
+    const spr = spriteFor(p.look);
     const bob = p.moving ? Math.sin(now/120)*1.5 : 0;
     ctx.drawImage(spr, Math.round(p.x-8), Math.round(p.y-22+bob));
-    // name
-    ctx.font = '10px monospace'; ctx.textAlign = 'center';
-    ctx.fillStyle = 'rgba(0,0,0,.6)'; ctx.fillRect(p.x-24, p.y-38, 48, 12);
-    ctx.fillStyle = '#fff'; ctx.fillText(p.name.slice(0,12), p.x, p.y-29);
-    // fishing rod indicator
+    drawNameTag(ctx, p.x, p.y, p.name);
     if (p.fishing) {
-      ctx.font = '14px monospace';
+      ctx.font = '14px monospace'; ctx.textAlign = 'center';
       ctx.fillText(p.fishing==='bite' ? '❗' : '🎣', p.x+14, p.y-24);
     }
-    // emotes
-    if (p.emote) {
-      ctx.font = '18px monospace';
-      const e = p.emote==='wave' ? '👋' : p.emote==='heart' ? '❤️' : '🙏';
-      ctx.fillText(e, p.x, p.y-44 + Math.sin(now/300)*2);
+    if (p.emote && EMOJI[p.emote]) {
+      ctx.font = '18px monospace'; ctx.textAlign = 'center';
+      ctx.fillText(EMOJI[p.emote], p.x, p.y-44 + Math.sin(now/300)*2);
     }
   });
-  // ruin-open particle burst
+  // celebration particles
   if (burst > 0) {
-    for (let i=0;i<4;i++) particles.push({x:20*TILE+(Math.random()-0.5)*5*TILE, y:14*TILE+(Math.random()-0.5)*5*TILE, vx:(Math.random()-0.5)*1.5, vy:-Math.random()*1.5-0.3, life:60+Math.random()*40});
+    for (let i=0;i<4;i++) particles.push({x:20*TILE+(Math.random()-0.5)*5*TILE, y:14*TILE+(Math.random()-0.5)*5*TILE, vx:(Math.random()-0.5)*1.5, vy:-Math.random()*1.5-0.3, life:60+Math.random()*40, c:'255,220,120'});
     burst -= 4;
+  }
+  if (gardenBloomed && !inside && Math.random() < 0.15) {
+    particles.push({x:(18+Math.random()*5)*TILE, y:(12+Math.random()*5)*TILE, vx:(Math.random()-0.5)*0.4, vy:-0.3-Math.random()*0.4, life:80+Math.random()*40, c:'255,158,196'});
   }
   for (let i=particles.length-1;i>=0;i--) {
     const pt = particles[i];
     pt.x+=pt.vx; pt.y+=pt.vy; pt.life--;
     if (pt.life<=0) { particles.splice(i,1); continue; }
-    ctx.fillStyle = `rgba(255,${200+Math.floor(Math.random()*55)},120,${pt.life/100})`;
+    ctx.fillStyle = `rgba(${pt.c},${Math.min(1, pt.life/100)})`;
     ctx.fillRect(pt.x, pt.y, 3, 3);
   }
+  // lamp glow at night (world space)
+  if (night && !inside) {
+    for (const l of LAMPS) {
+      const lx = l.tx*TILE+16, ly = l.ty*TILE+8;
+      const gr = ctx.createRadialGradient(lx, ly, 4, lx, ly, 46);
+      gr.addColorStop(0, 'rgba(255,205,100,.30)'); gr.addColorStop(1, 'rgba(255,205,100,0)');
+      ctx.fillStyle = gr;
+      ctx.fillRect(lx-46, ly-46, 92, 92);
+    }
+  }
   ctx.restore();
+
+  // ---- screen-space atmosphere ----
+  const phase = day.phase;
+  if (phase === 'morning') { ctx.fillStyle = 'rgba(255,214,140,0.10)'; ctx.fillRect(0,0,vw,vh); }
+  else if (phase === 'sunset') { ctx.fillStyle = 'rgba(255,110,60,0.16)'; ctx.fillRect(0,0,vw,vh); }
+  else if (phase === 'night') {
+    ctx.fillStyle = 'rgba(8,16,48,0.42)'; ctx.fillRect(0,0,vw,vh);
+    ctx.fillStyle = 'rgba(255,255,255,.8)';
+    for (let i=0;i<50;i++) {
+      const sx = (i*97) % vw, sy = (i*61) % vh;
+      if (((i*13 + Math.floor(now/900)) % 7) < 5) ctx.fillRect(sx, sy, 2, 2);
+    }
+  }
   // vignette warmth
   const vg = ctx.createRadialGradient(vw/2,vh/2,vh*0.4, vw/2,vh/2, vh*0.85);
   vg.addColorStop(0,'rgba(0,0,0,0)'); vg.addColorStop(1,'rgba(30,15,5,0.35)');
   ctx.fillStyle = vg; ctx.fillRect(0,0,vw,vh);
   // footsteps
   if (me) maybeStep(now, me.moving);
-  // bite flash banner (derived from live player state, not a stale flag)
+  // bite flash banner
   const meNow = players.get(myId);
   if (Date.now() - biteFlash < 2500 && meNow && meNow.fishing === 'bite') {
-    ctx.fillStyle = 'rgba(0,0,0,.55)'; ctx.fillRect(camX+vw/2-110, camY+40, 220, 30);
+    ctx.fillStyle = 'rgba(0,0,0,.55)'; ctx.fillRect(vw/2-110, 40, 220, 30);
     ctx.fillStyle = '#ffe066'; ctx.font = 'bold 16px sans-serif'; ctx.textAlign='center';
-    ctx.fillText('❗ BITE! Press E now!', camX+vw/2, camY+61);
+    ctx.fillText('❗ BITE! Press E now!', vw/2, 61);
   }
 }
+
+function resize() {
+  const w = innerWidth, h = innerHeight;
+  const portrait = h > w;
+  const VW = portrait ? 480 : 640, VH = portrait ? 600 : 448;
+  const s = Math.min(w / VW, h / VH);
+  cv.width = VW; cv.height = VH;
+  cv.style.width = Math.max(1, Math.floor(VW * s)) + 'px';
+  cv.style.height = Math.max(1, Math.floor(VH * s)) + 'px';
+}
+addEventListener('resize', resize);
 requestAnimationFrame(loop);
 resize();
 </script>
