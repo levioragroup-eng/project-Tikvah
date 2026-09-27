@@ -122,6 +122,98 @@
     border-radius:10px; font-size:18px; padding:6px 12px; cursor:pointer; }
   #hudHint { color:#dff3d8; font-size:13px; pointer-events:none; text-align:right; }
   #err { color:#ffb3a7; min-height:22px; margin-top:8px; font-size:15px; }
+
+  /* ================= System 1: title screen + onboarding ================= */
+  #titleBg { position:absolute; inset:0; width:100%; height:100%; image-rendering:pixelated; z-index:0; }
+  #titleScreen, #roomPanel, #howPanel, #creatorScreen { position:relative; z-index:1; }
+  #titleScreen { display:flex; flex-direction:column; align-items:center; justify-content:center;
+    min-height:100%; width:100%; padding:24px 16px 44px; text-align:center; }
+  #titleScreen h1 { font-size:clamp(58px, 15vw, 100px); margin:0; letter-spacing:10px; color:#ffe9a8;
+    text-shadow:3px 3px 0 #7a4b1f, 7px 7px 0 rgba(0,0,0,.35); animation:titleFloat 5s ease-in-out infinite; }
+  @keyframes titleFloat { 0%,100% { transform:translateY(0); } 50% { transform:translateY(-6px); } }
+  #titleScreen .tagline { color:#fffbe8; font-size:clamp(16px, 4.2vw, 23px); font-style:italic; margin:8px 0 32px;
+    text-shadow:2px 2px 0 rgba(60,30,10,.75); letter-spacing:1px; }
+  #titleScreen .hint { margin-top:26px; }
+  .tbtns { display:flex; flex-direction:column; gap:14px; width:min(340px, 86vw); }
+  .tbtn { width:100%; font-size:21px; padding:14px 20px; letter-spacing:1px; }
+  button.big.tbtn.ghost { background:rgba(20,32,22,.62); border:3px solid #ffe9a8; color:#ffe9a8;
+    box-shadow:0 4px 0 rgba(0,0,0,.4); }
+  #roomPanel, #howPanel, #creatorScreen { display:flex; flex-direction:column; align-items:center;
+    width:100%; padding:20px 16px 44px; text-align:center; }
+  #roomPanel h2, #howPanel h2, #creatorScreen h2 { color:#ffe9a8; font-size:clamp(26px,6vw,34px);
+    letter-spacing:3px; margin:10px 0 4px; text-shadow:2px 2px 0 #7a4b1f, 4px 4px 0 rgba(0,0,0,.3); }
+  #creatorScreen .sub, #roomPanel .sub { color:#dff3d8; font-style:italic; margin:0 0 16px; }
+  .backlink { margin-top:20px; font-size:15px; color:#dff3d8; text-decoration:underline; cursor:pointer;
+    background:none; border:none; padding:8px 14px; }
+  #howPanel .howcard { background:rgba(255,251,232,.96); color:#3a2a12; border-radius:14px; border:3px solid #7a4b1f;
+    box-shadow:0 8px 30px rgba(0,0,0,.4); padding:18px 22px; max-width:500px; text-align:left;
+    font-size:15px; line-height:1.8; }
+  #howPanel .howcard b { color:#7a4b1f; }
+  #creatorOk { margin-top:14px; }
+  /* character creator: prettier presentation (same options, same saved data) */
+  #creatorWrap { display:block; background:linear-gradient(#fffdf4,#fdf3da); color:#3a2a12; border-radius:18px;
+    border:3px solid #7a4b1f; box-shadow:0 10px 34px rgba(0,0,0,.45), inset 0 0 40px rgba(255,214,110,.25);
+    padding:18px 20px; margin-bottom:6px; width:min(460px,94vw); }
+  #creatorWrap h3 { display:none; }
+  #creatorTop { display:flex; gap:18px; align-items:flex-start; justify-content:center; }
+  #preview { width:96px; height:144px; image-rendering:pixelated; background:linear-gradient(#e8f4dc,#cfe8b8);
+    border-radius:12px; border:3px solid #7a4b1f; flex:none; box-shadow:inset 0 0 20px rgba(90,140,90,.25); }
+  #creatorOpts { flex:1; min-width:0; text-align:left; }
+  .crow { margin-bottom:9px; }
+  .crow > span { display:block; font-size:11px; font-weight:bold; color:#7a4b1f; margin-bottom:4px;
+    text-transform:uppercase; letter-spacing:2px; }
+  .swatches { display:flex; gap:7px; flex-wrap:wrap; }
+  .sw { width:34px; height:34px; border-radius:10px; border:2px solid #b9a888; cursor:pointer; font-size:10px;
+    font-weight:bold; display:flex; align-items:center; justify-content:center; color:#3a2a12; background:#fff; padding:0;
+    transition:transform .12s; }
+  .sw:hover { transform:scale(1.08); }
+  .sw.sel { border-color:#7a4b1f; box-shadow:0 0 0 3px #ffd76e; }
+  .sw.txt { width:auto; padding:0 12px; height:34px; font-size:12px; }
+  /* welcome / discovery / hannah overlays */
+  #welcome { position:absolute; inset:0; z-index:40; display:none; align-items:center; justify-content:center;
+    background:radial-gradient(ellipse at center, rgba(20,30,20,.15) 0%, rgba(10,16,10,.72) 100%);
+    opacity:0; transition:opacity 1.4s; cursor:pointer; padding:20px; text-align:center; }
+  #welcome .wtext { color:#ffe9a8; font-size:clamp(28px, 6.5vw, 46px); font-style:italic; letter-spacing:2px;
+    text-shadow:3px 3px 0 rgba(60,30,10,.85); animation:titleFloat 4s ease-in-out infinite; }
+  #welcome .wsub { color:#dff3d8; font-size:14px; margin-top:14px; opacity:.85; }
+  .warmcard { background:rgba(255,251,232,.97); color:#3a2a12; border-radius:16px; border:3px solid #7a4b1f;
+    box-shadow:0 10px 40px rgba(0,0,0,.5); }
+  #discover { position:absolute; left:50%; bottom:120px; transform:translateX(-50%); z-index:19; display:none;
+    width:min(360px, 90vw); padding:18px 22px; text-align:center; animation:cardIn .5s ease-out; }
+  #discover h3 { margin:0 0 8px; color:#7a4b1f; font-size:19px; }
+  #discover p { margin:6px 0; font-size:15px; line-height:1.85; }
+  #discover .nopath { font-style:italic; color:#8a7a5a; }
+  #discover button { margin-top:8px; }
+  #hannah { position:absolute; left:50%; bottom:110px; transform:translateX(-50%); z-index:19; display:none;
+    width:min(450px, 92vw); padding:16px 20px; animation:cardIn .5s ease-out; }
+  @keyframes cardIn { from { opacity:0; transform:translate(-50%,12px); } to { opacity:1; transform:translate(-50%,0); } }
+  #hannah .who { font-weight:bold; color:#7a4b1f; font-size:17px; margin-bottom:8px; }
+  #hannah .line { font-size:15px; line-height:1.65; font-style:italic; margin-bottom:12px; }
+  #hannah .choices { display:flex; flex-direction:column; gap:8px; margin-bottom:6px; }
+  #hannah .choices button { font-size:14px; padding:10px 14px; border-radius:10px; border:2px solid #b9a888;
+    background:#fff; color:#3a2a12; cursor:pointer; text-align:left; transition:border-color .12s; }
+  #hannah .choices button:hover { border-color:#7a4b1f; background:#fffbe8; }
+  #hannah .hrow { display:flex; justify-content:flex-end; align-items:center; margin-top:8px; gap:10px; }
+  #hannahSkip { background:none; border:none; color:#8a7a5a; font-size:13px; cursor:pointer; text-decoration:underline; padding:6px 8px; }
+  #hannahDone { display:none; }
+  /* contextual interaction prompt */
+  #prompt { position:absolute; left:50%; bottom:196px; transform:translateX(-50%); z-index:6; display:none;
+    background:rgba(20,30,20,.88); border:2px solid #ffe9a8; border-radius:999px; padding:7px 18px;
+    font-size:14px; color:#ffe9a8; white-space:nowrap; pointer-events:none;
+    box-shadow:0 4px 16px rgba(0,0,0,.4); animation:promptIn .18s ease-out; }
+  @keyframes promptIn { from { opacity:0; transform:translate(-50%,6px); } to { opacity:1; transform:translate(-50%,0); } }
+  /* toast polish */
+  #toast { border:2px solid rgba(255,233,168,.55); box-shadow:0 4px 18px rgba(0,0,0,.45); }
+  /* phone widths */
+  @media (max-width:560px) {
+    #titleScreen h1 { letter-spacing:5px; }
+    .tbtn { font-size:18px; padding:13px 16px; }
+    #discover { bottom:158px; }
+    #hannah { bottom:150px; }
+    #prompt { bottom:224px; font-size:13px; padding:6px 14px; }
+    #creatorTop { gap:12px; }
+    #preview { width:80px; height:120px; }
+  }
 </style>
 </head>
 <body>
@@ -149,35 +241,89 @@
   </div>
 
   <div id="menu">
-    <h1>TIKVAH</h1>
-    <p class="sub">A place to grow, a story to live.</p>
-    <div id="creatorWrap">
-      <h3>Create Your Character</h3>
-      <div id="creatorTop">
-        <canvas id="preview" width="32" height="48"></canvas>
-        <div id="creatorOpts">
-          <div class="crow"><span>Skin</span><div class="swatches" id="swSkin"></div></div>
-          <div class="crow"><span>Hair style</span><div class="swatches" id="swHair"></div></div>
-          <div class="crow"><span>Hair color</span><div class="swatches" id="swHairColor"></div></div>
-          <div class="crow"><span>Outfit</span><div class="swatches" id="swOutfit"></div></div>
-          <div class="crow"><span>Style</span><div class="swatches" id="swDress"></div></div>
-          <div class="crow"><span>Accessory</span><div class="swatches" id="swAcc"></div></div>
+    <canvas id="titleBg" width="320" height="180"></canvas>
+
+    <div id="titleScreen">
+      <h1>TIKVAH</h1>
+      <p class="tagline">— A World To Belong To —</p>
+      <div class="tbtns">
+        <button class="big tbtn" id="btnEnter">ENTER TIKVAH</button>
+        <button class="big tbtn ghost" id="btnChar">🎨 CREATE CHARACTER</button>
+        <button class="big tbtn ghost" id="btnFriend">🤝 JOIN FRIEND</button>
+        <button class="big tbtn ghost" id="btnHow">📖 HOW TO PLAY</button>
+      </div>
+      <div class="hint">Up to ten travelers, one village.<br>No accounts, no downloads.</div>
+    </div>
+
+    <div id="roomPanel" style="display:none">
+      <h2>Enter the Village</h2>
+      <p class="sub">Choose how you arrive.</p>
+      <input id="name" maxlength="16" placeholder="Your name" autocomplete="off">
+      <div class="row">
+        <button class="big" id="btnCreate">Create Room</button>
+        <button class="big ghost" id="btnJoinShow">Join Room</button>
+      </div>
+      <div id="joinRow">
+        <input id="code" maxlength="4" placeholder="CODE" style="text-transform:uppercase" autocomplete="off">
+        <button class="big" id="btnJoin">Join</button>
+      </div>
+      <div id="err"></div>
+      <div class="hint">Each day, live the rhythm — tend the farm, catch a fish, cook a meal, greet a friend, light a candle — and the Garden of Hope will bloom. 🌸</div>
+      <button class="backlink" data-back>← Back to title</button>
+    </div>
+
+    <div id="howPanel" style="display:none">
+      <h2>How to Play</h2>
+      <div class="howcard">
+        <b>Move</b> — WASD / arrow keys, or the joystick on your phone.<br>
+        <b>Interact</b> — E, or tap the E button. 👋 wave with 1 · ❤️ heart with 2.<br>
+        <b>The rhythm</b> — each day: 🌾 tend the farm · 🎣 catch a fish · 🍲 cook a meal · 👋 greet a neighbor · 🕯️ light a candle — and the <b>Garden of Hope</b> will bloom 🌸<br>
+        <b>The ruin</b> — find the ancient ruin with a friend: stand on both glowing stones together ✨
+      </div>
+      <button class="backlink" data-back>← Back to title</button>
+    </div>
+
+    <div id="creatorScreen" style="display:none">
+      <h2>Create Your Character</h2>
+      <p class="sub">She'll be waiting for you in the village.</p>
+      <div id="creatorWrap">
+        <div id="creatorTop">
+          <canvas id="preview" width="32" height="48"></canvas>
+          <div id="creatorOpts">
+            <div class="crow"><span>Skin</span><div class="swatches" id="swSkin"></div></div>
+            <div class="crow"><span>Hair style</span><div class="swatches" id="swHair"></div></div>
+            <div class="crow"><span>Hair color</span><div class="swatches" id="swHairColor"></div></div>
+            <div class="crow"><span>Outfit</span><div class="swatches" id="swOutfit"></div></div>
+            <div class="crow"><span>Style</span><div class="swatches" id="swDress"></div></div>
+            <div class="crow"><span>Accessory</span><div class="swatches" id="swAcc"></div></div>
+          </div>
         </div>
       </div>
+      <button class="big" id="creatorOk">✔ Looks good</button>
+      <button class="backlink" data-back>← Back to title</button>
     </div>
-    <button class="big ghost small" id="btnCustomize" style="margin-bottom:12px">🎨 Customize appearance</button>
-    <input id="name" maxlength="16" placeholder="Your name" autocomplete="off">
-    <div class="row">
-      <button class="big" id="btnCreate">Create Room</button>
-      <button class="big ghost" id="btnJoinShow">Join Room</button>
-    </div>
-    <div id="joinRow">
-      <input id="code" maxlength="4" placeholder="CODE" style="text-transform:uppercase" autocomplete="off">
-      <button class="big" id="btnJoin">Join</button>
-    </div>
-    <div id="err"></div>
-    <div class="hint">Up to ten travelers, one village. Each day, live the rhythm — tend the farm, catch a fish, cook a meal, greet a friend, light a candle — and the Garden of Hope will bloom. No accounts, no downloads.</div>
   </div>
+
+  <div id="welcome"><div><div class="wtext">Welcome to Tikvah…</div><div class="wsub">tap anywhere to continue</div></div></div>
+
+  <div id="discover" class="warmcard">
+    <h3>🌿 Find your rhythm</h3>
+    <p>Walk around.<br>Meet your neighbor.<br>Plant something.<br>Explore the river.</p>
+    <p class="nopath">There is no single path.</p>
+    <button class="big small" id="discoverOk">Begin →</button>
+  </div>
+
+  <div id="hannah" class="warmcard">
+    <div class="who">🌼 Hannah</div>
+    <div class="line" id="hannahLine"></div>
+    <div class="choices" id="hannahChoices"></div>
+    <div class="hrow">
+      <button id="hannahSkip">On my way →</button>
+      <button class="big small" id="hannahDone">I'll help it grow 🌱</button>
+    </div>
+  </div>
+
+  <div id="prompt"></div>
 
   <div id="joy"><div id="stick"></div></div>
   <button id="btnE">E</button>
@@ -241,6 +387,117 @@
     playBox.style.display = 'flex';
   });
 })();
+// ================= Title screen: living background + navigation =================
+// Lightweight pixel-art scene (dawn sky, drifting clouds, hills, water shimmer,
+// fireflies) drawn on a tiny 320x180 canvas, scaled up pixelated. Runs only
+// while the landing menu is visible — stops the moment the game starts.
+let titleBgOn = false;
+(function titleBg() {
+  const cv = document.getElementById('titleBg');
+  if (!cv) return;
+  const g = cv.getContext('2d');
+  const W = 320, H = 180;
+  const clouds = [], flies = [];
+  for (let i = 0; i < 6; i++) clouds.push({ x: Math.random()*W, y: 10+Math.random()*42, s: 0.7+Math.random()*0.8, v: 2+Math.random()*4 });
+  for (let i = 0; i < 26; i++) flies.push({ x: Math.random()*W, y: 60+Math.random()*100, ph: Math.random()*7 });
+  function frame(now) {
+    const menu = document.getElementById('menu');
+    if (!menu || menu.style.display === 'none') { titleBgOn = false; return; }
+    const t = now / 1000;
+    const sky = g.createLinearGradient(0, 0, 0, H);
+    sky.addColorStop(0, '#8fc3e8'); sky.addColorStop(0.55, '#cfe8d8'); sky.addColorStop(0.8, '#f7dfae');
+    g.fillStyle = sky; g.fillRect(0, 0, W, H);
+    // sun with soft glow
+    g.fillStyle = 'rgba(255,236,170,.45)'; g.beginPath(); g.arc(258, 42, 21, 0, 7); g.fill();
+    g.fillStyle = '#ffe9a8'; g.beginPath(); g.arc(258, 42, 12, 0, 7); g.fill();
+    // drifting clouds
+    g.fillStyle = 'rgba(255,255,255,.88)';
+    for (const c of clouds) {
+      c.x += c.v * 0.016; if (c.x > W + 44) c.x = -44;
+      const s = c.s;
+      g.fillRect(c.x-18*s, c.y, 36*s, 10*s);
+      g.fillRect(c.x-10*s, c.y-6*s, 20*s, 8*s);
+      g.fillRect(c.x+4*s, c.y-3*s, 14*s, 6*s);
+    }
+    // rolling hills
+    g.fillStyle = '#5da24a';
+    g.beginPath(); g.moveTo(0, 120);
+    for (let x = 0; x <= W; x += 16) g.lineTo(x, 112 + Math.sin(x/40 + 1)*8);
+    g.lineTo(W, 140); g.lineTo(0, 140); g.fill();
+    g.fillStyle = '#4d8a3a';
+    g.beginPath(); g.moveTo(0, 132);
+    for (let x = 0; x <= W; x += 16) g.lineTo(x, 126 + Math.sin(x/30 + 3)*6);
+    g.lineTo(W, 150); g.lineTo(0, 150); g.fill();
+    // tree silhouettes on the far hill
+    g.fillStyle = '#2e6b34';
+    for (const tx of [30, 90, 170, 250, 300]) {
+      const th = 10 + (tx % 3) * 3;
+      g.fillRect(tx-2, 116-th, 4, th+8);
+      g.fillRect(tx-8, 110-th, 16, 10);
+    }
+    // water band with drifting shimmer
+    g.fillStyle = '#4a9ed6'; g.fillRect(0, 140, W, 40);
+    g.fillStyle = '#6db8e8';
+    for (let i = 0; i < 10; i++) {
+      const wx = (i*37 + t*12) % (W+40) - 20, wy = 148 + (i*7) % 26;
+      g.fillRect(wx, wy, 14, 2);
+    }
+    g.fillStyle = 'rgba(255,255,255,.7)';
+    for (let i = 0; i < 12; i++) {
+      const sx = (i*53 + t*20) % W, sy = 146 + (i*11) % 28;
+      if (Math.sin(t*3 + i*2) > 0.4) g.fillRect(sx, sy, 2, 1);
+    }
+    // fireflies
+    for (const f of flies) {
+      f.x += Math.sin(t*0.7 + f.ph) * 0.15; f.y += Math.cos(t*0.5 + f.ph) * 0.12;
+      const a = 0.35 + 0.35 * Math.sin(t*2 + f.ph*3);
+      if (a <= 0.05) continue;
+      g.fillStyle = 'rgba(255,230,120,' + a.toFixed(2) + ')';
+      g.fillRect(f.x-1, f.y-1, 3, 3);
+      g.fillStyle = 'rgba(255,250,200,' + a.toFixed(2) + ')';
+      g.fillRect(f.x, f.y, 1, 1);
+    }
+    requestAnimationFrame(frame);
+  }
+  window.startTitleBg = function () { if (!titleBgOn) { titleBgOn = true; requestAnimationFrame(frame); } };
+})();
+startTitleBg();
+
+// Title-screen navigation: title <-> room entry <-> how to play <-> character creator
+let creatorMode = 'title'; // 'title' | 'game'
+function showPanel(id) {
+  ['titleScreen', 'roomPanel', 'howPanel', 'creatorScreen'].forEach(p => {
+    document.getElementById(p).style.display = (p === id) ? 'flex' : 'none';
+  });
+  if (id === 'creatorScreen') { buildCreator(); drawPreview(); }
+  startTitleBg();
+}
+document.getElementById('btnEnter').onclick = () => {
+  showPanel('roomPanel');
+  document.getElementById('joinRow').style.display = 'none';
+};
+document.getElementById('btnFriend').onclick = () => {
+  showPanel('roomPanel');
+  document.getElementById('joinRow').style.display = 'block';
+};
+document.getElementById('btnHow').onclick = () => showPanel('howPanel');
+document.getElementById('btnChar').onclick = () => { creatorMode = 'title'; showPanel('creatorScreen'); };
+document.querySelectorAll('[data-back]').forEach(b => b.addEventListener('click', () => showPanel('titleScreen')));
+document.getElementById('creatorOk').onclick = () => {
+  if (creatorMode === 'game') {
+    send({ t: 'look', look });
+    const menu = document.getElementById('menu');
+    menu.style.display = 'none';
+    menu.style.background = '';
+    creatorMode = 'title';
+    document.getElementById('creatorOk').textContent = '✔ Looks good';
+    document.querySelector('#creatorScreen .backlink').style.display = '';
+    showPanel('titleScreen');
+    toast('🧥 New look!');
+  } else {
+    showPanel('titleScreen'); // look already saved to localStorage by the swatches
+  }
+};
 // ================= Net & state =================
 const WS_URL = (location.protocol === 'https:' ? 'wss://' : 'ws://') + location.host;
 let ws = null, myId = null, code = null;
@@ -308,7 +565,12 @@ function onMsg(m) {
       document.getElementById('qcBtn').style.display = 'block';
       buildQcPanel();
       if (m.ending) showEnding('Two travelers. One village. A hope discovered together.');
-      resize(); break;
+      document.getElementById('prompt').style.display = 'none';
+      firstViewT = Date.now();   // cinematic first view: camera pans toward the village
+      wasInside = false;
+      resize();
+      maybeWelcome();
+      break;
     case 'join': players.set(m.p.id, m.p); toast(m.p.name + ' joined the village 🌿'); break;
     case 'leave': {
       const lp = players.get(m.id);
@@ -326,8 +588,18 @@ function onMsg(m) {
     case 'garden-bloom':
       gardenBloomed = true; burst = 200;
       toast('🌸 ' + m.message); bloomChime(); break;
-    case 'harvest': toast('🌾 ' + m.by + ' harvested a crop!'); chime(); break;
-    case 'catch': toast('🐟 ' + m.by + ' caught a fish!'); fishing = null; chime(); break;
+    case 'harvest': {
+      toast('🌾 ' + m.by + ' harvested a crop!'); chime();
+      const hp = playerByName(m.by);
+      sparkleAt(hp ? hp.x : 20*TILE, hp ? hp.y : 14*TILE, '255,220,120', 18);
+      break;
+    }
+    case 'catch': {
+      toast('🐟 ' + m.by + ' caught a fish!'); fishing = null; chime();
+      const cp = playerByName(m.by);
+      sparkleAt(cp ? cp.x : 33*TILE, cp ? cp.y : 20*TILE, '140,200,255', 12);
+      break;
+    }
     case 'bite': if (m.player === myId) { biteFlash = Date.now(); toast('❗ TAP E NOW!'); } break;
     case 'pet': toast('🦊 ' + m.by + ' petted the fox'); break;
     case 'say': sayFlash = { name: m.name, until: Date.now() + 6000 }; showDialogue(m.name, m.text, m.hearts); break;
@@ -366,6 +638,7 @@ function onMsg(m) {
       document.getElementById('dialogue').style.display = 'none';
       burst = 0; particles.length = 0;
       qcBubbles.clear(); document.getElementById('qcPanel').style.display = 'none';
+      firstViewT = Date.now();   // fresh start, fresh first view
       toast('🌱 A new beginning — the village awaits.');
       break;
     case 'error': document.getElementById('err').textContent = m.message; break;
@@ -426,54 +699,143 @@ function drawPreview() {
   g.imageSmoothingEnabled = false; g.clearRect(0,0,32,48);
   g.drawImage(lookSprite(look), 0, 0, 32, 48);
 }
-document.getElementById('btnCustomize').onclick = () => {
-  const w = document.getElementById('creatorWrap');
-  const open = w.style.display !== 'block';
-  w.style.display = open ? 'block' : 'none';
-  document.getElementById('btnCustomize').textContent = open ? '✔ Done customizing' : '🎨 Customize appearance';
-  if (open) { buildCreator(); drawPreview(); }
-};
-// in-game creator (wardrobe) — reuses the menu creator as an overlay, sends look to server on Done
+// in-game creator (home wardrobe) — reuses the title-screen creator as an overlay;
+// sending the look to the server happens only on ✔ Done here
 function openCreator() {
+  creatorMode = 'game';
   const menu = document.getElementById('menu');
-  const w = document.getElementById('creatorWrap');
-  const bc = document.getElementById('btnCustomize');
   menu.style.display = 'flex';
   menu.style.background = 'rgba(10,15,10,.78)';
-  menu.querySelector('h1').style.display = 'none';
-  menu.querySelector('p.sub').style.display = 'none';
-  menu.querySelector('#menuTitle') && (menu.querySelector('#menuTitle').style.display = 'none');
-  bc.style.display = 'none';
-  document.getElementById('name').style.display = 'none';
-  document.querySelector('#menu .row').style.display = 'none';
-  document.getElementById('joinRow').style.display = 'none';
-  document.querySelector('#menu .hint').style.display = 'none';
-  w.style.display = 'block';
-  buildCreator(); drawPreview();
-  // add a Done row if not present
-  let doneBtn = document.getElementById('creatorDone');
-  if (!doneBtn) {
-    doneBtn = document.createElement('button');
-    doneBtn.id = 'creatorDone';
-    doneBtn.className = 'big';
-    doneBtn.style.marginTop = '10px';
-    doneBtn.textContent = '✔ Done';
-    w.appendChild(doneBtn);
-  }
-  doneBtn.onclick = () => {
-    send({ t: 'look', look });
-    menu.style.display = 'none';
-    menu.style.background = '';
-    menu.querySelector('h1').style.display = '';
-    menu.querySelector('p.sub').style.display = '';
-    bc.style.display = '';
-    document.getElementById('name').style.display = '';
-    document.querySelector('#menu .row').style.display = '';
-    document.querySelector('#menu .hint').style.display = '';
-    w.style.display = 'none';
-    toast('🧥 New look!');
-  };
+  document.getElementById('creatorOk').textContent = '✔ Done';
+  document.querySelector('#creatorScreen .backlink').style.display = 'none';
+  showPanel('creatorScreen');
 }
+
+// ================= First-60-seconds onboarding =================
+// Welcome fade (once per session) -> discovery panel (once ever) -> Hannah's greeting (once per session).
+let firstViewT = 0;   // timestamp of join/reset: drives the cinematic first-view camera pan
+let wasInside = null; // tracks interior transitions for the fade
+
+function maybeWelcome() {
+  let seen = false;
+  try { seen = sessionStorage.getItem('tikvah_welcome_seen') === '1'; } catch (e) {}
+  if (seen) { maybeDiscover(); return; }
+  try { sessionStorage.setItem('tikvah_welcome_seen', '1'); } catch (e) {}
+  const w = document.getElementById('welcome');
+  w.style.display = 'flex';
+  requestAnimationFrame(() => { w.style.opacity = '1'; });
+  let done = false;
+  const dismiss = () => {
+    if (done) return; done = true;
+    w.style.opacity = '0';
+    setTimeout(() => { w.style.display = 'none'; maybeDiscover(); }, 700);
+  };
+  w.onclick = dismiss;
+  setTimeout(dismiss, 3500); // 3-5 s, skippable
+}
+function maybeDiscover() {
+  let seen = false;
+  try { seen = localStorage.getItem('tikvah_discover_seen') === '1'; } catch (e) {}
+  if (seen) { maybeHannah(); return; }
+  document.getElementById('discover').style.display = 'block';
+}
+document.getElementById('discoverOk').onclick = () => {
+  document.getElementById('discover').style.display = 'none';
+  try { localStorage.setItem('tikvah_discover_seen', '1'); } catch (e) {}
+  maybeHannah();
+};
+// Hannah's warm first-NPC hello: a skippable greeting with 3 short dialogue
+// choices (warmth, not lore-dump), setting up the mini-story: the Garden of
+// Hope has withered, and living the village rhythm restores it.
+const HANNAH_GREETING = "Oh! A new traveler — welcome to Tikvah. I'm Hannah. 🌼";
+const HANNAH_CHOICES = [
+  { label: '💛 Thank you, Hannah', reply: "You're so welcome. Kindness grows here, just like everything else." },
+  { label: '🌿 This place is beautiful', reply: "Isn't it? Every corner of Tikvah holds a little hope." },
+  { label: '🌸 Tell me about the garden', reply: 'Ah… the Garden of Hope. It withered long ago, before you came.' },
+];
+const HANNAH_STORY = 'But I believe this: when we live the village rhythm together — tend the farm, catch a fish, cook a meal, greet a neighbor, light a candle — the Garden will bloom again. Will you help it grow?';
+function maybeHannah() {
+  let seen = false;
+  try { seen = sessionStorage.getItem('tikvah_hannah_seen') === '1'; } catch (e) {}
+  if (seen || !myId) return;
+  try { sessionStorage.setItem('tikvah_hannah_seen', '1'); } catch (e) {}
+  const box = document.getElementById('hannah');
+  const line = document.getElementById('hannahLine');
+  const choices = document.getElementById('hannahChoices');
+  const doneBtn = document.getElementById('hannahDone');
+  line.textContent = HANNAH_GREETING;
+  choices.style.display = 'flex'; choices.innerHTML = '';
+  doneBtn.style.display = 'none';
+  HANNAH_CHOICES.forEach(c => {
+    const b = document.createElement('button');
+    b.textContent = c.label;
+    b.onclick = () => {
+      line.textContent = c.reply + ' ' + HANNAH_STORY;
+      choices.style.display = 'none';
+      doneBtn.style.display = 'inline-block';
+    };
+    choices.appendChild(b);
+  });
+  box.style.display = 'block';
+  document.getElementById('hannahSkip').onclick = () => { box.style.display = 'none'; };
+  doneBtn.onclick = () => { box.style.display = 'none'; };
+}
+
+// ================= Contextual interaction prompts =================
+// Mirrors the server's interact priority order; the server still enforces range.
+const IR = 56; // px — matches server INTERACT_RANGE
+const CH_EXIT = { tx: 20, ty: 24 }, CH_PRAY = { tx: 20, ty: 20 },
+      CH_VERSE = { tx: 16, ty: 20 }, CH_CANDLE = { tx: 24, ty: 20 };
+const HM_EXIT = { tx: 32, ty: 24 }, HM_SLEEP = { tx: 29, ty: 18 }, HM_HEARTH = { tx: 35, ty: 18 },
+      HM_WARD = { tx: 32, ty: 21 }, HM_RUG = { tx: 29, ty: 21 }, HM_SIT = { tx: 35, ty: 21 },
+      HM_NOOK = { tx: 32, ty: 18 };
+const DOCK_T = { tx: 33, ty: 20 };
+function tDist(ax, ay, tx, ty) { return Math.hypot(ax - (tx*TILE+16), ay - (ty*TILE+16)); }
+function promptFor(me) {
+  if (me.inside && me.place === 'church') {
+    if (tDist(me.x, me.y, CH_EXIT.tx, CH_EXIT.ty) <= IR) return 'Step outside';
+    if (tDist(me.x, me.y, CH_PRAY.tx, CH_PRAY.ty) <= IR) return 'Pray';
+    if (tDist(me.x, me.y, CH_VERSE.tx, CH_VERSE.ty) <= IR) return 'Read the verse';
+    if (tDist(me.x, me.y, CH_CANDLE.tx, CH_CANDLE.ty) <= IR) return 'Light a candle';
+    return null;
+  }
+  if (me.inside && me.place === 'home') {
+    if (tDist(me.x, me.y, HM_EXIT.tx, HM_EXIT.ty) <= IR) return 'Step outside';
+    if (tDist(me.x, me.y, HM_SLEEP.tx, HM_SLEEP.ty) <= IR) return 'Rest until morning';
+    if (tDist(me.x, me.y, HM_HEARTH.tx, HM_HEARTH.ty) <= IR) return 'Cook';
+    if (tDist(me.x, me.y, HM_WARD.tx, HM_WARD.ty) <= IR) return 'Change clothes';
+    if (tDist(me.x, me.y, HM_RUG.tx, HM_RUG.ty) <= IR) return 'Decorate';
+    if (tDist(me.x, me.y, HM_SIT.tx, HM_SIT.ty) <= IR) return 'Sit a while';
+    if (tDist(me.x, me.y, HM_NOOK.tx, HM_NOOK.ty) <= IR) return 'Pray';
+    return null;
+  }
+  if (tDist(me.x, me.y, CHURCH.door.tx, CHURCH.door.ty) <= IR) return 'Enter the church';
+  if (tDist(me.x, me.y, HOME.door.tx, HOME.door.ty) <= IR) return 'Enter your home';
+  if (tDist(me.x, me.y, CAFE.counter.tx, CAFE.counter.ty) <= IR) return 'Cook';
+  let best = null, bd = IR;
+  for (const f of farm) { const d = tDist(me.x, me.y, f.tx, f.ty); if (d < bd) { bd = d; best = f; } }
+  if (best) return best.stage === 'empty' ? 'Plant' : best.stage === 'planted' ? 'Water' :
+                 best.stage === 'ready' ? 'Harvest' : 'Growing…';
+  if (tDist(me.x, me.y, DOCK_T.tx, DOCK_T.ty) <= IR)
+    return me.fishing ? (me.fishing === 'bite' ? 'Catch!' : 'Waiting…') : 'Fish';
+  if (Math.hypot(me.x - fox.x, me.y - fox.y) <= IR) return 'Pet the fox';
+  let bn = null; bd = IR;
+  for (const n of npcs.values()) { const d = Math.hypot(me.x - n.x, me.y - n.y); if (d < bd) { bd = d; bn = n; } }
+  if (bn) return 'Talk to ' + bn.name;
+  return null;
+}
+setInterval(() => {
+  const el = document.getElementById('prompt');
+  if (!myId) { el.style.display = 'none'; return; }
+  const me = players.get(myId);
+  const overlayOpen = ['dialogue', 'hannah', 'discover'].some(id => document.getElementById(id).style.display === 'block') ||
+    document.getElementById('panel').style.display === 'flex';
+  if (!me || overlayOpen) { el.style.display = 'none'; return; }
+  const label = promptFor(me);
+  if (!label) { el.style.display = 'none'; return; }
+  el.textContent = (isTouch ? 'E · ' : '[E] ') + label;
+  el.style.display = 'block';
+}, 200);
 
 // ================= Input =================
 const keys = {};
@@ -595,8 +957,17 @@ function closeDialogue() { document.getElementById('dialogue').style.display = '
 document.getElementById('dialogue').addEventListener('click', closeDialogue);
 function sleepFade() {
   const f = document.getElementById('fade');
+  f.style.transition = 'opacity 1.2s';
   f.style.opacity = '1';
   setTimeout(() => { f.style.opacity = '0'; }, 1400);
+}
+// quick fade for entering / leaving interiors
+function roomFade() {
+  const f = document.getElementById('fade');
+  f.style.transition = 'opacity .22s';
+  f.style.opacity = '0.85';
+  setTimeout(() => { f.style.transition = 'opacity .6s'; f.style.opacity = '0'; }, 240);
+  setTimeout(() => { f.style.transition = 'opacity 1.2s'; }, 1000);
 }
 
 // virtual joystick
@@ -661,6 +1032,12 @@ function toast(msg) {
   const el = document.getElementById('toast');
   el.textContent = msg; el.style.display = 'block';
   clearTimeout(toastTimer); toastTimer = setTimeout(() => el.style.display = 'none', 3200);
+}
+// celebration sparkles at a world position (harvest, catches)
+function playerByName(nm) { for (const p of players.values()) if (p.name === nm) return p; return null; }
+function sparkleAt(x, y, color, n) {
+  for (let i = 0; i < n; i++) particles.push({ x: x + (Math.random()-0.5)*22, y: y - 8 - Math.random()*16,
+    vx: (Math.random()-0.5)*1.3, vy: -0.5 - Math.random()*1.2, life: 40 + Math.random()*30, c: color });
 }
 function hideTutorial() { document.getElementById('tutorial').style.display = 'none'; }
 setTimeout(hideTutorial, 20000);
@@ -1063,7 +1440,7 @@ function drawChurchInterior(g, tx, ty, x, y, now) {
       const fl = 2 + Math.sin(now/150 + i)*0.8;
       g.fillStyle='#ffca55'; g.fillRect(cx, 2-fl, 2, 2+fl);
     }
-    if (n>0) { const gr=g.createRadialGradient(x+16,y+8,2,x+16,y+8,30); gr.addColorStop(0,'rgba(255,200,90,.35)'); gr.addColorStop(1,'rgba(255,200,90,0)'); g.fillStyle=gr; g.fillRect(x-16,y-24,64,64); }
+    if (n>0) { const gr=g.createRadialGradient(x+16,y+8,2,x+16,y+8,30+6*Math.sin(now/130)); gr.addColorStop(0,'rgba(255,200,90,.38)'); gr.addColorStop(1,'rgba(255,200,90,0)'); g.fillStyle=gr; g.fillRect(x-16,y-24,64,64); }
   }
   if (tx===20 && ty===24) g.drawImage(doorMat, x, y);
 }
@@ -1100,6 +1477,27 @@ function drawHomeInterior(g, tx, ty, x, y, now) {
 // ================= Entities & render loop =================
 let burst = 0;
 const particles = [];
+// ---- smooth day/night lighting: the tint eases toward the phase target each
+// frame instead of snapping, so dawn/dusk transitions feel gradual ----
+const TINTS = {
+  morning: { r: 255, g: 214, b: 140, a: 0.10 },
+  day:     { r: 0,   g: 0,   b: 0,   a: 0    },
+  sunset:  { r: 255, g: 110, b: 60,  a: 0.16 },
+  night:   { r: 8,   g: 16,  b: 48,  a: 0.42 },
+};
+const tintCur = { r: 0, g: 0, b: 0, a: 0 };
+let nightF = 0; // 0 = day, 1 = full night — drives stars, lamp glow, fireflies
+function updateTint() {
+  const t = TINTS[day.phase] || TINTS.day;
+  tintCur.r += (t.r - tintCur.r) * 0.05;
+  tintCur.g += (t.g - tintCur.g) * 0.05;
+  tintCur.b += (t.b - tintCur.b) * 0.05;
+  tintCur.a += (t.a - tintCur.a) * 0.05;
+  nightF = Math.min(1, tintCur.a / 0.42);
+}
+// night fireflies (screen space, gentle drift)
+const nightFlies = [];
+for (let i = 0; i < 24; i++) nightFlies.push({ bx: Math.random(), by: Math.random(), ph: Math.random()*7, sp: 0.3 + Math.random()*0.7 });
 const spriteCache = new Map();
 function spriteFor(lk) {
   const k = JSON.stringify(lk || {});
@@ -1126,8 +1524,17 @@ function loop(now) {
   const me = players.get(myId);
   const vw = cv.width, vh = cv.height;
   if (me) {
-    camX = Math.max(0, Math.min(WW*TILE - vw, me.x - vw/2));
+    // cinematic first view: briefly pan east toward the plaza, garden, and river
+    let biasX = 0;
+    if (firstViewT && !me.inside && !me.moving && Date.now() - firstViewT < 7000) {
+      biasX = 4 * TILE * (1 - (Date.now() - firstViewT) / 7000);
+    } else if (me.moving || me.inside) {
+      firstViewT = 0; // the player takes over — the camera is theirs now
+    }
+    camX = Math.max(0, Math.min(WW*TILE - vw, me.x - vw/2 + biasX));
     camY = Math.max(0, Math.min(WH*TILE - vh, me.y - vh/2));
+    if (wasInside !== null && me.inside !== wasInside) roomFade();
+    wasInside = me.inside;
   }
   const inside = me && me.inside;
   ctx.save();
@@ -1137,10 +1544,14 @@ function loop(now) {
 
   if (!inside) {
     // fox
-    ctx.drawImage(foxSprite, fox.x-8, fox.y-10);
+    ctx.fillStyle = 'rgba(0,0,0,.16)';
+    ctx.beginPath(); ctx.ellipse(Math.round(fox.x), Math.round(fox.y+1), 7, 3, 0, 0, 7); ctx.fill();
+    ctx.drawImage(foxSprite, Math.round(fox.x-8), Math.round(fox.y-10+Math.sin(now/600)*1));
     // villagers
     for (const n of npcs.values()) {
       const bob = Math.sin(now/500 + n.x)*1;
+      ctx.fillStyle = 'rgba(0,0,0,.16)';
+      ctx.beginPath(); ctx.ellipse(Math.round(n.x), Math.round(n.y+1), 7, 3, 0, 0, 7); ctx.fill();
       ctx.drawImage(npcSprite(n.name), Math.round(n.x-8), Math.round(n.y-22+bob));
       drawNameTag(ctx, n.x, n.y, n.name, '#ffe9a8');
       if (sayFlash && sayFlash.name === n.name && Date.now() < sayFlash.until) {
@@ -1153,7 +1564,10 @@ function loop(now) {
   const list = [...players.values()].sort((a,b)=>a.y-b.y);
   list.forEach((p) => {
     const spr = spriteFor(p.look);
-    const bob = p.moving ? Math.sin(now/120)*1.5 : 0;
+    // soft grounding shadow + smoother two-step walk bounce
+    ctx.fillStyle = 'rgba(0,0,0,.18)';
+    ctx.beginPath(); ctx.ellipse(Math.round(p.x), Math.round(p.y+1), 7, 3, 0, 0, 7); ctx.fill();
+    const bob = p.moving ? Math.abs(Math.sin(now/150))*2.5 : Math.sin(now/900 + p.x)*0.6;
     ctx.drawImage(spr, Math.round(p.x-8), Math.round(p.y-22+bob));
     drawNameTag(ctx, p.x, p.y, p.name);
     if (p.fishing) {
@@ -1196,17 +1610,18 @@ function loop(now) {
     ctx.fillStyle = `rgba(${pt.c},${Math.min(1, pt.life/100)})`;
     ctx.fillRect(pt.x, pt.y, 3, 3);
   }
-  // lamp glow at night (world space)
-  if (night && !inside) {
+  // lamp glow at night (world space), fading in with the night
+  if (nightF > 0.02 && !inside) {
     for (const l of LAMPS) {
       const lx = l.tx*TILE+16, ly = l.ty*TILE+8;
       const gr = ctx.createRadialGradient(lx, ly, 4, lx, ly, 46);
-      gr.addColorStop(0, 'rgba(255,205,100,.30)'); gr.addColorStop(1, 'rgba(255,205,100,0)');
+      gr.addColorStop(0, 'rgba(255,205,100,' + (0.30*nightF).toFixed(2) + ')'); gr.addColorStop(1, 'rgba(255,205,100,0)');
       ctx.fillStyle = gr;
       ctx.fillRect(lx-46, ly-46, 92, 92);
     }
   }
   ctx.restore();
+  updateTint(); // ease the day/night tint toward its phase target
 
   // ---- off-screen player indicators: arrow + name at the screen edge ----
   const meEdge = players.get(myId);
@@ -1233,16 +1648,27 @@ function loop(now) {
     }
   }
 
-  // ---- screen-space atmosphere ----
-  const phase = day.phase;
-  if (phase === 'morning') { ctx.fillStyle = 'rgba(255,214,140,0.10)'; ctx.fillRect(0,0,vw,vh); }
-  else if (phase === 'sunset') { ctx.fillStyle = 'rgba(255,110,60,0.16)'; ctx.fillRect(0,0,vw,vh); }
-  else if (phase === 'night') {
-    ctx.fillStyle = 'rgba(8,16,48,0.42)'; ctx.fillRect(0,0,vw,vh);
-    ctx.fillStyle = 'rgba(255,255,255,.8)';
-    for (let i=0;i<50;i++) {
+  // ---- screen-space atmosphere: smooth day/night tint + night fireflies ----
+  ctx.fillStyle = 'rgba(' + (tintCur.r|0) + ',' + (tintCur.g|0) + ',' + (tintCur.b|0) + ',' + tintCur.a.toFixed(3) + ')';
+  ctx.fillRect(0, 0, vw, vh);
+  if (nightF > 0.35) {
+    const sa = Math.min(1, (nightF - 0.35) / 0.4);
+    ctx.fillStyle = 'rgba(255,255,255,' + (0.8*sa).toFixed(2) + ')';
+    for (let i = 0; i < 50; i++) {
       const sx = (i*97) % vw, sy = (i*61) % vh;
       if (((i*13 + Math.floor(now/900)) % 7) < 5) ctx.fillRect(sx, sy, 2, 2);
+    }
+    // fireflies drift through the night air
+    if (!inside) {
+      for (const f of nightFlies) {
+        const fx = (((f.bx*vw + Math.sin(now/1000*f.sp + f.ph)*30) % vw) + vw) % vw;
+        const fy = (((f.by*vh + Math.cos(now/1200*f.sp + f.ph)*24) % vh) + vh) % vh;
+        const fa = (0.25 + 0.45*Math.abs(Math.sin(now/700 + f.ph*2))) * sa;
+        ctx.fillStyle = 'rgba(255,225,130,' + fa.toFixed(3) + ')';
+        ctx.fillRect(fx-1, fy-1, 3, 3);
+        ctx.fillStyle = 'rgba(255,250,210,' + fa.toFixed(3) + ')';
+        ctx.fillRect(fx, fy, 1, 1);
+      }
     }
   }
   // vignette warmth

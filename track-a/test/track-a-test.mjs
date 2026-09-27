@@ -62,6 +62,33 @@ ok('intro.mp4 content-type is video/mp4', rMp4.headers.get('content-type') === '
 const mp4Bytes = await rMp4.arrayBuffer();
 ok('intro.mp4 has a body', mp4Bytes.byteLength > 100000, String(mp4Bytes.byteLength));
 
+// ---------- System 1: title screen + first-60-seconds polish ----------
+console.log('system1 polish (static page):');
+const pageHtml = await rHome.text();
+const pageChecks = [
+  ['title tagline', 'A World To Belong To'],
+  ['ENTER TIKVAH button', 'ENTER TIKVAH'],
+  ['CREATE CHARACTER button', 'CREATE CHARACTER'],
+  ['JOIN FRIEND button', 'JOIN FRIEND'],
+  ['HOW TO PLAY button', 'HOW TO PLAY'],
+  ['living-background canvas', 'id="titleBg"'],
+  ['welcome overlay text', 'Welcome to Tikvah'],
+  ['welcome sessionStorage gate', 'tikvah_welcome_seen'],
+  ['discovery panel line', 'Meet your neighbor'],
+  ['discovery panel no-path line', 'There is no single path'],
+  ['discovery localStorage gate', 'tikvah_discover_seen'],
+  ['hannah greeting', 'welcome to Tikvah. I\'m Hannah'],
+  ['hannah dialogue choices', 'hannahChoices'],
+  ['hannah sessionStorage gate', 'tikvah_hannah_seen'],
+  ['mini-story: garden withered', 'withered'],
+  ['mini-story: rhythm restores', 'Will you help it grow'],
+  ['contextual prompt element', 'id="prompt"'],
+  ['smooth tint lerp', 'updateTint'],
+  ['night fireflies', 'nightFlies'],
+  ['harvest sparkles', 'sparkleAt'],
+];
+for (const [label, needle] of pageChecks) ok('page contains ' + label, pageHtml.includes(needle));
+
 // ---------- client helper ----------
 class C {
   constructor(name) { this.name = name; this.msgs = []; this.state = { players: new Map(), farm: [], ruinOpen: false, you: null, code: null }; }
@@ -117,6 +144,13 @@ try {
   const code = a.state.code;
   ok('room code is 4 letters', /^[A-Z]{4}$/.test(code || ''), 'got: ' + code);
   ok('creator look stored on self', lookEq(a.state.you.look, LOOK_A), JSON.stringify(a.state.you.look));
+
+  // ---------- 1a. System 1: spawn near home, facing the village ----------
+  console.log('system1 spawn:');
+  const SPAWN_X = 13*TILE+16, SPAWN_Y = 18*TILE+16; // lane just east of home
+  ok('spawn is on the home lane', a.state.you.x === SPAWN_X && a.state.you.y === SPAWN_Y,
+     `got ${a.state.you.x},${a.state.you.y}`);
+  ok('spawn faces the village (east)', a.state.you.dir === 'right', a.state.you.dir);
 
   const b = new C('Friend'); await b.connect();
   b.send({ t: 'join', name: 'Friend', code });
@@ -201,8 +235,10 @@ try {
 
   // ---------- 5. fishing (cast -> bite -> catch) ----------
   console.log('fishing:');
-  ok('B walks to the farm gate', await walkTo(b, 11*TILE+16, 10*TILE+16, 12000));
+  // B starts at the new spawn (lane east of home); route via the village path
+  // first — a straight line from spawn to the gate runs into the house wall.
   ok('B walks to the village path', await walkTo(b, PATH_W.x, PATH_W.y, 12000));
+  ok('B walks to the farm gate', await walkTo(b, 11*TILE+16, 10*TILE+16, 12000));
   ok('B walks to the east bank', await walkTo(b, PATH_E.x, PATH_E.y, 12000));
   ok('B walks onto the bridge', await walkTo(b, BRIDGE_E.x, BRIDGE_E.y, 8000));
   ok('walk to dock', await walkTo(b, DOCK.x - 16, DOCK.y, 12000));
@@ -363,6 +399,7 @@ try {
   // ---------- 7b. ENDING: both enter the garden together -> shared ending -> play again resets ----------
   console.log('ending:');
   const GARDEN = { x: 20*TILE+16, y: 14*TILE+16 };
+  const SPAWN = { x: 13*TILE+16, y: 18*TILE+16 }; // lane east of home (System 1)
   ok('A walks to garden', await walkTo(a, GARDEN.x, GARDEN.y, 20000));
   ok('B walks to the bridge', await walkTo(b, BRIDGE_E.x, BRIDGE_E.y, 15000));
   ok('B walks to the east bank', await walkTo(b, PATH_E.x, PATH_E.y, 12000));
@@ -379,7 +416,7 @@ try {
   ok('reset clears farm', r.farm.every(f => f.stage === 'empty'), JSON.stringify(r.farm.map(f=>f.stage)));
   ok('reset closes ruin', r.ruin.open === false);
   const pa = r.players.find(p => p.id === a.state.you.id);
-  ok('players respawn at village center', Math.hypot(pa.x - GARDEN.x, pa.y - GARDEN.y) < 40, `${pa.x},${pa.y}`);
+  ok('players respawn at the lane east of home', Math.hypot(pa.x - SPAWN.x, pa.y - SPAWN.y) < 40, `${pa.x},${pa.y}`);
   ok('no duplicate ending after reset', await sleep(1200).then(() => !a.msgs.slice(a.msgs.findIndex(m=>m.t==='reset')).some(m => m.t === 'ending')));
   // life-sim state also resets
   const rd = a.lastOf('reset');
@@ -474,6 +511,10 @@ try {
   d.send({ t: 'create', name: 'Other' });
   ok('second room created', await d.waitFor(() => !!d.state.code, 3000));
   ok('different code', d.state.code !== code, d.state.code);
+  // d starts at the new spawn; route via the village path and the farm gate —
+  // a straight line from spawn to the plots runs into the house wall.
+  await walkTo(d, 20*TILE+16, 18*TILE+16);
+  await walkTo(d, 11*TILE+16, 10*TILE+16);
   await walkTo(d, PLOT0.x, PLOT0.y);
   d.send({ t: 'interact' }); // plant in room 2
   await sleep(600);

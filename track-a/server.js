@@ -47,7 +47,8 @@ export const VERSE_STAND = { tx: 16, ty: 20 };     // interior: read one verse
 export const CANDLE_STAND = { tx: 24, ty: 20 };    // interior: light a candle
 export const STONE_A = { tx: 4, ty: 22 };
 export const STONE_B = { tx: 35, ty: 3 };
-export const SPAWN = { tx: 20, ty: 14 };
+export const SPAWN = { tx: 13, ty: 18 };       // lane just east of home: first view looks
+                                                // down the lane toward the plaza, garden, and river
 // Home (exterior)
 export const HOME_DOOR = { tx: 11, ty: 17 };       // press E near door -> enter home
 // Home interior (separate tile region, drawn instead of the world).
@@ -275,7 +276,7 @@ function addPlayer(room, ws, name, look) {
     name: String(name || 'Traveler').slice(0, MAX_NAME_LEN) || 'Traveler',
     look: sanitizeLook(look),
     x: SPAWN.tx*TILE + TILE/2, y: SPAWN.ty*TILE + TILE/2,
-    dir: 'down', moving: false,
+    dir: 'right', moving: false,              // new travelers face the village (east)
     ix: 0, iy: 0,                       // current input vector
     emote: null, emoteAt: 0,
     inside: false,                       // inside any interior
@@ -775,7 +776,7 @@ wss.on('connection', (ws, req) => {
           room.npcMoved = true;
           for (const [, p] of room.players) {
             p.x = SPAWN.tx*TILE + TILE/2; p.y = SPAWN.ty*TILE + TILE/2;
-            p.dir = 'down'; p.moving = false; p.ix = 0; p.iy = 0;
+            p.dir = 'right'; p.moving = false; p.ix = 0; p.iy = 0;
             p.emote = null; p.emoteAt = 0; p.inside = false; p.place = null; p.fishing = null;
             p.inv = { produce: 0, fish: 0, meals: 0 };
           }
