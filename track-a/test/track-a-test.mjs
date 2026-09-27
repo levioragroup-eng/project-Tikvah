@@ -651,7 +651,95 @@ try {
     return !!p && Math.hypot(p.x - SPAWN.x, p.y - SPAWN.y) < 40;
   }, 3000));
 
-  [a, b, c, d, k, v2, v3, ...fillers].forEach(x => x.close());
+  // ---------- M3: persistent identity (no logins) ----------
+  console.log('persistent identity (M3):');
+
+  // 3a. client helper in isolation: getUuid generates once, persists, survives reload
+  const uuidFnMatch = pageHtml.match(/function getUuid\(\)\s*\{([\s\S]*?)\n\}/);
+  ok('page ships a getUuid helper', !!uuidFnMatch);
+  const stubStore = {};
+  const stubLS = { getItem: k => (k in stubStore ? stubStore[k] : null), setItem: (k, v) => { stubStore[k] = String(v); } };
+  const getUuid = new Function('localStorage', 'crypto', uuidFnMatch[1]);
+  const u1 = getUuid(stubLS, crypto);
+  ok('getUuid generates a uuid on first visit', typeof u1 === 'string' && /^[0-9a-f-]{36}$/.test(u1), u1);
+  const u2 = getUuid(stubLS, crypto);
+  ok('getUuid persists the uuid (second visit returns the same)', u1 === u2);
+  ok('uuid stored in localStorage', stubStore['tikvah_uuid'] === u1);
+  const getUuidReload = new Function('localStorage', 'crypto', uuidFnMatch[1]);
+  ok('uuid survives a page reload', getUuidReload(stubLS, crypto) === u1);
+
+  // 3b. server issues a uuid when the client sends none (old client)
+  const ni = new C('NoUuid'); await ni.connect();
+  ni.send({ t: 'create', name: 'NoUuid' });
+  ok('create without uuid -> joined', await ni.waitFor(() => !!ni.state.code, 3000));
+  const issued = ni.lastOf('joined')?.uuid;
+  ok('server issues a uuid to old clients', typeof issued === 'string' && issued.length > 0, issued);
+  ok('issued uuid is uuid-shaped', /^[A-Za-z0-9-]{1,64}$/.test(issued || ''), issued);
+  ni.close();
+
+  // 3c. inventory restores when the same uuid rejoins (public village)
+  const ID = 'm3-uuid-inv';
+  const i1 = new C('Ident1'); await i1.connect();
+  i1.send({ t: 'join', name: 'Ident1', code: 'TIKVAH', uuid: ID });
+  ok('join TIKVAH with a uuid -> joined', await i1.waitFor(() => i1.state.code === 'TIKVAH', 3000));
+  ok('server echoes the client uuid', i1.lastOf('joined')?.uuid === ID, i1.lastOf('joined')?.uuid);
+  ok('i1 walks to the village path', await walkTo(i1, 20*TILE+16, 18*TILE+16, 12000));
+  ok('i1 walks to the farm gate', await walkTo(i1, 11*TILE+16, 10*TILE+16, 12000));
+  ok('i1 walks to plot 3', await walkTo(i1, PLOT2.x, PLOT2.y, 12000));
+  i1.send({ t: 'interact' }); // plant
+  ok('i1 plants plot 3', await i1.waitFor(() => i1.state.farm[2]?.stage === 'planted', 3000));
+  i1.send({ t: 'interact' }); // water
+  ok('i1 waters plot 3', await i1.waitFor(() => i1.state.farm[2]?.stage === 'growing', 3000));
+  ok('i1 crop grows', await i1.waitFor(() => i1.state.farm[2]?.stage === 'ready', 8000));
+  i1.send({ t: 'interact' }); // harvest -> produce
+  ok('i1 harvests produce', await i1.waitFor(() => (i1.me()?.inv?.produce || 0) >= 1, 3000));
+  await sleep(300); // let the 20 Hz tick sync the identity record
+  i1.close();
+  await sleep(300);
+  const i2 = new C('Ident2'); await i2.connect();
+  i2.send({ t: 'join', name: 'Ident2', code: 'TIKVAH', uuid: ID });
+  ok('rejoin with the same uuid -> joined', await i2.waitFor(() => i2.state.code === 'TIKVAH', 3000));
+  ok('inventory restored on rejoin with the same uuid',
+     await i2.waitFor(() => (i2.me()?.inv?.produce || 0) >= 1, 3000), JSON.stringify(i2.me()?.inv));
+
+  // 3d. villager friendship hearts persist by uuid across reconnects
+  const HID = 'm3-uuid-hearts';
+  const h1 = new C('Heart1'); await h1.connect();
+  h1.send({ t: 'join', name: 'Heart1', code: 'TIKVAH', uuid: HID });
+  ok('hearts test: joined', await h1.waitFor(() => h1.state.code === 'TIKVAH', 3000));
+  let say1 = null;
+  for (let attempt = 0; attempt < 3 && !say1; attempt++) {
+    const h = h1.state.npcs.get('Hannah');
+    ok('Hannah is in the village (hearts test)', !!h);
+    await walkTo(h1, h.x, h.y, 8000);
+    h1.send({ t: 'interact' }); // talk
+    say1 = await h1.waitFor(() => h1.msgs.some(m => m.t === 'say'), 2000) ? h1.lastOf('say') : null;
+  }
+  ok('first talk -> 1 heart', !!say1 && say1.hearts === 1, 'hearts=' + say1?.hearts);
+  h1.close();
+  await sleep(300);
+  const h2 = new C('Heart2'); await h2.connect();
+  h2.send({ t: 'join', name: 'Heart2', code: 'TIKVAH', uuid: HID });
+  ok('rejoin with the same uuid -> joined', await h2.waitFor(() => h2.state.code === 'TIKVAH', 3000));
+  let say2 = null;
+  for (let attempt = 0; attempt < 3 && !say2; attempt++) {
+    const h = h2.state.npcs.get('Hannah');
+    await walkTo(h2, h.x, h.y, 8000);
+    const before = h2.msgs.filter(m => m.t === 'say').length;
+    h2.send({ t: 'interact' }); // talk
+    say2 = await h2.waitFor(() => h2.msgs.filter(m => m.t === 'say').length > before, 2000) ? h2.lastOf('say') : null;
+  }
+  ok('friendship hearts persist by uuid across reconnects', !!say2 && say2.hearts === 2, 'hearts=' + say2?.hearts);
+
+  // 3e. a different uuid gets a fresh identity (no cross-contamination)
+  const f1 = new C('Fresh'); await f1.connect();
+  f1.send({ t: 'join', name: 'Fresh', code: 'TIKVAH', uuid: 'm3-uuid-fresh' });
+  ok('different uuid joins', await f1.waitFor(() => f1.state.code === 'TIKVAH', 3000));
+  ok('different uuid starts with an empty inventory',
+     await f1.waitFor(() => !!f1.me(), 2000) && f1.me().inv.produce === 0 && f1.me().inv.fish === 0 && f1.me().inv.meals === 0,
+     JSON.stringify(f1.me()?.inv));
+
+  [a, b, c, d, k, v2, v3, i2, h2, f1, ...fillers].forEach(x => x.close());
 } finally {
   srv.kill('SIGTERM');
 }

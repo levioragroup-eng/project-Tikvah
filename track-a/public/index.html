@@ -533,6 +533,27 @@ let day = { n: 1, phase: 'morning', label: 'Morning', rhythm: { farm:false, fish
 let candles = 0, gardenBloomed = false, homeRug = 0;
 let sayFlash = null;       // {name, until} — dialogue bubble over NPC
 let worshipFlash = 0;
+// ================= Persistent identity (M3) =================
+// No logins, no passwords, no accounts — one invisible traveler token,
+// generated on the first visit and kept in localStorage. The server keys
+// inventory, look, and villager friendships to it, so a returning traveler
+// picks up where they left off (while the server runs). Name and appearance
+// are also saved so return visits skip re-entering them.
+function getUuid() {
+  let u = null;
+  try { u = localStorage.getItem('tikvah_uuid'); } catch(e) {}
+  if (!u) {
+    try { u = crypto.randomUUID(); } catch(e) { u = 'u' + Date.now().toString(36) + Math.random().toString(36).slice(2, 12); }
+    try { localStorage.setItem('tikvah_uuid', u); } catch(e) {}
+  }
+  return u;
+}
+let myUuid = getUuid();
+function saveName(n) { try { localStorage.setItem('tikvah_name', n); } catch(e) {} }
+try {
+  const savedName = localStorage.getItem('tikvah_name');
+  if (savedName) document.getElementById('name').value = savedName;
+} catch(e) {}
 // quick chat: preset phrases only (mirrors the server's QUICK_CHAT list)
 const QUICK_CHAT = [
   { id: 'hello',  text: 'Hello! 👋' },
@@ -573,6 +594,12 @@ function onMsg(m) {
   switch (m.t) {
     case 'joined':
       code = m.code; myId = m.you.id;
+      // M3: the server returns the traveler token — store it so this
+      // traveler is recognized on every return (no logins, no passwords).
+      if (typeof m.uuid === 'string' && m.uuid) {
+        myUuid = m.uuid;
+        try { localStorage.setItem('tikvah_uuid', m.uuid); } catch(e) {}
+      }
       players = new Map(m.players.map(p => [p.id, p]));
       npcs = new Map(m.npcs.map(n => [n.name, n]));
       farm = m.farm; ruinOpen = m.ruin.open; fox = m.fox;
@@ -1055,12 +1082,14 @@ setInterval(() => {
 document.getElementById('btnPublic').onclick = () => {
   const name = document.getElementById('name').value.trim();
   if (!name) return document.getElementById('err').textContent = 'Enter your name first.';
-  connect(); pending.push({t:'join', name, code: 'TIKVAH', look});
+  saveName(name);
+  connect(); pending.push({t:'join', name, code: 'TIKVAH', look, uuid: myUuid});
 };
 document.getElementById('btnCreate').onclick = () => {
   const name = document.getElementById('name').value.trim();
   if (!name) return document.getElementById('err').textContent = 'Enter your name first.';
-  connect(); pending.push({t:'create', name, look});
+  saveName(name);
+  connect(); pending.push({t:'create', name, look, uuid: myUuid});
 };
 document.getElementById('btnJoinShow').onclick = () => {
   document.getElementById('joinRow').style.display = 'block';
@@ -1070,7 +1099,8 @@ document.getElementById('btnJoin').onclick = () => {
   const c = document.getElementById('code').value.trim().toUpperCase();
   if (!name) return document.getElementById('err').textContent = 'Enter your name first.';
   if (!/^[A-Z]{4}$/.test(c)) return document.getElementById('err').textContent = 'Enter the 4-letter room code.';
-  connect(); pending.push({t:'join', name, code: c, look});
+  saveName(name);
+  connect(); pending.push({t:'join', name, code: c, look, uuid: myUuid});
 };
 function showVerse(ref, text) {
   document.getElementById('vref').textContent = ref + ' (KJV)';

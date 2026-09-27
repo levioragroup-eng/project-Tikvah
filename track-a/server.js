@@ -8,6 +8,7 @@ import http from 'http';
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import { randomUUID } from 'crypto';
 import { WebSocketServer } from 'ws';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -251,6 +252,12 @@ function buildRoom(code, isPublic = false) {
     lastWorship: 0,
     garden: { bloomed: false },
     home: { rug: 0 },
+    // M3: persistent identity (no logins — the competition forbids accounts).
+    // uuid -> { name, look, inv }. Keyed per room; the client generates the
+    // uuid once, stores it in localStorage, and sends it on create/join.
+    // Same uuid rejoins -> inventory/look/name restored. Server restarts
+    // reset identities (Railway's disk is ephemeral).
+    identities: new Map(),
     tickCount: 0,
     seq: 0,
   };
@@ -282,11 +289,27 @@ function broadcast(room, msg, except) {
 function err(ws, code, message) { send(ws, { t: 'error', code, message }); }
 
 // ---------- Game logic ----------
-function addPlayer(room, ws, name, look) {
+// M3: traveler tokens. An old client sends no uuid — the server issues one
+// and returns it in 'joined' so the client can store it.
+const UUID_RE = /^[A-Za-z0-9-]{1,64}$/;
+function sanitizeUuid(u) {
+  const s = String(u || '').trim();
+  return UUID_RE.test(s) ? s : randomUUID();
+}
+export { sanitizeUuid };
+
+function addPlayer(room, ws, name, look, uuid) {
+  const uid = sanitizeUuid(uuid);
+  const rec = room.identities.get(uid);
+  // A returning traveler picks up where they left off: inventory is always
+  // restored; name/look fall back to the stored identity when the client
+  // didn't resend them.
+  const nameS = String(name || '').slice(0, MAX_NAME_LEN);
   const p = {
     id: 'p' + Math.random().toString(36).slice(2, 9),
-    name: String(name || 'Traveler').slice(0, MAX_NAME_LEN) || 'Traveler',
-    look: sanitizeLook(look),
+    uuid: uid,
+    name: nameS || (rec && rec.name) || 'Traveler',
+    look: validLook(look) ? { ...sanitizeLook(look) } : (rec && validLook(rec.look) ? { ...rec.look } : defaultLook()),
     x: SPAWN.tx*TILE + TILE/2, y: SPAWN.ty*TILE + TILE/2,
     dir: 'right', moving: false,              // new travelers face the village (east)
     ix: 0, iy: 0,                       // current input vector
@@ -295,8 +318,9 @@ function addPlayer(room, ws, name, look) {
     place: null,                         // 'church' | 'home' | null
     fishing: null,                       // {state:'cast', biteAt, windowUntil} | null
     qcAt: 0,                           // last quick-chat time (2 s anti-spam cooldown)
-    inv: { produce: 0, fish: 0, meals: 0 },
+    inv: rec ? { ...rec.inv } : { produce: 0, fish: 0, meals: 0 },
   };
+  room.identities.set(uid, { name: p.name, look: { ...p.look }, inv: { ...p.inv } });
   room.players.set(ws, p);
   room.sockets.add(ws);
   return p;
@@ -485,8 +509,10 @@ function handleInteract(room, ws, p) {
   if (npc) {
     const text = npc.lines[npc.line % npc.lines.length];
     npc.line++;
-    const hearts = Math.min(5, (npc.hearts[p.id] || 0) + 1);
-    npc.hearts[p.id] = hearts;
+    // M3: friendship hearts key by the traveler's uuid, so friendships
+    // persist across reconnects within the server run.
+    const hearts = Math.min(5, (npc.hearts[p.uuid] || 0) + 1);
+    npc.hearts[p.uuid] = hearts;
     setRhythm(room, 'greet');
     broadcast(room, {t:'say', name: npc.name, text, hearts, by: p.name});
     return {ok:true, action:'talk'};
@@ -525,7 +551,7 @@ function handleCook(room, ws, p, action) {
       const npc = nearestNpc(room, p, 110);
       if (!npc) { send(ws, {t:'cook-fail', reason:'nobody-nearby'}); return; }
       p.inv.meals--;
-      npc.hearts[p.id] = Math.min(5, (npc.hearts[p.id] || 0) + 1);
+      npc.hearts[p.uuid] = Math.min(5, (npc.hearts[p.uuid] || 0) + 1);
       broadcast(room, {t:'gift', from: p.name, to: npc.name, meal: 'Harvest Stew'});
       broadcast(room, {t:'player', p: playerPublic(p)});
     }
@@ -571,6 +597,13 @@ function tickRoom(room) {
     }
     const dx = n.tx - n.x, dy = n.ty - n.y, l = Math.hypot(dx, dy);
     if (l > 4) { n.x += dx/l*28*dt; n.y += dy/l*28*dt; room.npcMoved = true; }
+  }
+  // M3: persist identity each tick (in-memory, per room) — inventory, look,
+  // and name keyed by uuid, so a returning traveler restores them after a
+  // disconnect while the server runs.
+  for (const [, p] of room.players) {
+    const rec = room.identities.get(p.uuid);
+    if (rec) { rec.inv = { ...p.inv }; rec.look = { ...p.look }; rec.name = p.name; }
   }
   if (moved || room.npcMoved) {
     const msg = { t: 'tick', players: [...room.players.values()].map(playerPublic) };
@@ -625,7 +658,7 @@ function tickRoom(room) {
 }
 
 function joinedPayload(room, p, code) {
-  return { t: 'joined', code, you: playerPublic(p),
+  return { t: 'joined', code, uuid: p.uuid, you: playerPublic(p),
            players: [...room.players.values()].map(playerPublic),
            farm: farmPublic(room), ruin: room.ruin, ending: room.ending.done,
            fox: {x: Math.round(room.fox.x), y: Math.round(room.fox.y)},
@@ -685,7 +718,7 @@ wss.on('connection', (ws, req) => {
           if (!name.trim()) { err(ws, 'bad-name', 'Name required'); return; }
           if (ws.room) { err(ws, 'in-room', 'Already in a room'); return; }
           const room = createRoom();
-          const p = addPlayer(room, ws, name, m.look);
+          const p = addPlayer(room, ws, name, m.look, m.uuid);
           ws.room = room;
           send(ws, joinedPayload(room, p, room.code));
           broadcast(room, {t:'join', p: playerPublic(p)}, ws);
@@ -701,7 +734,7 @@ wss.on('connection', (ws, req) => {
           if (ws.room) { err(ws, 'in-room', 'Already in a room'); return; }
           const room = rooms.get(code);
           if (room.players.size >= ROOM_CAP) { err(ws, 'room-full', 'Room is full'); return; }
-          const p = addPlayer(room, ws, name, m.look);
+          const p = addPlayer(room, ws, name, m.look, m.uuid);
           ws.room = room;
           send(ws, joinedPayload(room, p, code));
           broadcast(room, {t:'join', p: playerPublic(p)}, ws);
