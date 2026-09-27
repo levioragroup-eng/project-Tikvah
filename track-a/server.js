@@ -59,6 +59,7 @@ function createRoom() {
     sockets: new Set(),
     farm: FARM_PLOTS.map(p => ({ tx: p.tx, ty: p.ty, stage: 'empty', t: 0 })),
     ruin: { open: false },
+    ending: { done: false },
     fox: { x: 15*TILE, y: 18*TILE, tx: 15*TILE, ty: 18*TILE, nextMove: Date.now()+2000 },
     seq: 0,
   };
@@ -124,7 +125,7 @@ function handleInteract(room, ws, p) {
   if (p.inside) {
     if (near(p, CHURCH_EXIT.tx, CHURCH_EXIT.ty)) { p.inside = false; p.x = CHURCH_DOOR.tx*TILE+TILE/2; p.y = (CHURCH_DOOR.ty+2)*TILE+TILE/2; broadcast(room, {t:'player', p: playerPublic(p)}); return {ok:true, action:'exit-church'}; }
     if (near(p, PRAY_SPOT.tx, PRAY_SPOT.ty)) { p.emote='pray'; p.emoteAt=now; broadcast(room, {t:'player', p: playerPublic(p)}); return {ok:true, action:'pray'}; }
-    if (near(p, VERSE_STAND.tx, VERSE_STAND.ty)) { const v = VERSES[Math.floor(Math.random()*VERSES.length)]; send(ws, {t:'verse', ref: v.ref, text: v.text}); return {ok:true, action:'read'}; }
+    if (near(p, VERSE_STAND.tx, VERSE_STAND.ty)) { const v = VERSES[Math.floor(Math.random()*VERSES.length)]; broadcast(room, {t:'verse', ref: v.ref, text: v.text, by: p.name}); return {ok:true, action:'read'}; }
     return {ok:false, reason:'nothing-nearby'};
   }
   // church door -> enter
@@ -221,6 +222,17 @@ function tickRoom(room) {
       broadcast(room, {t:'ruin-open', message: 'Hope lives here — discovered together.'});
     }
   }
+  // ending: once the ruin is open, both players step into the garden together
+  if (room.ruin.open && !room.ending.done) {
+    const ps = [...room.players.values()].filter(p => !p.inside);
+    const inGarden = (p) => p.x >= 18*TILE && p.x < 23*TILE && p.y >= 12*TILE && p.y < 17*TILE;
+    if (ps.length >= 2 && ps.every(inGarden)) {
+      room.ending.done = true;
+      broadcast(room, {t:'ending',
+        title: 'The Garden of Hope',
+        message: 'Two travelers. One village. A hope discovered together.'});
+    }
+  }
 }
 
 // ---------- HTTP (static client) ----------
@@ -276,7 +288,7 @@ wss.on('connection', (ws, req) => {
           ws.room = room;
           send(ws, { t: 'joined', code: room.code, you: playerPublic(p),
                      players: [...room.players.values()].map(playerPublic),
-                     farm: farmPublic(room), ruin: room.ruin, fox: {x: Math.round(room.fox.x), y: Math.round(room.fox.y)} });
+                     farm: farmPublic(room), ruin: room.ruin, ending: room.ending.done, fox: {x: Math.round(room.fox.x), y: Math.round(room.fox.y)} });
           broadcast(room, {t:'join', p: playerPublic(p)}, ws);
           break;
         }
@@ -287,12 +299,12 @@ wss.on('connection', (ws, req) => {
           if (!name.trim()) { err(ws, 'bad-name', 'Name required'); return; }
           if (ws.room) { err(ws, 'in-room', 'Already in a room'); return; }
           const room = rooms.get(code);
-          if (room.players.size >= 8) { err(ws, 'room-full', 'Room is full'); return; }
+          if (room.players.size >= 2) { err(ws, 'room-full', 'Room is full'); return; }
           const p = addPlayer(room, ws, name);
           ws.room = room;
           send(ws, { t: 'joined', code, you: playerPublic(p),
                      players: [...room.players.values()].map(playerPublic),
-                     farm: farmPublic(room), ruin: room.ruin, fox: {x: Math.round(room.fox.x), y: Math.round(room.fox.y)} });
+                     farm: farmPublic(room), ruin: room.ruin, ending: room.ending.done, fox: {x: Math.round(room.fox.x), y: Math.round(room.fox.y)} });
           broadcast(room, {t:'join', p: playerPublic(p)}, ws);
           break;
         }
@@ -323,6 +335,24 @@ wss.on('connection', (ws, req) => {
           if (id !== 'wave' && id !== 'heart') { err(ws, 'bad-emote', 'Unknown emote'); return; }
           p.emote = id; p.emoteAt = Date.now();
           broadcast(ws.room, {t:'player', p: playerPublic(p)});
+          break;
+        }
+        case 'play-again': {
+          if (!ws.room) return;
+          const room = ws.room;
+          // reset the shared world for a fresh run
+          room.farm = FARM_PLOTS.map(p => ({ tx: p.tx, ty: p.ty, stage: 'empty', t: 0 }));
+          room.ruin.open = false;
+          room.ending.done = false;
+          for (const [, p] of room.players) {
+            p.x = SPAWN.tx*TILE + TILE/2; p.y = SPAWN.ty*TILE + TILE/2;
+            p.dir = 'down'; p.moving = false; p.ix = 0; p.iy = 0;
+            p.emote = null; p.emoteAt = 0; p.inside = false; p.fishing = null;
+          }
+          broadcast(room, { t: 'reset',
+            players: [...room.players.values()].map(playerPublic),
+            farm: farmPublic(room), ruin: room.ruin,
+            fox: { x: Math.round(room.fox.x), y: Math.round(room.fox.y) } });
           break;
         }
         default: err(ws, 'unknown', 'Unknown message type');

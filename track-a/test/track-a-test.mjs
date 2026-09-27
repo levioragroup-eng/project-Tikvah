@@ -156,6 +156,7 @@ try {
   a.send({ t: 'interact' }); // read
   const verse = await a.waitFor(() => a.msgs.some(m => m.t === 'verse'), 2000) ? a.lastOf('verse') : null;
   ok('verse shown and is verified KJV text', !!verse && VERSE_TEXTS.has(verse.text), verse ? verse.ref : 'none');
+  ok('verse visible to BOTH players (shared reading)', await b.waitFor(() => b.msgs.some(m => m.t === 'verse'), 2000));
   ok('walk to exit', await walkTo(a, 20*TILE+16, 24*TILE+16));
   a.send({ t: 'interact' }); // exit
   ok('exit church', await a.waitFor(() => a.me()?.inside === false, 2000));
@@ -169,8 +170,32 @@ try {
   const ro = a.lastOf('ruin-open');
   ok('ruin message is hope/community themed', !!ro && /hope/i.test(ro.message), ro?.message);
 
-  // ---------- 8. negative: invalid room codes ----------
+  // ---------- 7b. ENDING: both enter the garden together -> shared ending -> play again resets ----------
+  console.log('ending:');
+  const GARDEN = { x: 20*TILE+16, y: 14*TILE+16 };
+  ok('A walks to garden', await walkTo(a, GARDEN.x, GARDEN.y, 20000));
+  ok('B walks to garden', await walkTo(b, GARDEN.x, GARDEN.y, 20000));
+  ok('ending fires for A', await a.waitFor(() => a.msgs.some(m => m.t === 'ending'), 5000));
+  ok('ending fires for B (shared ending)', await b.waitFor(() => b.msgs.some(m => m.t === 'ending'), 5000));
+  const endMsg = a.lastOf('ending');
+  ok('ending message is hopeful, not preachy', !!endMsg && /hope/i.test(endMsg.message) && !/repent|sin|hell/i.test(endMsg.message), endMsg?.message);
+  a.send({ t: 'play-again' });
+  ok('reset received by A', await a.waitFor(() => a.msgs.some(m => m.t === 'reset'), 3000));
+  ok('reset received by B', await b.waitFor(() => b.msgs.some(m => m.t === 'reset'), 3000));
+  const r = a.lastOf('reset');
+  ok('reset clears farm', r.farm.every(f => f.stage === 'empty'), JSON.stringify(r.farm.map(f=>f.stage)));
+  ok('reset closes ruin', r.ruin.open === false);
+  const pa = r.players.find(p => p.id === a.state.you.id);
+  ok('players respawn at village center', Math.hypot(pa.x - GARDEN.x, pa.y - GARDEN.y) < 40, `${pa.x},${pa.y}`);
+  ok('no duplicate ending after reset', await sleep(1200).then(() => !a.msgs.slice(a.msgs.findIndex(m=>m.t==='reset')).some(m => m.t === 'ending')));
+
+  // ---------- 8. negative: invalid room codes + room cap ----------
   console.log('negative tests:');
+  const e = new C('Third'); await e.connect();
+  e.send({ t: 'join', name: 'Third', code });
+  const eFull = await e.waitFor(() => e.msgs.some(m => m.t === 'error'), 2000) ? e.lastOf('error') : null;
+  ok('third player rejected (room cap 2)', !!eFull && eFull.code === 'room-full', eFull?.code);
+  e.close();
   const c = new C('Stranger'); await c.connect();
   c.send({ t: 'join', name: 'Stranger', code: 'ZZZZ' });
   const e1 = await c.waitFor(() => c.msgs.some(m => m.t === 'error'), 2000) ? c.lastOf('error') : null;

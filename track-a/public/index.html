@@ -50,6 +50,20 @@
   #verse .ref { font-weight:bold; font-size:20px; margin-bottom:12px; color:#7a4b1f; }
   #verse .text { font-style:italic; font-size:17px; line-height:1.6; }
   #verse button { margin-top:18px; }
+  /* ending overlay */
+  #ending { position:absolute; inset:0; display:none; align-items:center; justify-content:center; z-index:30;
+    background:radial-gradient(ellipse at 50% 35%, rgba(90,140,90,.96) 0%, rgba(30,60,35,.97) 70%); padding:20px; }
+  #ending .card { text-align:center; max-width:480px; padding:36px 28px; border-radius:20px;
+    background:rgba(255,251,232,.96); color:#3a2a12; border:4px solid #ffe9a8; box-shadow:0 12px 60px rgba(0,0,0,.5); }
+  #ending .stars { font-size:34px; margin-bottom:8px; }
+  #ending h2 { margin:0 0 12px; color:#7a4b1f; font-size:30px; letter-spacing:2px; }
+  #ending .msg { font-size:18px; line-height:1.7; font-style:italic; margin:0 0 8px; }
+  #ending .thanks { font-size:14px; color:#8a7a5a; margin:0 0 20px; }
+  /* mute */
+  #muteBtn { pointer-events:auto; background:rgba(0,0,0,.55); color:#ffe9a8; border:2px solid rgba(255,233,168,.6);
+    border-radius:10px; font-size:18px; padding:6px 12px; cursor:pointer; }
+  #hudHint { color:#dff3d8; font-size:13px; pointer-events:none; }
+  #tutorial { font-size:clamp(13px, 2.6vw, 15px); }
   #err { color:#ffb3a7; min-height:22px; margin-top:8px; font-size:15px; }
 </style>
 </head>
@@ -59,10 +73,11 @@
 
   <div id="hud">
     <div id="roomcode">····</div>
-    <div style="color:#dff3d8;font-size:13px;pointer-events:none">E = interact · 1 wave · 2 heart</div>
+    <div id="hudHint">E = interact · 1 wave · 2 heart</div>
+    <button id="muteBtn" title="Sound on/off">🔊</button>
   </div>
   <div id="toast"></div>
-  <div id="tutorial">Walk with <b>WASD / arrows</b> · Press <b>E</b> to interact<br>Find the <b>ancient ruin</b> with a friend — stand on both glowing stones together ✨</div>
+  <div id="tutorial">Walk with <b>WASD / arrows</b> · Press <b>E</b> to interact<br>Find the <b>ancient ruin</b> with a friend — stand on both glowing stones together,<br>then step into the garden to complete your story ✨</div>
 
   <div id="menu">
     <h1>TIKVAH</h1>
@@ -88,6 +103,14 @@
     <div class="ref" id="vref"></div>
     <div class="text" id="vtext"></div>
     <button class="big" id="vclose">Amen</button>
+  </div></div>
+
+  <div id="ending"><div class="card">
+    <div class="stars">✨🌿✨</div>
+    <h2>The Garden of Hope</h2>
+    <p class="msg" id="endingMsg"></p>
+    <p class="thanks">Thanks for playing Tikvah.</p>
+    <button class="big" id="btnAgain">Play Again</button>
   </div></div>
 </div>
 
@@ -120,7 +143,13 @@ function onMsg(m) {
       document.getElementById('game').style.display = 'block';
       document.getElementById('hud').style.display = 'flex';
       document.getElementById('roomcode').textContent = 'ROOM ' + code;
-      if (isTouch) { document.getElementById('joy').style.display='block'; document.getElementById('btnE').style.display='block'; document.getElementById('emotes').style.display='flex'; }
+      if (isTouch) {
+        document.getElementById('joy').style.display='block'; document.getElementById('btnE').style.display='block'; document.getElementById('emotes').style.display='flex';
+        document.getElementById('hudHint').textContent = 'Joystick = walk · E = interact';
+        document.getElementById('tutorial').innerHTML = 'Walk with the <b>joystick</b> · Tap <b>E</b> to interact<br>Find the <b>ancient ruin</b> with a friend — stand on both glowing stones together,<br>then step into the garden to complete your story ✨';
+      }
+      updateMuteIcon();
+      if (m.ending) showEnding('Two travelers. One village. A hope discovered together.');
       resize(); break;
     case 'join': players.set(m.p.id, m.p); toast(m.p.name + ' joined the village 🌿'); break;
     case 'leave': players.delete(m.id); break;
@@ -128,8 +157,8 @@ function onMsg(m) {
     case 'player': players.set(m.p.id, m.p); break;
     case 'farm': farm = m.farm; break;
     case 'fox': fox = m; break;
-    case 'harvest': toast('🌾 ' + m.by + ' harvested a crop!'); break;
-    case 'catch': toast('🐟 ' + m.by + ' caught a fish!'); fishing = null; break;
+    case 'harvest': toast('🌾 ' + m.by + ' harvested a crop!'); chime(); break;
+    case 'catch': toast('🐟 ' + m.by + ' caught a fish!'); fishing = null; chime(); break;
     case 'bite': if (m.player === myId) { biteFlash = Date.now(); toast('❗ TAP E NOW!'); } break;
     case 'pet': toast('🦊 ' + m.by + ' petted the fox'); break;
     case 'verse': showVerse(m.ref, m.text); break;
@@ -137,6 +166,19 @@ function onMsg(m) {
     case 'ruin-open':
       ruinOpen = true; burst = 120;
       toast('✨ ' + m.message);
+      ruinPad();
+      break;
+    case 'ending':
+      showEnding(m.message);
+      endingMotif();
+      break;
+    case 'reset':
+      players = new Map(m.players.map(p => [p.id, p]));
+      farm = m.farm; ruinOpen = m.ruin.open; fox = m.fox;
+      document.getElementById('ending').style.display = 'none';
+      document.getElementById('verse').style.display = 'none';
+      burst = 0; particles.length = 0;
+      toast('🌱 A new beginning — the village awaits.');
       break;
     case 'error': document.getElementById('err').textContent = m.message; break;
   }
@@ -157,6 +199,67 @@ function doInteract() { send({t:'interact'}); hideTutorial(); }
 document.getElementById('btnE').addEventListener('click', doInteract);
 document.querySelectorAll('#emotes button').forEach(b =>
   b.addEventListener('click', () => send({t:'emote', id: b.dataset.e})));
+
+// ================= Audio — 100% synthesized WebAudio, zero assets =================
+let AC = null, muted = false;
+try { muted = localStorage.getItem('tikvah_mute') === '1'; } catch(e) {}
+function ac() {
+  if (!AC) { try { AC = new (window.AudioContext || window.webkitAudioContext)(); } catch(e) { return null; } }
+  if (AC && AC.state === 'suspended') AC.resume();
+  return AC;
+}
+addEventListener('pointerdown', () => ac());
+addEventListener('keydown', () => ac());
+function tone(freq, delay, dur, type, vol) {
+  const c = ac(); if (!c || muted) return;
+  type = type || 'sine'; vol = vol || 0.15;
+  const t = c.currentTime + delay;
+  const o = c.createOscillator(), g = c.createGain();
+  o.type = type; o.frequency.value = freq;
+  g.gain.setValueAtTime(0.0001, t);
+  g.gain.exponentialRampToValueAtTime(vol, t + 0.03);
+  g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+  o.connect(g); g.connect(c.destination);
+  o.start(t); o.stop(t + dur + 0.05);
+}
+function chime() { tone(659.25, 0, 0.5); tone(987.77, 0.12, 0.7); }                 // harvest / catch
+function ruinPad() {                                                                  // ruin opens: warm chord
+  [130.81, 196.0, 261.63, 329.63].forEach((f, i) => tone(f, i * 0.18, 4.0, 'triangle', 0.07));
+}
+function endingMotif() {                                                              // ending: gentle ascent
+  [261.63, 329.63, 392.0, 523.25, 392.0, 523.25, 659.25].forEach((f, i) => tone(f, i * 0.4, 1.4, 'sine', 0.11));
+}
+let lastStep = 0;
+function maybeStep(now, moving) {                                                     // soft footsteps
+  if (!moving || muted) return;
+  if (now - lastStep > 320) {
+    lastStep = now;
+    const c = ac(); if (!c) return;
+    const t = c.currentTime;
+    const o = c.createOscillator(), g = c.createGain();
+    o.type = 'sine';
+    o.frequency.setValueAtTime(150, t);
+    o.frequency.exponentialRampToValueAtTime(75, t + 0.08);
+    g.gain.setValueAtTime(0.045, t);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + 0.09);
+    o.connect(g); g.connect(c.destination);
+    o.start(t); o.stop(t + 0.1);
+  }
+}
+function updateMuteIcon() { document.getElementById('muteBtn').textContent = muted ? '🔇' : '🔊'; }
+document.getElementById('muteBtn').addEventListener('click', () => {
+  muted = !muted;
+  try { localStorage.setItem('tikvah_mute', muted ? '1' : '0'); } catch(e) {}
+  updateMuteIcon();
+  if (!muted) chime();
+});
+
+// ================= Ending =================
+function showEnding(message) {
+  document.getElementById('endingMsg').textContent = message || 'Hope lives here — discovered together.';
+  document.getElementById('ending').style.display = 'flex';
+}
+document.getElementById('btnAgain').addEventListener('click', () => send({t:'play-again'}));
 
 // virtual joystick
 const isTouch = ('ontouchstart' in window) || navigator.maxTouchPoints > 0;
@@ -229,16 +332,18 @@ const TILE = 32, WW = 40, WH = 28;
 const cv = document.getElementById('game');
 const ctx = cv.getContext('2d');
 ctx.imageSmoothingEnabled = false;
-let SCALE = 1, camX = 0, camY = 0;
+let camX = 0, camY = 0;
 
 function resize() {
   const w = innerWidth, h = innerHeight;
-  SCALE = Math.max(1, Math.floor(Math.min(w / (WW*TILE), h / (WH*TILE)) * 2));
-  SCALE = Math.min(SCALE, 3);
-  cv.width = WW*TILE; cv.height = WH*TILE;
-  cv.style.width = (WW*TILE*SCALE/2) + 'px';
-  cv.style.height = (WH*TILE*SCALE/2) + 'px';
-  // canvas shows half the world; camera follows player
+  // camera viewport: half the world on landscape, tighter zoom on portrait phones
+  const portrait = h > w;
+  const VW = portrait ? 480 : 640, VH = portrait ? 600 : 448;
+  const s = Math.min(w / VW, h / VH);
+  cv.width = VW; cv.height = VH;
+  cv.style.width = Math.max(1, Math.floor(VW * s)) + 'px';
+  cv.style.height = Math.max(1, Math.floor(VH * s)) + 'px';
+  // camera follows the player (see loop); world is 1280x896
 }
 addEventListener('resize', resize);
 
@@ -346,7 +451,7 @@ function drawWorld(g, now) {
     const x = tx*TILE, y = ty*TILE;
     if (inside) { drawInterior(g, tx, ty, x, y); continue; }
     const b = baseTile(tx, ty);
-    if (b === 'water') { g.drawImage(waterTile, x, y + Math.sin(now/600 + tx)*1.5); g.drawImage(waterTile, x, y); }
+    if (b === 'water') g.drawImage(waterTile, x, y);
     else if (b === 'sand') g.drawImage(sandTile, x, y);
     else if (b === 'path') g.drawImage(pathTile, x, y);
     else g.drawImage(((tx*7+ty*13)%5===0) ? grassB : grassA, x, y);
@@ -453,8 +558,11 @@ function loop(now) {
   const vg = ctx.createRadialGradient(vw/2,vh/2,vh*0.4, vw/2,vh/2, vh*0.85);
   vg.addColorStop(0,'rgba(0,0,0,0)'); vg.addColorStop(1,'rgba(30,15,5,0.35)');
   ctx.fillStyle = vg; ctx.fillRect(0,0,vw,vh);
-  // bite flash banner
-  if (Date.now() - biteFlash < 2500 && fishing !== null) {
+  // footsteps
+  if (me) maybeStep(now, me.moving);
+  // bite flash banner (derived from live player state, not a stale flag)
+  const meNow = players.get(myId);
+  if (Date.now() - biteFlash < 2500 && meNow && meNow.fishing === 'bite') {
     ctx.fillStyle = 'rgba(0,0,0,.55)'; ctx.fillRect(camX+vw/2-110, camY+40, 220, 30);
     ctx.fillStyle = '#ffe066'; ctx.font = 'bold 16px sans-serif'; ctx.textAlign='center';
     ctx.fillText('❗ BITE! Press E now!', camX+vw/2, camY+61);

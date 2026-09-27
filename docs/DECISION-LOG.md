@@ -56,3 +56,30 @@ Format per entry:
 Append new entries below in the same format (D6, D7, …).
 
 *(none yet)*
+
+## D6 — Room cap is 2 (competition spec)
+- **Date:** 2026-09-26
+- **Decision:** Server rejects a 3rd joiner with `room-full`. Competition entry is a 2-player co-op game; QA plan A4 expected rejection at 3rd player.
+- **Rationale:** Matches the Handshake × OpenAI mission spec ("two players", room-code co-op). Larger rooms are a Track B concern.
+- **Decided by:** polish worker, per Ariel's 2-player competition mandate
+- **Status:** Active — test asserts `room-full` (track-a-test.mjs)
+
+---
+
+## D7 — The game has a real ending: "The Garden of Hope"
+- **Date:** 2026-09-26
+- **Decision:** After the ruin opens, both players stepping into the garden plaza together triggers a shared ending overlay on both screens ("The Garden of Hope — Two travelers. One village. A hope discovered together.") with a Play Again button that resets the room for a fresh run.
+- **Rationale:** Ariel: "make sure there's an end" — a judge needs a complete beginning→end arc (arrive → explore → cooperate → discover → ending). Reverent, hopeful, not preachy; no new Scripture introduced.
+- **Decided by:** Ariel (explicit request), implemented by polish worker
+- **Status:** Active — 13 headless asserts green
+
+---
+
+## D8 — Audio is 100% synthesized in code, zero assets
+- **Date:** 2026-09-26
+- **Decision:** All sound is generated with WebAudio oscillators (footsteps, chimes, ruin pad, ending motif). No audio files, no licensing. Mute toggle in HUD, preference persisted.
+- **Rationale:** Keeps the build dependency-free and license-clean; competition judging rewards polish without asset risk.
+- **Decided by:** polish worker, per "no external assets" constraint
+- **Status:** Active — manual device listening check still pending
+
+---
