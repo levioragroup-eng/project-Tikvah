@@ -263,20 +263,21 @@ try {
   const roMsg = a.lastOf('ruin-open');
   sys('ruins-coop', aOnPad && noSoloOpen && opened, `A-on-stone=${aOnPad} no-solo-open=${noSoloOpen} coop-open=${opened} msg="${roMsg?.message}"`);
 
-  // ---- S14: fox presence + reaction (tight retargeting chase) ----
-  let pet = null;
-  for (let i = 0; i < 25 && !pet; i++) {
+  // ---- S14: fox presence + reaction (retargeting chase with wall unstick) ----
+  let pet = null, lastD = 1e9, stuck = 0;
+  const foxT0 = Date.now();
+  for (let i = 0; i < 60 && !pet && Date.now() - foxT0 < 45000; i++) {
     const f = a.state.fox, me = a.me();
-    if (!f || !me) break;
+    if (!f || !me) { await sleep(300); continue; }
     const dx = f.x - me.x, dy = f.y - me.y, d = Math.hypot(dx, dy);
     if (d < 50) {
       a.send({ t: 'input', x: 0, y: 0 });
       a.send({ t: 'interact' });
-      pet = await a.waitFor(() => a.msgs.some(m => m.t === 'pet'), 1200) ? a.lastOf('pet') : null;
-      if (pet) break;
-    } else {
-      a.send({ t: 'input', x: dx/d, y: dy/d });
-    }
+      pet = await a.waitFor(() => a.msgs.some(m => m.t === 'pet'), 1000) ? a.lastOf('pet') : null;
+    } else if (d < lastD - 5) { stuck = 0; a.send({ t: 'input', x: dx/d, y: dy/d }); }
+    else if (++stuck >= 6) { a.send({ t: 'input', x: -dy/d, y: dx/d }); if (stuck >= 12) stuck = 0; }
+    else { a.send({ t: 'input', x: dx/d, y: dy/d }); }
+    lastD = d;
     await sleep(300);
   }
   a.send({ t: 'input', x: 0, y: 0 });
