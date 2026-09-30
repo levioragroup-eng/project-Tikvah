@@ -2065,6 +2065,34 @@ const stoneTile = px(TILE,TILE,(g)=>{
 });
 const stoneGlow = px(TILE,TILE,(g)=>{ g.drawImage(stoneTile,0,0);
   g.fillStyle='rgba(255,230,120,0.55)'; g.fillRect(6,4,20,26); g.drawImage(stoneTile,0,0); });
+// VISUAL-PASS-RUINS: state-addressable ruin stone painters — cheap
+// RESTORE-THE-LIGHT future-proofing. A later pass can flip a mechanism's
+// state without rework; today both stones render 'dormant' (as before)
+// unless the live ruin-open event flips them to 'lit'. No server fields,
+// no progression logic, no UI — painter structure only.
+const stoneRestored = px(TILE,TILE,(g)=>{ g.drawImage(stoneGlow,0,0);
+  // gently lit: warm light blooms out of the carved grooves, soft halo,
+  // tiny blossoms take root in the moss (peaceful, never neon)
+  g.fillStyle='rgba(255,236,170,0.30)'; g.fillRect(6,4,20,28);
+  g.drawImage(stoneTile,0,0);
+  g.fillStyle='rgba(255,240,190,0.85)'; g.fillRect(10,16,12,2); g.fillRect(15,9,2,17);
+  g.fillStyle='#ffd76e'; g.fillRect(11,16,10,1);
+  g.fillStyle='#ff9ec4'; g.fillRect(9,24,3,3); g.fillRect(21,25,3,3);
+  g.fillStyle='#fff0f6'; g.fillRect(10,25,1,1); g.fillRect(22,26,1,1);
+});
+function paintRuinStone(state) {
+  if (state === 'restored') return stoneRestored;
+  if (state === 'lit') return stoneGlow;
+  return stoneTile;   // dormant = as today
+}
+// paintRuinPad(state) -> { stone, halo }: the activation pad as one
+// state-addressable object — stone sprite plus the soft light it pools on
+// the ground. Trigger tiles, prompts, and verbs unchanged.
+function paintRuinPad(state) {
+  if (state === 'restored') return { stone: stoneRestored, halo: 0.45 };
+  if (state === 'lit') return { stone: stoneGlow, halo: 0.32 };
+  return { stone: stoneTile, halo: 0.12 };   // dormant = as today
+}
 const gardenTile = px(TILE,TILE,(g)=>{
   g.drawImage(grassA,0,0);
   const cols=['#f0a0c0','#ff6b8a','#ffe066','#ffffff','#c49aff'];
@@ -2115,6 +2143,47 @@ function treeTile(v) {
         dith(10, '#244d24', lx+2, ly+lh-3, lw-4, 3);               // deep under-layer
       }
       dith(8, '#7cc465', 12, 2, 8, 4);                             // sunlit tip
+    } else if (v === 4) { // VISUAL-PASS-FOREST: ancient broadleaf — tall straight
+      // trunk, high dense canopy, sunlight filtering through (board EXPLORE)
+      const R = srand(0xa401);
+      const ad = (n, color, x0, y0, w, h) => { g.fillStyle = color;
+        for (let i=0;i<n;i++) g.fillRect(x0+R(w), y0+R(h), 1, 1); };
+      g.fillStyle = '#3a2412'; g.fillRect(8,22,5,3); g.fillRect(19,24,5,3);  // roots
+      g.fillStyle = '#4a2f16'; g.fillRect(13,14,6,18);                       // trunk
+      g.fillStyle = '#6b4423'; g.fillRect(13,14,2,18);                       // trunk light
+      g.fillStyle = '#33200f'; g.fillRect(17,16,2,16);                       // trunk shade
+      ad(14, '#5d3a17', 13, 15, 6, 16);                                      // bark texture
+      g.fillStyle = P.canopyDeep;                                           // canopy mass
+      g.fillRect(5,2,22,12); g.fillRect(8,0,16,4); g.fillRect(3,8,26,8);
+      g.fillStyle = '#3a7230'; g.fillRect(5,2,22,3); g.fillRect(8,0,16,2);   // sunlit crown
+      g.fillStyle = '#244d24'; g.fillRect(3,13,26,3); g.fillRect(6,16,20,3); // deep underlayer
+      ad(40, '#4a8f3c', 5, 3, 22, 10);                                      // midtone texture
+      ad(24, '#1f4d1f', 6, 12, 20, 6);                                      // shadow dither
+      // light filtering through: two bright shaft columns + sun flecks
+      ad(30, '#c8ec9a', 9, 3, 5, 12); ad(30, '#c8ec9a', 18, 2, 5, 13);
+      ad(10, '#fff8d8', 8, 2, 16, 14);
+      g.fillStyle = '#a8e08a'; g.fillRect(10,4,3,2); g.fillRect(19,3,3,2);
+      g.fillStyle = '#2f6b2f'; g.fillRect(6,15,20,2);                        // foliage skirt
+      ad(16, '#6ab04c', 6, 15, 20, 2);
+    } else if (v === 5) { // VISUAL-PASS-FOREST: slim birch — pale trunk, airy
+      // leaf tufts with gaps so light passes through (board EXPLORE depth)
+      const R = srand(0xb125);
+      const ad = (n, color, x0, y0, w, h) => { g.fillStyle = color;
+        for (let i=0;i<n;i++) g.fillRect(x0+R(w), y0+R(h), 1, 1); };
+      g.fillStyle = 'rgba(0,0,0,.15)'; g.fillRect(12,29,8,3);               // ground shadow
+      g.fillStyle = '#e6dcc8'; g.fillRect(14,14,4,16);                      // pale trunk
+      g.fillStyle = '#f7f2e4'; g.fillRect(14,14,1,16);                      // trunk light
+      g.fillStyle = '#3a3428';                                              // birch marks
+      for (const my of [18, 22, 26]) g.fillRect(14,my,4,1);
+      ad(8, '#c9bda6', 14, 15, 4, 14);
+      const tuft = (x0,y0,w,h) => {
+        g.fillStyle = '#5da244'; g.fillRect(x0,y0,w,h);
+        g.fillStyle = '#7cc465'; g.fillRect(x0,y0,w,2);
+        g.fillStyle = '#2f6b2f'; g.fillRect(x0,y0+h-2,w,2);
+        ad(16, '#8ac96a', x0, y0, w, h); ad(10, '#3a7230', x0, y0+h-3, w, 3);
+      };
+      tuft(5,5,10,6); tuft(17,2,10,7); tuft(10,10,13,6);                     // airy tufts
+      ad(8, '#fff8d8', 5, 2, 22, 14);                                       // sparkle
     } else { // round canopy: dense blob (v=1 green) or cherry blossom (v=2)
       const bl = v === 2;
       g.fillStyle = bl ? '#4a2c14' : '#5d3a17'; g.fillRect(14,22,4,10);
@@ -2146,6 +2215,62 @@ function treeTile(v) {
 }
 const treeA = treeTile(0), treeB = treeTile(1);
 const treeBlossom = treeTile(2), treeTallPine = treeTile(3);
+const treeAncient = treeTile(4), treeBirch = treeTile(5);   // VISUAL-PASS-FOREST
+// VISUAL-PASS-FOREST: forest-floor overlays — all transparent, drawn on
+// walkable grass tiles only (decor; collision constants untouched).
+const forestLightA = px(TILE,TILE,(g)=>{ g.clearRect(0,0,TILE,TILE);
+  const R = srand(0xf02e);
+  g.fillStyle = 'rgba(255,242,196,0.09)';                       // dappled shafts, slope \
+  for (let k=0;k<3;k++) for (let y=0;y<32;y+=2) g.fillRect(Math.round(4+k*10+y*0.35), y, 5, 2);
+  g.fillStyle = 'rgba(255,250,225,0.15)';
+  for (let i=0;i<10;i++) g.fillRect(2+R(28), 2+R(28), 2, 2);    // bright flecks
+});
+const forestLightB = px(TILE,TILE,(g)=>{ g.clearRect(0,0,TILE,TILE);
+  const R = srand(0xf02f);
+  g.fillStyle = 'rgba(255,242,196,0.09)';                       // dappled shafts, slope /
+  for (let k=0;k<3;k++) for (let y=0;y<32;y+=2) g.fillRect(Math.round(24-k*10-y*0.35), y, 5, 2);
+  g.fillStyle = 'rgba(255,250,225,0.15)';
+  for (let i=0;i<10;i++) g.fillRect(2+R(28), 2+R(28), 2, 2);
+});
+const forestLitter = px(TILE,TILE,(g)=>{ g.clearRect(0,0,TILE,TILE);
+  const R = srand(0x11fe), S = SEASON_BLOOMS.spring;
+  g.fillStyle = '#2c5c26';
+  for (let i=0;i<12;i++) g.fillRect(R(30), R(30), 3, 2);        // fallen leaves
+  g.fillStyle = '#3f6b2a';
+  for (let i=0;i<8;i++) g.fillRect(R(30), R(30), 2, 2);
+  for (let i=0;i<3;i++) {                                       // tiny petals
+    const x=3+R(26), y=3+R(26);
+    g.fillStyle = S.blooms[R(S.blooms.length)]; g.fillRect(x, y, 2, 2);
+    g.fillStyle = S.center; g.fillRect(x, y, 1, 1);
+  }
+});
+const forestRock = px(TILE,TILE,(g)=>{ g.clearRect(0,0,TILE,TILE);
+  g.fillStyle = 'rgba(0,0,0,.15)'; g.fillRect(6,24,22,4);       // ground shadow
+  g.fillStyle = '#9a9aa5'; g.fillRect(7,16,10,9);              // stone one
+  g.fillStyle = '#b5b5c0'; g.fillRect(7,16,10,2);
+  g.fillStyle = '#7c7c88'; g.fillRect(7,22,10,3);
+  g.fillStyle = '#8a8a92'; g.fillRect(19,19,8,7);              // stone two
+  g.fillStyle = '#a8a8b2'; g.fillRect(19,19,8,2);
+  g.fillStyle = '#6e6e78'; g.fillRect(19,24,8,2);
+  g.fillStyle = '#4a8f3c'; g.fillRect(7,24,10,2); g.fillRect(19,25,8,2);  // moss
+  g.fillStyle = '#6ab04c'; g.fillRect(9,24,3,1); g.fillRect(21,25,3,1);
+});
+const forestShroom = px(TILE,TILE,(g)=>{ g.clearRect(0,0,TILE,TILE);
+  const R = srand(0x5b00);
+  g.fillStyle = '#3a7230'; g.fillRect(4,22,24,7);               // mossy patch
+  g.fillStyle = '#4a8f3c';
+  for (let i=0;i<10;i++) g.fillRect(4+R(24), 22+R(7), 2, 1);
+  g.fillStyle = '#e8dcc0'; g.fillRect(10,16,4,8);               // mushroom one
+  g.fillStyle = '#c94a4a'; g.fillRect(7,11,10,6);               // red cap
+  g.fillStyle = '#e87a7a'; g.fillRect(7,11,10,2);
+  g.fillStyle = '#ffffff'; g.fillRect(9,13,2,2); g.fillRect(13,15,2,2);
+  g.fillStyle = '#d8cba8'; g.fillRect(21,19,3,6);               // mushroom two
+  g.fillStyle = '#c94a4a'; g.fillRect(19,15,7,5);
+  g.fillStyle = '#e87a7a'; g.fillRect(19,15,7,1);
+  g.fillStyle = '#ffffff'; g.fillRect(21,16,2,2);
+  g.fillStyle = '#5da244';                                      // grass blades
+  for (let i=0;i<6;i++) g.fillRect(4+R(24), 20+R(4), 1, 3);
+});
 const flowerTile = px(TILE,TILE,(g)=>{ g.clearRect(0,0,TILE,TILE);
   const S = SEASON_BLOOMS.spring, R = srand(0xf10e2);
   for(let i=0;i<5;i++){ const x=4+R(22),y=8+R(16); g.fillStyle=S.leaf; g.fillRect(x+1,y+3,2,5);
@@ -2753,18 +2878,31 @@ const doorMat = px(TILE,TILE,(g)=>{
 });
 // Ruin pillar (Batch 2): broken capital, carved glowing band, moss
 const pillarTile = px(TILE,TILE,(g)=>{ g.clearRect(0,0,TILE,TILE);
-  g.fillStyle = '#9a9aa5'; g.fillRect(10,8,12,20);
-  g.fillStyle = '#7c7c88'; g.fillRect(10,8,4,20);
-  g.fillStyle = '#b5b5c0'; g.fillRect(18,8,4,20);
-  g.fillStyle = '#a8a8b2'; g.fillRect(8,4,14,5);
+  // VISUAL-PASS-RUINS: weathered old column — tonal stone, carved band,
+  // deep moss, a hanging vine, flowers in the base cracks (board DISCOVER)
+  const R = srand(0x5011);
+  g.fillStyle = '#9a9aa5'; g.fillRect(10,8,12,20);                  // shaft
+  g.fillStyle = '#7c7c88'; g.fillRect(10,8,4,20);                   // left shade
+  g.fillStyle = '#b5b5c0'; g.fillRect(18,8,4,20);                   // right light
+  g.fillStyle = '#8a8a92';
+  for (let i=0;i<8;i++) g.fillRect(10+R(12), 9+R(18), 2, 1);        // weathering pits
+  g.fillStyle = '#5a5a62'; g.fillRect(16,18,1,8); g.fillRect(12,10,3,1);  // cracks
+  g.fillStyle = '#6e6e78'; g.fillRect(10,14,12,3);                  // carved band
+  g.fillStyle = '#ffd76e'; g.fillRect(10,14,12,1);                  // sleeping gold
+  g.fillStyle = '#a8a8b2'; g.fillRect(8,4,14,5);                    // capital
   g.fillStyle = '#c9c9d4'; g.fillRect(8,4,14,1);
-  g.fillStyle = '#8a8a92'; g.fillRect(10,14,12,3);
-  g.fillStyle = '#ffd76e'; g.fillRect(10,14,12,1);
-  g.fillStyle = '#5a5a62'; g.fillRect(16,18,1,8); g.fillRect(12,10,3,1);
-  g.fillStyle = '#4a8f3c'; g.fillRect(10,24,12,4); g.fillRect(10,8,3,5);
-  g.fillStyle = '#6ab04c'; g.fillRect(11,25,3,2); g.fillRect(19,9,2,3);
-  g.fillStyle = '#7c7c88'; g.fillRect(8,28,16,4);
+  g.fillStyle = '#7c7c88'; g.fillRect(8,7,14,2);
+  g.fillStyle = '#4a8f3c'; g.fillRect(8,4,14,2);                    // mossy crown
+  g.fillStyle = '#6ab04c'; g.fillRect(9,4,4,1); g.fillRect(16,5,3,1);
+  g.fillStyle = '#3a7230'; g.fillRect(21,6,2,10);                   // hanging vine
+  g.fillStyle = '#4a8f3c'; g.fillRect(21,9,4,1); g.fillRect(21,13,3,1);
+  g.fillStyle = '#f0a0c0'; g.fillRect(21,11,2,2);                   // vine blossom
+  g.fillStyle = '#7c7c88'; g.fillRect(8,28,16,4);                   // base
   g.fillStyle = '#a8a8b2'; g.fillRect(8,28,16,1);
+  g.fillStyle = '#4a8f3c'; g.fillRect(8,30,16,2); g.fillRect(10,24,12,4);  // moss claims
+  g.fillStyle = '#6ab04c'; g.fillRect(11,25,3,2); g.fillRect(19,9,2,3); g.fillRect(9,30,4,1);
+  g.fillStyle = '#ff9ec4'; g.fillRect(8,27,2,2);                    // flowers in cracks
+  g.fillStyle = '#fff0f6'; g.fillRect(8,27,1,1);
 });
 // ---- Batch 2 NEW (defined, not placed — the layout batch places them) ----
 // Waterfall: white-blue cascade with foam over mossy rocks (32x64)
@@ -2800,18 +2938,23 @@ const waterfallTile = px(32,64,(g)=>{
 // Ruin gateway: mossy stone arch with dark opening, broken crown (64x64)
 const ruinArch = px(64,64,(g)=>{
   const P = BOARD_PALETTE;
+  const R = srand(0xa2c4);
   g.clearRect(0,0,64,64);
   for (const px0 of [6,42]){                                    // piers
     g.fillStyle = '#9a9aa5'; g.fillRect(px0,20,16,44);
     g.fillStyle = '#7c7c88'; g.fillRect(px0,20,4,44);
     g.fillStyle = '#b5b5c0'; g.fillRect(px0+12,20,4,44);
     g.fillStyle = '#c9c9d4'; g.fillRect(px0,20,16,2);
-    g.fillStyle = '#6e6e78'; g.fillRect(px0+3,30,10,2);
+    g.fillStyle = '#8a8a92';
+    for (let i=0;i<7;i++) g.fillRect(px0+R(16), 22+R(38), 2, 1);   // weathering pits
+    g.fillStyle = '#6e6e78'; g.fillRect(px0+3,30,10,2);            // carved band
     g.fillStyle = '#ffd76e'; g.fillRect(px0+3,30,10,1);
-    g.fillStyle = '#6e6e78'; g.fillRect(px0+7,40,2,16);
+    g.fillStyle = '#6e6e78'; g.fillRect(px0+7,40,2,16);            // carved grooves
     g.fillStyle = '#ffca55'; g.fillRect(px0+7,40,1,16);
+    g.fillStyle = '#5a5a62'; g.fillRect(px0+11,46,1,10);           // age cracks
     g.fillStyle = '#4a8f3c'; g.fillRect(px0,56,16,8); g.fillRect(px0,20,5,8);
     g.fillStyle = '#6ab04c'; g.fillRect(px0+2,58,5,3); g.fillRect(px0+9,22,4,4);
+    g.fillStyle = '#3a7230'; g.fillRect(px0+1,60,4,3);
   }
   g.fillStyle = '#a8a8b2'; g.beginPath(); g.arc(32,30,20,0,7); g.fill();   // arch band
   g.fillStyle = '#8a8a92';                                                 // voussoir seams
@@ -2819,23 +2962,30 @@ const ruinArch = px(64,64,(g)=>{
     g.fillRect(Math.round(32+16*Math.cos(a)), Math.round(30+16*Math.sin(a)), 2, 2); }
   g.fillStyle = '#c9c9d4'; g.fillRect(29,8,6,9);                // keystone
   g.fillStyle = '#8a8a92'; g.fillRect(29,8,6,1); g.fillRect(29,16,6,1);
+  g.fillStyle = '#4a8f3c'; g.fillRect(24,10,5,3); g.fillRect(36,11,4,3);  // moss on the band
+  g.fillStyle = '#6ab04c'; g.fillRect(25,10,2,2); g.fillRect(37,11,2,1);
   g.fillStyle = P.uiNavy; g.beginPath(); g.arc(32,32,13,0,7); g.fill();    // dark opening
   g.fillStyle = '#26304f'; g.beginPath(); g.arc(32,34,9,0,7); g.fill();
+  g.fillStyle = '#1a2340'; g.beginPath(); g.arc(32,36,5,0,7); g.fill();    // deep recess
   g.fillStyle = 'rgba(160,200,255,.25)';
   g.fillRect(28,26,2,8); g.fillRect(34,30,2,6);
   g.clearRect(16,10,8,7); g.clearRect(41,7,9,8); g.clearRect(27,4,5,5);    // broken crown
   g.fillStyle = '#8a8a92'; g.fillRect(8,58,9,6); g.fillRect(48,60,8,4);     // rubble
   g.fillStyle = '#a8a8b2'; g.fillRect(8,58,9,2); g.fillRect(48,60,8,1);
   g.fillStyle = '#4a8f3c'; g.fillRect(9,62,4,2); g.fillRect(50,60,3,2);
+  g.fillStyle = '#ff9ec4'; g.fillRect(9,56,2,2); g.fillRect(52,58,2,2);     // flowers in rubble
+  g.fillStyle = '#fff0f6'; g.fillRect(9,56,1,1); g.fillRect(52,58,1,1);
   // BATCH7: hanging vines claim the arch, with a few pink blossoms
+  // VISUAL-PASS-RUINS: longer, lusher vines — the ruin is being reclaimed
   g.fillStyle = '#3a7230';
-  for (const vx of [14,24,40,50]) { const vl = 10+((vx*7)%12); g.fillRect(vx,12,3,vl); }
+  for (const vx of [12,20,26,38,44,52]) { const vl = 12+((vx*7)%14); g.fillRect(vx,10,3,vl); }
   g.fillStyle = '#4a8f3c';
-  for (const vx of [14,24,40,50]) { const vl = 10+((vx*7)%12); g.fillRect(vx+1,14,vl-4,2); g.fillRect(vx,12+vl-3,3,2); }
+  for (const vx of [12,20,26,38,44,52]) { const vl = 12+((vx*7)%14);
+    g.fillRect(vx+1,12,vl-5,2); g.fillRect(vx,10+vl-3,3,2); g.fillRect(vx-1,16,2,2); }
   g.fillStyle = '#f0a0c0';
-  for (const bp of [[15,20],[25,16],[41,22],[51,18]]) g.fillRect(bp[0],bp[1],3,3);
+  for (const bp of [[13,18],[21,22],[27,16],[39,20],[45,24],[53,17]]) g.fillRect(bp[0],bp[1],3,3);
   g.fillStyle = '#ffd4e4';
-  for (const bp of [[15,20],[25,16],[41,22],[51,18]]) g.fillRect(bp[0]+1,bp[1]+1,1,1);
+  for (const bp of [[13,18],[21,22],[27,16],[39,20],[45,24],[53,17]]) g.fillRect(bp[0]+1,bp[1]+1,1,1);
 });
 // BATCH4: board-style interiors — warm plank floor, wainscot walls, patchwork-quilt bed,
 // brick fireplace, paneled wardrobe, table + chair, pray-nook shelf, braided rugs,
@@ -3261,6 +3411,31 @@ const FARM_EDGE = new Map();
       FARM_EDGE.set(tx + ',' + ty, true);
     }
 })();
+// VISUAL-PASS-FOREST: forest-floor dressing layout — computed once at load.
+// Only walkable grass tiles inside the forest bands (no trees, waterfalls,
+// arch, pillars, paths, or water); every tile stays walkable, collision
+// constants untouched. Deterministic via hash2: identical every page load.
+const FOREST_LIGHT = new Map(), FOREST_LITTER = new Map(),
+      FOREST_ROCK = new Map(), FOREST_SHROOM = new Map();
+(function () {
+  for (let ty = 0; ty <= 24; ty++) for (let tx = 0; tx <= 39; tx++) {
+    const inBand = tx <= 4 || tx >= 35 || (ty <= 2 && tx >= 5 && tx <= 34);
+    if (!inBand) continue;
+    if (baseTile(tx, ty) !== 'grass') continue;
+    if (isTree(tx, ty)) continue;
+    let skip = false;
+    for (const w of WATERFALLS) if (tx === w.tx && (ty === w.ty || ty === w.ty + 1)) { skip = true; break; }
+    if (skip) continue;
+    if (tx >= RUIN_ARCH.tx && tx <= RUIN_ARCH.tx + 1 && ty >= RUIN_ARCH.ty && ty <= RUIN_ARCH.ty + 1) continue;
+    if ((tx === 30 && ty === 4) || (tx === 33 && ty === 4)) continue;   // ruin pillars
+    const h = hash2(tx + 100, ty + 200);
+    if (h < 0.20) FOREST_LIGHT.set(tx + ',' + ty, hash2(tx, ty) < 0.5 ? 0 : 1);
+    else if (h < 0.46) FOREST_LITTER.set(tx + ',' + ty, true);
+    else if (h < 0.53) FOREST_ROCK.set(tx + ',' + ty, true);
+    else if (h < 0.585 && (isTree(tx-1,ty) || isTree(tx+1,ty) || isTree(tx,ty-1) || isTree(tx,ty+1)))
+      FOREST_SHROOM.set(tx + ',' + ty, true);                          // mushrooms nestle by trees
+  }
+})();
 
 function baseTile(tx, ty) {
   // BATCH6a: river along the bottom rows (board composition), stone bridge crossing
@@ -3371,6 +3546,16 @@ function drawWorld(g, now) {
         drawGlow(g, x+16, y + (ty===20 ? 4 : 28), 24, 'rgba(255,205,110,A)', now, tx*7+ty);
     }
     else { const gh = hash2(tx, ty); g.drawImage(gh < 0.42 ? grassA : gh < 0.72 ? grassB : grassC, x, y); }
+    // VISUAL-PASS-FOREST: dappled light shafts, leaf litter, rocks, mushrooms
+    // on walkable forest-floor grass — pure decor overlays, collision untouched
+    if (b === 'grass') {
+      const fk = tx + ',' + ty;
+      const fl = FOREST_LIGHT.get(fk);
+      if (fl !== undefined) g.drawImage(fl ? forestLightB : forestLightA, x, y);
+      if (FOREST_LITTER.has(fk)) g.drawImage(forestLitter, x, y);
+      if (FOREST_ROCK.has(fk)) g.drawImage(forestRock, x, y);
+      if (FOREST_SHROOM.has(fk)) g.drawImage(forestShroom, x, y);
+    }
     // garden: ruin-open reveal, fuller bloom after the day rhythm completes
     if (tx>=17 && tx<=22 && ty>=13 && ty<=17 && !(tx===FOUNTAIN.tx&&ty===FOUNTAIN.ty)) {
       if (gardenBloomed) g.drawImage(bloomTile, x, y);
@@ -3394,7 +3579,14 @@ function drawWorld(g, now) {
       // BATCH7: tall pines in the forest bands, pink blossoms at the lane clusters
       let tv = ((tx+ty)%2===0) ? treeA : treeB;
       if (isBlossomSpot(tx,ty)) tv = treeBlossom;
-      else if (tx <= 4 || tx >= 35 || (ty <= 2 && tx >= 5 && tx <= 34)) tv = treeTallPine;
+      else if (tx <= 4 || tx >= 35 || (ty <= 2 && tx >= 5 && tx <= 34)) {
+        // VISUAL-PASS-FOREST: board EXPLORE forest — tall pines, ancient
+        // broadleaf, slim birch, scattered pink blossoms (deterministic mix,
+        // isTree()/collision untouched)
+        const fh = hash2(tx, ty);
+        tv = fh < 0.50 ? treeTallPine : fh < 0.72 ? treeAncient
+           : fh < 0.84 ? treeBirch : fh < 0.93 ? treeBlossom : treeB;
+      }
       g.drawImage(tv, x, y-8);
     }
     // church building — VISUAL-PASS-CHURCH: warm sandstone + timber exterior
@@ -3481,10 +3673,15 @@ function drawWorld(g, now) {
     // ruin pillars flanking the arch (waterfalls + arch draw after the tile loop)
     if ((tx===30 && ty===4) || (tx===33 && ty===4)) g.drawImage(pillarTile, x, y);
     for (const s of STONES) if (s.tx===tx && s.ty===ty) {
-      g.drawImage(ruinOpen ? stoneGlow : stoneTile, x, y);
+      // VISUAL-PASS-RUINS: state-addressable pad — 'dormant' today, 'lit'
+      // while the ruin stands open; trigger tiles, prompts, verbs unchanged
+      const pad = paintRuinPad(ruinOpen ? 'lit' : 'dormant');
+      g.drawImage(pad.stone, x, y);
       if (!ruinOpen) {
         g.fillStyle = `rgba(160,220,255,${0.25+0.2*Math.sin(now/400)})`;
         g.fillRect(x+6, y+4, 20, 26);
+      } else {
+        drawGlow(g, x+16, y+16, 26, 'rgba(255,230,140,A)', now, s.tx*3, pad.halo);
       }
     }
   }
@@ -3507,8 +3704,20 @@ function drawWorld(g, now) {
         g.fillRect(wx+8+((now/90)%14), 54, 3, 3);
         g.fillRect(wx+20-((now/110)%10), 58, 2, 2);
       }
+      if (w.tx === 36) { // VISUAL-PASS-RUINS: soft mist where the NE fall meets
+        // the forest floor, like the board's DISCOVER panel
+        const ma = 0.10 + 0.06*Math.sin(now/600);
+        g.fillStyle = 'rgba(220,240,255,' + ma.toFixed(3) + ')';
+        g.fillRect(wx+6, 50, 20, 9); g.fillRect(wx+10, 46, 12, 5);
+        drawGlow(g, wx+16, 52, 22, 'rgba(160,205,255,A)', now, 34, 0.25);
+      }
     }
     g.drawImage(ruinArch, RUIN_ARCH.tx*TILE, RUIN_ARCH.ty*TILE);
+    // VISUAL-PASS-RUINS: the arch's dark opening breathes a soft mysterious
+    // light — cool and quiet, never neon; stronger after dusk
+    drawGlow(g, RUIN_ARCH.tx*TILE+32, RUIN_ARCH.ty*TILE+32, 30, 'rgba(150,200,255,A)', now, 21, night ? 0.5 : 0.18);
+    // VISUAL-PASS-FOREST: pollen by day, fireflies by night over the forest
+    drawForestPollen(g, now, night);
     // BATCH7: tall landmark steeple over the church roof (the board's tall church)
     g.drawImage(churchSteeple, 29*TILE, 6*TILE);
     // VISUAL-PASS-CHURCH: belfry lamplight glows warm at night
@@ -3670,6 +3879,31 @@ function drawDust(g, cx, cy, now) {
     const dy = cy + d.oy - ((now/1700*d.sp + d.ph) % 22);
     const a = 0.10 + 0.10*Math.abs(Math.sin(now/800 + d.ph));
     g.fillStyle = 'rgba(255,240,200,' + a.toFixed(3) + ')';
+    g.fillRect(dx, dy, 2, 2);
+  }
+}
+// VISUAL-PASS-FOREST: pollen motes by day, fireflies by night — drifting
+// over the forest bands (ambient, world space). Motes are sampled onto
+// walkable forest-floor grass so they never hover over water or walls.
+// Peaceful and subtle: the forest feels alive, never frightening.
+const forestPollen = [];
+for (let i = 0; i < 30; i++) {
+  let tx = 0, ty = 0, ok = false;
+  for (let t = 0; t < 24 && !ok; t++) {
+    if (i % 3 === 0) { tx = Math.floor(Math.random()*6); ty = Math.floor(Math.random()*20); }          // west band
+    else if (i % 3 === 1) { tx = 34 + Math.floor(Math.random()*6); ty = Math.floor(Math.random()*16); } // east band
+    else { tx = Math.floor(Math.random()*40); ty = Math.floor(Math.random()*7); }                      // north band
+    ok = baseTile(tx, ty) === 'grass' && !isTree(tx, ty);
+  }
+  forestPollen.push({ x: tx*TILE + 16, y: ty*TILE + 10, ph: Math.random()*7, sp: 0.4 + Math.random()*0.7 });
+}
+function drawForestPollen(g, now, night) {
+  for (const p of forestPollen) {
+    const dx = p.x + Math.sin(now/1500*p.sp + p.ph)*8;
+    const dy = p.y + Math.sin(now/2100*p.sp + p.ph*2)*5 - ((now/3200*p.sp + p.ph) % 26);
+    const tw = 0.10 + 0.14*Math.abs(Math.sin(now/700*p.sp + p.ph));
+    g.fillStyle = night ? 'rgba(190,255,170,' + tw.toFixed(3) + ')'   // fireflies
+                        : 'rgba(255,248,215,' + tw.toFixed(3) + ')';  // pollen
     g.fillRect(dx, dy, 2, 2);
   }
 }

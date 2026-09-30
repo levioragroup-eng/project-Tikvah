@@ -440,6 +440,47 @@ const fhChecks = [
 ];
 for (const [label, needle] of fhChecks) ok('farmhome contains ' + label, pageHtml.includes(needle));
 
+// ---------- Visual pass: forest + ruins toward the design board (static page) ----------
+console.log('visual-pass forest+ruins (static page):');
+const frChecks = [
+  ['forest marker', 'VISUAL-PASS-FOREST'],
+  ['ruins marker', 'VISUAL-PASS-RUINS'],
+  ['ancient tree variant', 'treeAncient = treeTile(4)'],
+  ['birch tree variant', 'treeBirch = treeTile(5)'],
+  ['ancient canopy light shafts', 'light filtering through'],
+  ['forest mix deterministic', 'const fh = hash2(tx, ty)'],
+  ['forest light painter A', 'const forestLightA'],
+  ['forest light painter B', 'const forestLightB'],
+  ['forest litter painter', 'const forestLitter'],
+  ['forest rock painter', 'const forestRock'],
+  ['forest mushroom painter', 'const forestShroom'],
+  ['forest light layout', 'const FOREST_LIGHT = new Map()'],
+  ['forest litter layout', 'FOREST_LITTER = new Map()'],
+  ['forest floor overlays drawn', 'dappled light shafts, leaf litter, rocks, mushrooms'],
+  ['mushrooms by trees', 'mushrooms nestle by trees'],
+  ['forest pollen motes', 'const forestPollen'],
+  ['forest pollen drawn', 'drawForestPollen(g, now, night)'],
+  ['fireflies at night', '// fireflies'],
+  ['stone painter kept', 'const stoneTile'],
+  ['stoneGlow behavior kept', "g.fillStyle='rgba(255,230,120,0.55)'"],
+  ['restored stone painter', 'const stoneRestored'],
+  ['state-addressable stone', 'function paintRuinStone(state)'],
+  ['state-addressable pad', 'function paintRuinPad(state)'],
+  ['dormant default', "// dormant = as today"],
+  ['pad draws via painter', "paintRuinPad(ruinOpen ? 'lit' : 'dormant')"],
+  ['pillar painter kept', 'const pillarTile'],
+  ['pillar weathered', 'hanging vine'],
+  ['arch painter kept', 'const ruinArch = px(64,64'],
+  ['arch vines kept', '// BATCH7: hanging vines claim the arch'],
+  ['arch carved detail', 'carved grooves'],
+  ['arch mysterious light', 'soft mysterious'],
+  ['arch glow drawn', "RUIN_ARCH.tx*TILE+32, RUIN_ARCH.ty*TILE+32"],
+  ['NE waterfall mist', 'w.tx === 36'],
+  ['waterfall layout kept', 'const WATERFALLS = [{tx:3,ty:0},{tx:36,ty:0}]'],
+  ['ruin arch layout kept', 'tx:31, ty:3'],
+];
+for (const [label, needle] of frChecks) ok('forestruins contains ' + label, pageHtml.includes(needle));
+
 // ---------- client helper ----------
 class C {
   constructor(name) { this.name = name; this.msgs = []; this.state = { players: new Map(), farm: [], ruinOpen: false, you: null, code: null }; }
