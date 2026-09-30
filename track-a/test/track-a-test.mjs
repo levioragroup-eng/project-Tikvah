@@ -94,6 +94,26 @@ const pageChecks = [
 ];
 for (const [label, needle] of pageChecks) ok('page contains ' + label, pageHtml.includes(needle));
 
+// ---------- Visual pass: title + day/night + UI + animation + mobile + perf ----------
+console.log('visual-pass title/day-night (static page):');
+const vpChecks = [
+  ['title living overlay canvas', 'id="titleFx"'],
+  ['titleFx start hook', 'window.startTitleFx'],
+  ['title growline brand line', 'A PLACE TO GROW, A STORY TO LIVE.'],
+  ['title tagline kept', 'A World To Belong To'],
+  ['title hope line', 'Hope Lives Here.'],
+  ['title activity vocabulary', 'boardwords'],
+  ['title pass marker', 'VISUAL-PASS-TITLE'],
+  ['pink/violet sunset tint', 'g: 98,  b: 120'],
+  ['night readability floor', 'a: 0.38'],
+  ['dusk wash factor', 'duskF'],
+  ['day lift factor', 'dayF'],
+  ['moonlight wash', 'moonlight'],
+  ['cached atmo gradients', 'buildAtmoGrads'],
+  ['forest butterflies', 'two butterflies drifting over the forest'],
+];
+for (const [label, needle] of vpChecks) ok('page contains ' + label, pageHtml.includes(needle));
+
 // ---------- Batch 1: board-palette art foundation (static page) ----------
 console.log('batch1 art (static page):');
 const artChecks = [
