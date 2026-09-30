@@ -396,6 +396,50 @@ const beautyChecks = [
 ];
 for (const [label, needle] of beautyChecks) ok('page contains ' + label, pageHtml.includes(needle));
 
+// ---------- Visual pass: farm + home toward the design board (static page) ----------
+console.log('visual-pass farm+home (static page):');
+const fhChecks = [
+  ['farmhome marker', 'VISUAL-PASS-FARMHOME'],
+  ['farm palette soils', "soilRich:'#3a2412'"],
+  ['wet soil painter', 'const wetSoilTile'],
+  ['wet soil sheen', 'damp sheen'],
+  ['droplet sparkles', 'droplet sparkles'],
+  ['soil painter kept', 'const soilTile'],
+  ['crop painters kept', 'const cropTiles'],
+  ['seedling rows stage', 'seedling rows'],
+  ['lush sprouts stage', 'lush sprouts'],
+  ['mature wheat stage', 'mature golden wheat'],
+  ['watered stages use wet soil', 'g.drawImage(wetSoilTile,0,0)'],
+  ['fence painter kept', 'const fenceTile'],
+  ['fence stone feet', 'stone feet'],
+  ['farm border blooms layout', 'const FARM_BORDER_BLOOMS'],
+  ['farm border bloom painter', 'function farmBloomTile(variant)'],
+  ['watering can prop', 'const wateringCanTile'],
+  ['farm grass edge map', 'const FARM_EDGE = new Map()'],
+  ['home chimney overlay', 'const houseChimney'],
+  ['chimney on roof', 'g.drawImage(houseChimney, x, y)'],
+  ['home roof painter kept', 'const houseRoof'],
+  ['home wall painter kept', 'const houseWall'],
+  ['home wall shutters', 'shutters'],
+  ['home wall stone foundation', 'stone foundation'],
+  ['home garden beds layout', 'const HOME_GARDEN_BEDS'],
+  ['home garden bed painter', 'function homeBedTile(variant)'],
+  ['home garden plants', 'const HOME_GARDEN_PLANTS'],
+  ['bed placed', 'g.drawImage(hb === 0 ? homeBedA : homeBedB, x, y)'],
+  ['front windows glow at night', 'front windows glow warm at night'],
+  ['plant pot painters', 'function plantPotTile(variant)'],
+  ['kitchen counter painter', 'const kitchenCounterTile'],
+  ['storage crate painter', 'const crateTile'],
+  ['bookshelf painter', 'const bookcaseTile'],
+  ['plant placed', 'g.drawImage(plantPotTall, x, y)'],
+  ['kitchen placed', 'g.drawImage(kitchenCounterTile, x, y)'],
+  ['crate placed', 'g.drawImage(crateTile, x, y)'],
+  ['bookshelf placed', 'g.drawImage(bookcaseTile, x, y)'],
+  ['wood floor painter kept', 'warm planks'],
+  ['bed painter kept', 'patchwork quilt'],
+];
+for (const [label, needle] of fhChecks) ok('farmhome contains ' + label, pageHtml.includes(needle));
+
 // ---------- client helper ----------
 class C {
   constructor(name) { this.name = name; this.msgs = []; this.state = { players: new Map(), farm: [], ruinOpen: false, you: null, code: null }; }

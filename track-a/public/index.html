@@ -1532,6 +1532,14 @@ const BOARD_PALETTE = {
   canopyDeep:'#2f6b2f',
   roofTerracotta:'#b06030', spireBlue:'#5a7a9a',
   uiNavy:'#1a2340', gold:'#d4a940',
+  // VISUAL-PASS-FARMHOME: farm + home painters read their colors here
+  soilRich:'#3a2412', soilDark:'#241608', soilRidge:'#5f3d22', soilWet:'#1f130a',
+  cropLeaf:'#4a8f3c', cropDeep:'#2f6b2f', cropLight:'#7cc465',
+  wheat:'#e8b93c', wheatDeep:'#b57e22', wheatLight:'#ffd76e',
+  fenceWood:'#a06a35', fenceDark:'#6b4423', fenceLight:'#d69a58',
+  plaster:'#f2e4c4', plasterDark:'#dfcca3', trimDark:'#5d3a17',
+  roofRidge:'#d08a4a', roofShadow:'#7a3f1f',
+  droplet:'#cfeeff',
 };
 // VISUAL-PASS-TOWN: plaza + world base tiles toward the design board — 2026-09-30
 // Deterministic per-tile hash (0..1): stable variant picks, no random flicker.
@@ -1954,45 +1962,79 @@ const dockTile = px(TILE,TILE,(g)=>{
   g.fillRect(20,22,8,3); g.fillRect(21,21,6,1);
   g.fillStyle='#a87f4e'; g.fillRect(20,24,8,1);
 });
+// VISUAL-PASS-FARMHOME: rich dark soil — deep furrow shadows, warm ridges,
+// clods and pebbles; the board's farm reads dark and fertile.
 const soilTile = px(TILE,TILE,(g)=>{
-  g.fillStyle = '#4a2f18'; g.fillRect(0,0,TILE,TILE);      // darker rich soil
-  g.fillStyle = '#38220f';
-  for (let y=4;y<TILE;y+=8) g.fillRect(2,y,TILE-4,3);      // furrow shadows
-  g.fillStyle = '#5f3d22';
-  for (let y=0;y<TILE;y+=8) g.fillRect(2,y,TILE-4,1);      // ridge highlights
-  g.fillStyle = '#6b4a2a';
-  for (let i=0;i<5;i++) g.fillRect(rnd(TILE), rnd(TILE), 2, 2); // clods
+  const P = BOARD_PALETTE, R = srand(0x5011);
+  g.fillStyle = P.soilRich; g.fillRect(0,0,TILE,TILE);      // rich dark soil
+  g.fillStyle = P.soilDark;
+  for (let y=5;y<TILE;y+=8) g.fillRect(2,y,TILE-4,4);       // furrow shadows
+  g.fillStyle = 'rgba(0,0,0,.35)';
+  for (let y=7;y<TILE;y+=8) g.fillRect(2,y,TILE-4,1);       // furrow depth line
+  g.fillStyle = P.soilRidge;
+  for (let y=1;y<TILE;y+=8) g.fillRect(2,y,TILE-4,2);       // ridge highlights
+  g.fillStyle = '#6b4a2a';                                   // clods
+  for (let i=0;i<7;i++) g.fillRect(R(TILE), R(TILE), 2, 2);
+  g.fillStyle = '#7d5a34';
+  for (let i=0;i<4;i++) g.fillRect(R(TILE), R(TILE), 2, 1);
+  g.fillStyle = '#8a7154';                                   // small pebbles
+  for (let i=0;i<3;i++) { const x=R(TILE-2), y=R(TILE-2); g.fillRect(x,y,2,1); g.fillStyle='#a8916e'; g.fillRect(x,y,1,1); g.fillStyle='#8a7154'; }
+  g.fillStyle = 'rgba(120,80,40,.35)';                       // faint worm casts
+  for (let i=0;i<3;i++) g.fillRect(R(TILE-4), R(TILE-2), 4, 1);
+});
+// VISUAL-PASS-FARMHOME: wet soil — tiles that have been watered (stages
+// 'growing'/'ready' are only reached through watering) read darker with a
+// damp sheen and tiny droplet sparkles.
+const wetSoilTile = px(TILE,TILE,(g)=>{
+  const P = BOARD_PALETTE, R = srand(0x50112);
+  g.drawImage(soilTile,0,0);
+  g.fillStyle = P.soilWet; g.globalAlpha = .45; g.fillRect(0,0,TILE,TILE); g.globalAlpha = 1;
+  g.fillStyle = 'rgba(207,238,255,.16)';                     // damp sheen
+  for (let i=0;i<8;i++) g.fillRect(R(TILE), R(TILE-6), 3, 2);
+  g.fillStyle = P.droplet;                                   // droplet sparkles
+  for (let i=0;i<6;i++) { const x=2+R(TILE-4), y=2+R(TILE-6);
+    g.fillRect(x,y,2,2); g.fillStyle='#ffffff'; g.fillRect(x,y,1,1); g.fillStyle=P.droplet; }
 });
 const cropTiles = {
-  planted: px(TILE,TILE,(g)=>{
+  planted: px(TILE,TILE,(g)=>{                               // seedling rows
+    const P = BOARD_PALETTE, R = srand(0x5117);
     g.drawImage(soilTile,0,0);
     for (let row=0; row<3; row++) { const y = 5+row*9;
-      for (let x=3; x<TILE-2; x+=6) {
-        g.fillStyle = '#4a8f3c'; g.fillRect(x,y,2,4);       // sprout
-        g.fillStyle = '#3a7230'; g.fillRect(x-1,y+1,1,1); g.fillRect(x+2,y+1,1,1); // leaf pair
-        g.fillStyle = '#6ab04c'; g.fillRect(x,y,1,1);       // light tip
+      for (let x=3; x<TILE-2; x+=5) {
+        const jx = x + (R(3)-1), jy = y + (R(3)-1);
+        g.fillStyle = P.cropLeaf; g.fillRect(jx,jy,2,4);     // sprout stem
+        g.fillStyle = P.cropDeep; g.fillRect(jx-1,jy+1,1,2); g.fillRect(jx+2,jy+1,1,2); // leaf pair
+        g.fillStyle = P.cropLight; g.fillRect(jx,jy,1,1);   // light tip
       }
     }
   }),
-  growing: px(TILE,TILE,(g)=>{
-    g.drawImage(soilTile,0,0);
+  growing: px(TILE,TILE,(g)=>{                               // lush sprouts
+    const P = BOARD_PALETTE, R = srand(0x51178);
+    g.drawImage(wetSoilTile,0,0);
     for (let row=0; row<3; row++) { const y = 3+row*9;
-      for (let x=4; x<TILE-3; x+=7) {
-        g.fillStyle = '#3a7230'; g.fillRect(x,y+2,2,6);     // stem
-        g.fillStyle = '#6ab04c'; g.fillRect(x-2,y+3,6,2);   // leaves
-        g.fillStyle = '#4a8f3c'; g.fillRect(x-1,y+5,4,2);
-        g.fillStyle = '#7cc465'; g.fillRect(x,y,2,2);       // light tip
+      for (let x=4; x<TILE-3; x+=6) {
+        const jx = x + (R(3)-1), jy = y + (R(3)-1);
+        g.fillStyle = P.cropDeep; g.fillRect(jx,jy+1,2,7);   // stem
+        g.fillStyle = P.cropLeaf; g.fillRect(jx-3,jy+3,7,2);// leaves
+        g.fillStyle = P.cropLeaf; g.fillRect(jx-2,jy+6,6,2);
+        g.fillStyle = P.cropLight; g.fillRect(jx,jy,2,2);   // light tip
+        g.fillStyle = P.cropDeep; g.fillRect(jx-4,jy+4,2,1); g.fillRect(jx+3,jy+2,2,1); // side shoots
       }
     }
   }),
-  ready: px(TILE,TILE,(g)=>{
-    g.drawImage(soilTile,0,0);
+  ready: px(TILE,TILE,(g)=>{                                 // mature golden wheat
+    const P = BOARD_PALETTE, R = srand(0x51179);
+    g.drawImage(wetSoilTile,0,0);
     for (let row=0; row<3; row++) { const y = 2+row*9;
-      for (let x=4; x<TILE-3; x+=7) {
-        g.fillStyle = '#c9922a'; g.fillRect(x+1,y+5,2,6);   // stalk
-        g.fillStyle = '#e8b93c'; g.fillRect(x,y,4,6);       // golden head
-        g.fillStyle = '#ffd76e'; g.fillRect(x,y,1,6);       // light edge
-        g.fillStyle = '#a87a22'; g.fillRect(x+3,y+2,1,4);   // deep edge
+      for (let x=4; x<TILE-3; x+=6) {
+        const jx = x + (R(3)-1), jy = y + (R(3)-1);
+        g.fillStyle = P.wheatDeep; g.fillRect(jx+1,jy+6,2,7);  // stalk
+        g.fillStyle = P.wheat; g.fillRect(jx,jy,4,7);        // golden head
+        g.fillStyle = P.wheatLight; g.fillRect(jx,jy,1,7);   // light edge
+        g.fillStyle = '#a87a22'; g.fillRect(jx+3,jy+2,1,5);  // deep edge
+        g.fillStyle = P.wheatLight;                           // awn tips
+        g.fillRect(jx-1,jy-2,1,2); g.fillRect(jx+4,jy-2,1,2);
+        g.fillStyle = P.cropLeaf; g.fillRect(jx-2,jy+10,2,3); g.fillRect(jx+2,jy+11,2,2); // lower leaves
       }
     }
   }),
@@ -2111,17 +2153,92 @@ const flowerTile = px(TILE,TILE,(g)=>{ g.clearRect(0,0,TILE,TILE);
     g.fillStyle=S.center; g.fillRect(x+1,y+1,1,1); }
 });
 const fenceTile = px(TILE,TILE,(g)=>{ g.clearRect(0,0,TILE,TILE);
-  // warm wooden fence, board style: two rails + posts with caps
-  g.fillStyle='#6b4423'; g.fillRect(2,10,TILE-4,4); g.fillRect(2,19,TILE-4,4);  // rail shadows
-  g.fillStyle='#a06a35'; g.fillRect(2,9,TILE-4,4); g.fillRect(2,18,TILE-4,4);   // rails
-  g.fillStyle='#c98d4e'; g.fillRect(2,9,TILE-4,1); g.fillRect(2,18,TILE-4,1);   // rail tops
-  g.fillStyle='#7a4f28';
-  for (let x=4;x<TILE-4;x+=6){ g.fillRect(x,10,1,3); g.fillRect(x,19,1,3); }    // grain
-  g.fillStyle='#7a4f28'; g.fillRect(4,6,4,22); g.fillRect(TILE-8,6,4,22);       // posts
-  g.fillStyle='#a06a35'; g.fillRect(5,6,2,22); g.fillRect(TILE-7,6,2,22);
-  g.fillStyle='#c98d4e'; g.fillRect(4,4,4,3); g.fillRect(TILE-8,4,4,3);         // post caps
-  g.fillStyle='#5f3d1f'; g.fillRect(4,6,4,1); g.fillRect(TILE-8,6,4,1);         // cap shadow
+  const P = BOARD_PALETTE, R = srand(0xf3ce);
+  // VISUAL-PASS-FARMHOME: warm wooden fence, board style — two rails with
+  // grain, sturdy posts with pointed caps and stone feet.
+  g.fillStyle='#5f3d1f'; g.fillRect(2,23,TILE-4,4);           // rail ground shadow
+  g.fillStyle=P.fenceDark; g.fillRect(2,10,TILE-4,4); g.fillRect(2,19,TILE-4,4);  // rail shadows
+  g.fillStyle=P.fenceWood; g.fillRect(2,9,TILE-4,4); g.fillRect(2,18,TILE-4,4);   // rails
+  g.fillStyle=P.fenceLight; g.fillRect(2,9,TILE-4,1); g.fillRect(2,18,TILE-4,1); // rail tops
+  g.fillStyle='#7a4f28';                                       // rail grain
+  for (let i=0;i<4;i++){ const x=3+R(26); g.fillRect(x,10,2,2); g.fillRect(x+1,19,1,2); }
+  g.fillStyle=P.fenceDark; g.fillRect(4,6,4,22); g.fillRect(TILE-8,6,4,22);       // posts
+  g.fillStyle=P.fenceWood; g.fillRect(5,7,2,21); g.fillRect(TILE-7,7,2,21);
+  g.fillStyle=P.fenceLight; g.fillRect(5,7,1,21); g.fillRect(TILE-7,7,1,21);      // post light edge
+  g.fillStyle='#5f3d1f'; g.fillRect(4,10,1,18); g.fillRect(TILE-8,10,1,18);       // post dark edge
+  g.fillStyle=P.fenceWood; g.fillRect(4,2,4,4); g.fillRect(TILE-8,2,4,4);         // pointed caps
+  g.fillStyle=P.fenceLight; g.fillRect(4,2,4,1); g.fillRect(TILE-8,2,4,1);
+  g.fillRect(5,0,2,2); g.fillRect(TILE-7,0,2,2);
+  g.fillStyle='#8a7f6e'; g.fillRect(3,27,6,3); g.fillRect(TILE-9,27,6,3);         // stone feet
+  g.fillStyle='#b8a888'; g.fillRect(3,27,6,1); g.fillRect(TILE-9,27,6,1);
 });
+// VISUAL-PASS-FARMHOME: flower clusters along the farm's inner borders
+// (transparent overlay on walkable grass — never on plots, fence, or the gate).
+function farmBloomTile(variant) {
+  return px(TILE,TILE,(g)=>{ g.clearRect(0,0,TILE,TILE);
+    const S = SEASON_BLOOMS.spring, R = srand(0x8100 + variant*131);
+    for (let i=0;i<4;i++) {
+      const x = 3+R(23), y = 6+R(18);
+      g.fillStyle = S.leaf; g.fillRect(x+1, y+3, 2, 6);        // stem
+      g.fillStyle = P_farmGreen(R); g.fillRect(x, y+4, 4, 2);  // leaves
+      g.fillStyle = S.blooms[R(S.blooms.length)]; g.fillRect(x-1, y, 5, 5);  // bloom
+      g.fillStyle = S.center; g.fillRect(x+1, y+1, 2, 2);      // heart
+    }
+  });
+}
+function P_farmGreen(R) { return R(2) ? '#3f7a2e' : '#4a8f3c'; }
+const farmBloomA = farmBloomTile(0), farmBloomB = farmBloomTile(1);
+// VISUAL-PASS-FARMHOME: watering can resting by the farm path (decor, walkable).
+const wateringCanTile = px(TILE,TILE,(g)=>{ g.clearRect(0,0,TILE,TILE);
+  g.fillStyle='rgba(0,0,0,.18)'; g.fillRect(9,27,18,3);        // ground shadow
+  g.fillStyle='#5a7a9a'; g.fillRect(10,14,10,12);              // can body
+  g.fillStyle='#7aa2bd'; g.fillRect(10,14,10,2);              // top light
+  g.fillStyle='#3f5a72'; g.fillRect(10,22,10,2);              // bottom shade
+  g.fillStyle='#7aa2bd'; g.fillRect(12,14,3,12);              // body highlight
+  g.fillStyle='#4a657d'; g.fillRect(8,11,14,3);              // lid rim
+  g.fillStyle='#5a7a9a'; g.fillRect(13,9,4,3);               // lid knob base
+  g.fillStyle='#8fb8d4'; g.fillRect(14,8,2,2);  // knob
+  g.fillStyle='#5a7a9a';                                      // spout
+  g.fillRect(20,12,8,3); g.fillRect(26,10,3,5);
+  g.fillStyle='#3f5a72'; g.fillRect(26,14,3,1);               // rose head
+  g.fillStyle='#5a7a9a'; g.fillRect(28,10,2,5);
+  g.fillStyle='#c9d4e8'; g.fillRect(28,10,2,1);
+  g.fillStyle='#6b4423'; g.fillRect(9,15,2,9);                // wooden handle
+  g.fillStyle='#8a5a2b'; g.fillRect(9,15,1,9);
+  g.fillStyle='#cfeeff'; g.fillRect(29,16,1,2);               // spout drip
+});
+// VISUAL-PASS-FARMHOME: natural grass boundary — tufts + wildflowers on the
+// grass ring outside the farm fence (transparent, walkable).
+const farmEdgeTuft = px(TILE,TILE,(g)=>{ g.clearRect(0,0,TILE,TILE);
+  const S = SEASON_BLOOMS.spring, R = srand(0xe94e);
+  g.fillStyle = '#3a7230';
+  for (let i=0;i<7;i++) { const x=R(30), y=R(28); g.fillRect(x,y,1,4); g.fillRect(x+2,y+1,1,3); }
+  g.fillStyle = '#6ab04c';
+  for (let i=0;i<5;i++) { const x=R(30), y=R(28); g.fillRect(x,y,1,3); }
+  for (let i=0;i<2;i++) { const x=4+R(22), y=4+R(22);         // wildflowers
+    g.fillStyle = S.blooms[R(S.blooms.length)]; g.fillRect(x,y,2,2);
+    g.fillStyle = S.center; g.fillRect(x,y,1,1); }
+});
+// VISUAL-PASS-FARMHOME: cottage garden bed — dark soil, low picket edging,
+// season blooms; flanks the home approach (walkable grass, decor only).
+function homeBedTile(variant) {
+  return px(TILE,TILE,(g)=>{ g.clearRect(0,0,TILE,TILE);
+    const P = BOARD_PALETTE, S = SEASON_BLOOMS.spring, R = srand(0x8ed0 + variant*97);
+    g.fillStyle = P.soilRich; g.fillRect(4,8,24,18);          // bed soil
+    g.fillStyle = P.soilDark; g.fillRect(4,22,24,2);
+    g.fillStyle = P.soilRidge; for (let i=0;i<5;i++) g.fillRect(6+R(18), 10+R(12), 2, 1);
+    g.fillStyle = '#8a6a42';                                   // picket edging
+    for (let x=2;x<32;x+=5) { g.fillRect(x,4,3,6); g.fillRect(x,24,3,4); }
+    g.fillStyle = '#a87f4e'; for (let x=2;x<32;x+=5) g.fillRect(x,4,3,1);
+    for (let i=0;i<5;i++) {                                    // blooms
+      const x = 6+R(17), y = 9+R(12);
+      g.fillStyle = S.leaf; g.fillRect(x+1, y+3, 2, 5);
+      g.fillStyle = S.blooms[(R(S.blooms.length)+variant)%S.blooms.length];
+      g.fillRect(x-1, y, 5, 5); g.fillStyle = S.center; g.fillRect(x+1, y+1, 2, 2);
+    }
+  });
+}
+const homeBedA = homeBedTile(0), homeBedB = homeBedTile(1);
 const lampTile = px(TILE,TILE,(g)=>{ g.clearRect(0,0,TILE,TILE);
   // VISUAL-PASS-TOWN: classic Victorian lamppost — flared iron base, collared
   // post, capped lantern with warm glass (halo added at night in drawWorld)
@@ -2228,12 +2345,19 @@ function stallTile(awning) {
 }
 const stallA = stallTile('#e87aa0'), stallB = stallTile('#5a8ac9'), stallC = stallTile('#e8b93c');
 // Home walls (Batch 2): cream plaster + timber frame, lit window, flower box
+// VISUAL-PASS-FARMHOME: richer warm plaster, stone foundation, shutters,
+// deeper flower box, timber corner posts.
 const houseWall = px(TILE,TILE,(g)=>{
-  g.fillStyle = '#f2e4c4'; g.fillRect(0,0,TILE,TILE);          // warm plaster
-  g.fillStyle = '#e8d4ae';
-  for (let i=0;i<6;i++){ const x=(i*11+3)%26+2, y=(i*7+5)%24+4; g.fillRect(x,y,2,2); }
+  const P = BOARD_PALETTE, R = srand(0x40e5);
+  g.fillStyle = P.plaster; g.fillRect(0,0,TILE,TILE);          // warm plaster
+  g.fillStyle = P.plasterDark;
+  for (let i=0;i<7;i++){ const x=(i*11+3)%26+2, y=(i*7+5)%24+4; g.fillRect(x,y,2,2); }  // mottling
+  g.fillStyle = 'rgba(255,250,235,.35)'; g.fillRect(0,0,TILE,2);   // top light
+  g.fillStyle = '#9a9aa5'; g.fillRect(0,28,TILE,4);            // stone foundation
+  g.fillStyle = '#c9c9d4'; g.fillRect(0,28,TILE,1);
+  g.fillStyle = '#7c7c88'; for (let x=2;x<TILE;x+=8) g.fillRect(x,29,1,3); // foundation joints
   g.fillStyle = '#6b4423';                                     // timber frame
-  g.fillRect(0,0,TILE,4); g.fillRect(0,28,TILE,4);
+  g.fillRect(0,0,TILE,4); g.fillRect(0,24,TILE,4);
   g.fillRect(0,0,4,TILE); g.fillRect(28,0,4,TILE);
   g.fillStyle = '#a06a35';
   g.fillRect(0,0,TILE,1); g.fillRect(0,0,1,TILE);
@@ -2241,6 +2365,8 @@ const houseWall = px(TILE,TILE,(g)=>{
   g.fillStyle = '#ffe9a8'; g.fillRect(11,10,10,9);             // warm panes
   g.fillStyle = '#fff6d8'; g.fillRect(11,10,4,4);
   g.fillStyle = '#5d3a17'; g.fillRect(15,10,2,9); g.fillRect(11,13,10,2);
+  g.fillStyle = '#7a4f28'; g.fillRect(5,9,3,12); g.fillRect(24,9,3,12);  // shutters
+  g.fillStyle = '#5d3a17'; g.fillRect(5,13,3,1); g.fillRect(5,17,3,1); g.fillRect(24,13,3,1); g.fillRect(24,17,3,1);
   g.fillStyle = '#8a5a2b'; g.fillRect(8,21,16,2);               // sill
   g.fillStyle = '#3f7a2e';                                     // flower-box leaves
   for (let x=8;x<24;x+=4) g.fillRect(x,22,3,2);
@@ -2253,18 +2379,36 @@ const houseWall = px(TILE,TILE,(g)=>{
   g.fillStyle = '#5d3a17';
   for (let x=12;x<24;x+=6) g.fillRect(x,24,1,4);
 });
+// VISUAL-PASS-FARMHOME: chimney puff drawn over the roof tile's east end
+// (transparent overlay; the roof footprint is untouched).
+const houseChimney = px(TILE,TILE,(g)=>{ g.clearRect(0,0,TILE,TILE);
+  g.fillStyle='rgba(0,0,0,.18)'; g.fillRect(12,26,10,3);
+  g.fillStyle='#a85548'; g.fillRect(13,8,8,18);                // brick stack
+  g.fillStyle='#8a4239'; for (let y=11;y<26;y+=4) g.fillRect(13,y,8,1);
+  g.fillStyle='#c9755f'; g.fillRect(13,8,8,2);
+  g.fillStyle='#6b4423'; g.fillRect(11,5,12,4);                // cap
+  g.fillStyle='#8a5a2b'; g.fillRect(11,5,12,1);
+  g.fillStyle='#4a2c14'; g.fillRect(15,6,4,3);                 // flue mouth
+  g.fillStyle='rgba(220,220,225,.55)';                         // still smoke wisps
+  g.fillRect(16,2,3,3); g.fillRect(18,0,2,2);
+});
 // Home roof (Batch 2): terracotta shingle courses, ridge cap, eave
+// VISUAL-PASS-FARMHOME: staggered hand-laid shingles, rounded ridge caps,
+// warm eave trim with shadow.
 const houseRoof = px(TILE,TILE,(g)=>{
-  const P = BOARD_PALETTE;
+  const P = BOARD_PALETTE, R = srand(0x40ff);
   g.fillStyle = P.roofTerracotta; g.fillRect(0,0,TILE,TILE);
   for (let r=0;r<6;r++){ const y=r*6;
-    g.fillStyle = 'rgba(255,255,255,.16)'; g.fillRect(0,y,TILE,1);
-    g.fillStyle = '#8a4a24'; g.fillRect(0,y+5,TILE,1);
+    g.fillStyle = 'rgba(255,235,210,.20)'; g.fillRect(0,y,TILE,1);  // course light
+    g.fillStyle = P.roofShadow; g.fillRect(0,y+5,TILE,1);           // course shadow
     const off=(r%2)*8;
-    for (let x=off;x<TILE;x+=16) g.fillRect(x,y+1,1,4);
+    for (let x=off;x<TILE;x+=16){ g.fillStyle = P.roofShadow; g.fillRect(x,y+1,1,4); }  // shingle gaps
+    g.fillStyle = 'rgba(255,255,255,.10)';                          // per-shingle tone
+    for (let x=off;x<TILE;x+=16) if (R(3)===0) g.fillRect(x+2,y+1,12,4);
   }
-  g.fillStyle = '#d08a4a'; g.fillRect(0,0,TILE,4);              // ridge cap
-  g.fillStyle = '#8a4a24'; g.fillRect(0,4,TILE,1);
+  g.fillStyle = P.roofRidge; g.fillRect(0,0,TILE,4);              // ridge cap
+  g.fillStyle = '#e8a860'; g.fillRect(0,0,TILE,1);
+  g.fillStyle = P.roofShadow; g.fillRect(0,4,TILE,1);
   g.fillStyle = 'rgba(255,255,255,.25)'; g.fillRect(0,0,TILE,1);
   g.fillStyle = '#7a3f1f'; g.fillRect(0,28,TILE,4);             // eave shadow
   g.fillStyle = '#e8a860'; g.fillRect(0,28,TILE,1);             // eave trim
@@ -2696,17 +2840,22 @@ const ruinArch = px(64,64,(g)=>{
 // BATCH4: board-style interiors — warm plank floor, wainscot walls, patchwork-quilt bed,
 // brick fireplace, paneled wardrobe, table + chair, pray-nook shelf, braided rugs,
 // curtained window + book shelf (homeWindowTile / homeShelfTile)
+// VISUAL-PASS-FARMHOME: warmer plank floor — tonal variety, grain, butt
+// joints, and a soft sheen like the board's sunlit cottage floor.
 const woodFloor = px(TILE,TILE,(g)=>{
+  const R = srand(0xf100);
   g.fillStyle='#b57e45'; g.fillRect(0,0,TILE,TILE);            // warm planks
   for(let y=0;y<TILE;y+=8){
     g.fillStyle=((y/8)%2===0)?'#bb8549':'#ad7440'; g.fillRect(0,y,TILE,8);
+    if (R(2)===0) { g.fillStyle='rgba(255,235,200,.18)'; g.fillRect(0,y,TILE,3); }  // plank tone variety
     g.fillStyle='#8a5a2b'; g.fillRect(0,y,TILE,1);             // plank gap
     const jx=((y*13)%22)+5;                                    // butt joint
     g.fillRect(jx,y,1,8);
     g.fillStyle='rgba(90,55,25,.30)';                          // grain
     g.fillRect(3,y+3,7,1); g.fillRect(19,y+5,9,1);
+    g.fillStyle='rgba(120,80,40,.25)'; g.fillRect(12,y+2,4,1); // extra grain fleck
   }
-  g.fillStyle='rgba(255,235,200,.10)'; g.fillRect(0,0,TILE,TILE);
+  g.fillStyle='rgba(255,235,200,.10)'; g.fillRect(0,0,TILE,TILE);   // soft sheen
 });
 const homeWall = px(TILE,TILE,(g)=>{
   g.fillStyle='#e6d2a8'; g.fillRect(0,0,TILE,TILE);            // warm plaster
@@ -2724,16 +2873,20 @@ const bedTile = px(TILE,TILE,(g)=>{ g.drawImage(woodFloor,0,0);
   g.fillStyle='#8a5a2b'; g.fillRect(3,6,3,12);
   g.fillStyle='#5d3a17'; g.fillRect(1,1,7,4);                  // crown
   g.fillStyle='#ffd76e'; g.fillRect(2,1,5,1);                  // crown sheen
+  g.fillStyle='#7a4f28'; g.fillRect(1,10,7,2);                 // headboard slat detail
   g.fillStyle='#8a5a2b'; g.fillRect(6,19,19,9);                 // frame rail
-  g.fillStyle='#fff8ea'; g.fillRect(6,13,9,7);                 // pillow
+  g.fillStyle='#fff8ea'; g.fillRect(6,12,9,8);                 // pillow
   g.fillStyle='#e8dcc0'; g.fillRect(6,18,9,2);
-  g.fillStyle='#f6ead2'; g.fillRect(6,13,9,1);
+  g.fillStyle='#f6ead2'; g.fillRect(6,12,9,1);
+  g.fillStyle='#d9c8a8'; g.fillRect(8,14,5,3);                 // pillow crease
   const qp=['#c96a6a','#e8b93c','#6aa84f','#9a6ac9'];          // patchwork quilt
   for(let i=0;i<3;i++) for(let j=0;j<2;j++){
     g.fillStyle=qp[(i+j)%4]; g.fillRect(15+i*5,13+j*6,5,6);
   }
   g.fillStyle='rgba(255,255,255,.35)';                         // quilt stitching
   for(let i=0;i<3;i++) for(let j=0;j<2;j++) g.fillRect(15+i*5+1,13+j*6+1,3,1);
+  g.fillStyle='rgba(0,0,0,.12)';                                // quilt drape folds
+  for(let i=0;i<3;i++) g.fillRect(15+i*5+4,13,1,12);
   g.fillStyle='#e8dcc0'; g.fillRect(15,24,15,3);               // quilt hem
   g.fillStyle='#6b4423'; g.fillRect(25,9,5,19);                 // footboard (tucks quilt)
   g.fillStyle='#5d3a17'; g.fillRect(24,7,7,3);
@@ -2861,6 +3014,89 @@ const homeShelfTile = px(TILE,TILE,(g)=>{ g.drawImage(homeWall,0,0);
   g.fillStyle='#6b4423'; g.fillRect(23,17,4,3);                // small pot
   g.fillStyle='#4a8f3c'; g.fillRect(22,12,6,5);               // plant
 });
+// VISUAL-PASS-FARMHOME: potted plants like the board's "Your Home" panel —
+// decor only, placed on open floor tiles.
+function plantPotTile(variant) {
+  return px(TILE,TILE,(g)=>{ g.drawImage(woodFloor,0,0);
+    const S = SEASON_BLOOMS.spring, R = srand(0x5eed + variant*61);
+    g.fillStyle='rgba(0,0,0,.15)'; g.fillRect(8,27,16,3);     // floor shadow
+    g.fillStyle = variant ? '#b06030' : '#8a5a2b';            // terracotta pot
+    g.fillRect(10,20,12,8);
+    g.fillStyle = variant ? '#d08048' : '#a06a35'; g.fillRect(10,20,12,2);
+    g.fillStyle = '#5d3a17'; g.fillRect(10,26,12,2);
+    g.fillStyle = '#3a2412'; g.fillRect(11,20,10,2);          // soil
+    if (variant === 0) {                                      // tall leafy plant
+      g.fillStyle = S.leaf;
+      for (let i=0;i<5;i++) { const lx = 12+R(8), ly = 4+R(6);
+        g.fillRect(lx,ly,3,9); g.fillRect(lx-2,ly+3,7,2); }
+      g.fillStyle = '#4a8f3c';
+      for (let i=0;i<3;i++) g.fillRect(13+R(6),6+R(4),2,5);
+    } else {                                                  // herb pot with blooms
+      g.fillStyle = '#3f7a2e';
+      for (let i=0;i<4;i++) { const lx = 12+R(8), ly = 10+R(4);
+        g.fillRect(lx,ly,2,6); g.fillRect(lx-1,ly+2,4,2); }
+      for (let i=0;i<3;i++) { const bx=12+R(8), by=8+R(6);
+        g.fillStyle = S.blooms[R(S.blooms.length)]; g.fillRect(bx,by,3,3);
+        g.fillStyle = S.center; g.fillRect(bx+1,by+1,1,1); }
+    }
+  });
+}
+const plantPotTall = plantPotTile(0), plantPotHerb = plantPotTile(1);
+// VISUAL-PASS-FARMHOME: kitchen corner — counter with pots, kettle, hanging
+// pan; decor only, sits beside the side table.
+const kitchenCounterTile = px(TILE,TILE,(g)=>{ g.drawImage(woodFloor,0,0);
+  g.fillStyle='rgba(0,0,0,.15)'; g.fillRect(3,27,26,3);       // floor shadow
+  g.fillStyle='#6b4423'; g.fillRect(4,18,24,10);              // counter body
+  g.fillStyle='#8a5a2b'; g.fillRect(4,14,24,5);               // counter top
+  g.fillStyle='#c99a5a'; g.fillRect(4,14,24,2);
+  g.fillStyle='#5d3a17'; for (let x=8;x<28;x+=7) g.fillRect(x,19,1,8);  // panel grooves
+  g.fillStyle='#3a3a40'; g.fillRect(5,19,8,9);                // stove mouth
+  g.fillStyle='#5a5a62'; g.fillRect(6,20,6,3);
+  g.fillStyle='#2a2a30'; g.fillRect(20,6,3,8);                // hanging pan
+  g.fillStyle='#3a3a40'; g.beginPath(); g.arc(21,18,5,0,7); g.fill();
+  g.fillStyle='#8a8a92'; g.beginPath(); g.arc(21,17,3,0,7); g.fill();
+  g.fillStyle='#5a7a9a'; g.fillRect(6,8,6,6);                 // pot
+  g.fillStyle='#7aa2bd'; g.fillRect(6,8,6,1); g.fillRect(6,8,1,6);
+  g.fillStyle='#8a5a2b'; g.fillRect(5,7,8,1);                 // pot lid
+  g.fillStyle='#e8b93c'; g.fillRect(16,9,5,5);                // kettle
+  g.fillStyle='#ffd76e'; g.fillRect(16,9,5,1);
+  g.fillStyle='#8a5a2b'; g.fillRect(20,8,2,3);                // kettle spout
+  g.fillStyle='#d9c4a0'; g.fillRect(24,10,4,4);               // jar
+  g.fillStyle='#b8a888'; g.fillRect(24,10,4,1);
+});
+// VISUAL-PASS-FARMHOME: storage crate with firewood + produce; decor only.
+const crateTile = px(TILE,TILE,(g)=>{ g.drawImage(woodFloor,0,0);
+  g.fillStyle='rgba(0,0,0,.15)'; g.fillRect(5,27,22,3);
+  g.fillStyle='#8a5a2b'; g.fillRect(6,16,20,11);              // crate
+  g.fillStyle='#a06a35'; g.fillRect(6,16,20,2);
+  g.fillStyle='#6b4423';
+  g.fillRect(6,16,2,11); g.fillRect(24,16,2,11);              // battens
+  g.fillRect(6,20,20,2);
+  g.fillStyle='#5d3a17'; g.fillRect(15,16,2,11);              // center batten
+  g.fillStyle='#4a2c14'; g.fillRect(8,12,4,5); g.fillRect(13,12,4,5); g.fillRect(18,12,4,5); // firewood logs
+  g.fillStyle='#6b4423'; g.fillRect(8,12,4,1); g.fillRect(13,12,4,1); g.fillRect(18,12,4,1);
+  g.fillStyle='#c96a4a'; g.fillRect(22,11,4,4);               // produce apple
+  g.fillStyle='#e88a60'; g.fillRect(22,11,2,2);
+  g.fillStyle='#6aa84f'; g.fillRect(9,10,3,3);                // produce greens
+});
+// VISUAL-PASS-FARMHOME: low bookshelf with a leaning row of books; decor only.
+const bookcaseTile = px(TILE,TILE,(g)=>{ g.drawImage(woodFloor,0,0);
+  g.fillStyle='rgba(0,0,0,.15)'; g.fillRect(4,27,24,3);
+  g.fillStyle='#5d3a17'; g.fillRect(3,2,26,4);                // crown
+  g.fillStyle='#6b4423'; g.fillRect(4,6,24,22);               // case
+  g.fillStyle='#7a4f28'; g.fillRect(4,6,24,1);
+  for (const sy of [6,17]) {
+    g.fillStyle='#4a2c14'; g.fillRect(5,sy+10,22,1);          // shelf shadow
+    g.fillStyle='#8a5a2b'; g.fillRect(5,sy+9,22,2);           // shelf
+  }
+  const bc=['#4a8ac9','#c96a6a','#6aa84f','#e8b93c','#9a6ac9','#c96a4a'];
+  for (let i=0;i<6;i++){ g.fillStyle=bc[i]; g.fillRect(6+i*3,8,3,8); }   // upper books
+  g.fillStyle='rgba(255,255,255,.3)'; g.fillRect(6,10,17,1);
+  for (let i=0;i<4;i++){ g.fillStyle=bc[(i+2)%6]; g.fillRect(6+i*3,19,3,7); } // lower books
+  g.fillStyle='rgba(255,255,255,.3)'; g.fillRect(6,21,11,1);
+  g.fillStyle='#9a6ac9'; g.fillRect(19,18,3,8);               // one leaning book
+  g.fillStyle='#d9c4a0'; g.fillRect(23,20,3,6);               // small jar
+});
 // BATCH3: storybook fox — rounder, fluffier, big bright eyes
 // BATCH3: storybook fox — fully procedural, original design. Frame set:
 // idle (tail flick + ear twitch), walk (alternating stride), and a happy
@@ -2940,6 +3176,19 @@ const PLAZA_BENCHES = [[19,15],[21,15]];   // wooden benches flanking the founta
 const PLANTERS = [[16,14],[16,16]];        // terracotta planters, west grass verge
 const SHRUBS = [[26,13],[26,15],[12,19]];  // ornamental shrubs on grass
 const ROCKS = [[24,19],[15,19]];           // garden rock clusters on grass
+// VISUAL-PASS-FARMHOME: farm dressing layout (pure decor — all tiles stay
+// walkable, collision constants untouched; plots, fence, and gate unchanged).
+// Border blooms sit on walkable interior grass (never plots/fence/gate);
+// the watering can rests on an open grass tile; the edge ring is natural
+// grass boundary outside the fence.
+const FARM_CAN = {tx:9, ty:16};
+const FARM_BORDER_BLOOMS = [[9,15],[6,16],[7,16],[8,16],[10,16],[7,17],[9,17]];
+const FARM_BORDER_MAP = {};
+for (const [bx,by] of FARM_BORDER_BLOOMS) FARM_BORDER_MAP[bx+','+by] = (bx+by)%2 ? 0 : 1;
+const HOME_GARDEN_BEDS = [[6,13],[7,13],[9,13],[10,13]];   // cottage garden beds, flanking the door path
+const HOME_GARDEN_PLANTS = [[6,11]];                       // small plants by the west wall
+const HOME_GARDEN_BEDMAP = {};
+for (const [bx,by] of HOME_GARDEN_BEDS) HOME_GARDEN_BEDMAP[bx+','+by] = (bx+by)%2 ? 0 : 1;
 const ZONE_LABELS = [
   {tx:8, ty:10, text:'Your House'}, {tx:8, ty:19, text:'Farms'},
   {tx:16, ty:9, text:'Market'}, {tx:24, ty:12, text:'Café'},
@@ -2994,6 +3243,23 @@ const RIVER_BANK = new Map(), RIVER_FOAM = new Map();
       if (e.length) RIVER_FOAM.set(tx + ',' + ty, e);
     }
   }
+})();
+// VISUAL-PASS-FARMHOME: natural grass boundary outside the farm fence —
+// computed once at load. Ring grass tiles (no trees, no fence, no plots,
+// no garden beds) get a tuft+wildflower overlay. Pure decor: all tiles stay
+// walkable, collision constants untouched.
+const FARM_EDGE = new Map();
+(function () {
+  for (let ty = FARM_RECT.y0 - 1; ty <= FARM_RECT.y1 + 1; ty++)
+    for (let tx = FARM_RECT.x0 - 1; tx <= FARM_RECT.x1 + 1; tx++) {
+      const onRect = tx >= FARM_RECT.x0 && tx <= FARM_RECT.x1 && ty >= FARM_RECT.y0 && ty <= FARM_RECT.y1;
+      if (onRect) continue;                                    // inside the fence: handled separately
+      if (baseTile(tx, ty) !== 'grass') continue;
+      if (isTree(tx, ty) || isFence(tx, ty)) continue;
+      if (HOME_GARDEN_BEDMAP[tx + ',' + ty]) continue;          // the cottage beds win here
+      if (hash2(tx, ty) < 0.25) continue;                      // breathing room
+      FARM_EDGE.set(tx + ',' + ty, true);
+    }
 })();
 
 function baseTile(tx, ty) {
@@ -3117,6 +3383,13 @@ function drawWorld(g, now) {
       else g.drawImage(cropTiles[f.stage] || soilTile, x, y);
     }
     if (isFence(tx,ty)) g.drawImage(fenceTile, x, y);
+    // VISUAL-PASS-FARMHOME: border blooms on the inner grass, the watering
+    // can by the path, natural grass tufts outside the fence (all decor,
+    // walkable, no interaction changes)
+    const fb = FARM_BORDER_MAP[tx + ',' + ty];
+    if (fb !== undefined) g.drawImage(fb === 0 ? farmBloomA : farmBloomB, x, y);
+    if (tx === FARM_CAN.tx && ty === FARM_CAN.ty) g.drawImage(wateringCanTile, x, y);
+    if (FARM_EDGE.get(tx + ',' + ty)) g.drawImage(farmEdgeTuft, x, y);
     if (isTree(tx,ty)) {
       // BATCH7: tall pines in the forest bands, pink blossoms at the lane clusters
       let tv = ((tx+ty)%2===0) ? treeA : treeB;
@@ -3138,15 +3411,27 @@ function drawWorld(g, now) {
     if (tx===30 && ty===16) g.drawImage(pathTile, x, y);
     for (const s of CHURCH_FLOWERS) if (s[0]===tx && s[1]===ty)
       g.drawImage(s[2]===0 ? flowerTile : s[2]===1 ? churchBedA : churchBedB, x, y);
-    // home
+    // home — VISUAL-PASS-FARMHOME: warm cottage — detailed shingle roof with
+    // chimney, timber walls with shutters + flower boxes, warm glass at night
     if (tx>=HOME.x0 && tx<=HOME.x1 && ty>=HOME.y0-1 && ty<=HOME.y1) {
-      if (ty===HOME.y0-1) g.drawImage(houseRoof, x, y);
+      if (ty===HOME.y0-1) {
+        g.drawImage(houseRoof, x, y);
+        if (tx===HOME.x1) g.drawImage(houseChimney, x, y);   // chimney on the east end
+      }
       else {
         g.drawImage(houseWall, x, y);
-        if (night && tx===8 && ty===12) g.drawImage(windowTile, x, y);
+        // front windows glow warm at night (the old tx===8&&ty===12 condition
+        // could never match inside this block — it drew nothing)
+        if (night && ty===HOME.y1 && (tx===7 || tx===9 || tx===10)) g.drawImage(windowTile, x, y);
       }
     }
     if (tx===HOME.door.tx && ty===HOME.door.ty) { g.drawImage(pathTile,x,y); g.drawImage(doorTileH,x,y); }
+    // VISUAL-PASS-FARMHOME: cottage garden — flower beds flanking the door
+    // approach and plants by the west wall (walkable grass, decor only;
+    // footprint and collision untouched)
+    const hb = HOME_GARDEN_BEDMAP[tx + ',' + ty];
+    if (hb !== undefined) g.drawImage(hb === 0 ? homeBedA : homeBedB, x, y);
+    for (const gp of HOME_GARDEN_PLANTS) if (gp[0]===tx && gp[1]===ty) g.drawImage(flowerTile, x, y);
     // cafe
     if (tx>=CAFE.x0 && tx<=CAFE.x1 && ty>=CAFE.y0-1 && ty<=CAFE.y1) {
       if (ty===CAFE.y0-1) g.drawImage(cafeRoof, x, y);
@@ -3298,7 +3583,9 @@ function drawHomeInterior(g, tx, ty, x, y, now) {
   if (border) g.drawImage(homeWall, x, y);
   else g.drawImage(woodFloor, x, y);
   if (tx===29 && ty===18) g.drawImage(bedTile, x, y);          // sleep
+  if (tx===30 && ty===18) g.drawImage(bookcaseTile, x, y);     // bookshelf (decor)
   if (tx===32 && ty===18) g.drawImage(nookTile, x, y);         // pray nook
+  if (tx===37 && ty===18) g.drawImage(plantPotTall, x, y);      // potted plant (decor)
   if (tx===35 && ty===18) { // hearth with animated fire
     g.drawImage(hearthTile, x, y);
     const fl = Math.sin(now/120)*2;
@@ -3311,6 +3598,9 @@ function drawHomeInterior(g, tx, ty, x, y, now) {
   if (tx===32 && ty===21) g.drawImage(wardrobeTile, x, y);    // change clothes
   if (tx===35 && ty===21) g.drawImage(chairTile, x, y);        // sit
   if (tx===35 && ty===24) g.drawImage(tableInTile, x, y);      // side table (decor)
+  if (tx===37 && ty===24) g.drawImage(kitchenCounterTile, x, y); // kitchen corner (decor)
+  if (tx===37 && ty===25) g.drawImage(crateTile, x, y);         // storage crate (decor)
+  if (tx===29 && ty===25) g.drawImage(plantPotHerb, x, y);      // herb pot (decor)
   if (tx===31 && ty===17) g.drawImage(homeWindowTile, x, y);  // curtained window (decor)
   if (tx===34 && ty===17) g.drawImage(homeShelfTile, x, y);   // shelf with books/jars (decor)
   if (tx===28 && ty===24) { // wall lamp (decor)
