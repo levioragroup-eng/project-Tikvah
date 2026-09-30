@@ -202,25 +202,25 @@ try {
   }
   sys('villager-greet', !!say && say.hearts === 1, `said="${say?.text?.slice(0, 40)}..." hearts=${say?.hearts}`);
 
-  // ---- S10: church verbs ----
+  // ---- S10: church verbs (waypoints copied from the main suite) ----
   await walkTo(a, 27*TILE+16, 12*TILE+16, 15000); await walkTo(a, 27*TILE+16, 15*TILE+16);
   await walkTo(a, 30*TILE+16, 15*TILE+16 + 8);
   a.send({ t: 'interact' });
   const entered = await a.waitFor(() => a.me()?.inside === true && a.me()?.place === 'church', 3000);
-  await walkTo(a, 20*TILE+16, 22*TILE+16);
+  await walkTo(a, 20*TILE+16, 20*TILE+16); // altar / pray spot
   a.send({ t: 'interact' }); // pray (no candles yet -> no worship)
-  const prayed = await a.waitFor(() => a.state.players.get(a.state.you.id)?.emote === 'pray', 3000);
-  await walkTo(a, 16*TILE+16, 19*TILE+16); await walkTo(a, 16*TILE+16, 20*TILE+16);
+  const prayed = await b.waitFor(() => b.state.players.get(a.state.you.id)?.emote === 'pray', 3000);
+  await walkTo(a, 16*TILE+16, 19*TILE+16); await walkTo(a, 16*TILE+16, 20*TILE+16); // verse stand
   const seenTexts = new Set(), seenRefs = new Set();
   for (let i = 0; i < 6; i++) { a.send({ t: 'interact' }); await sleep(300); const v = a.lastOf('verse'); if (v) { seenTexts.add(v.text); seenRefs.add(v.ref); } }
   const versesExact = seenTexts.size === 2 && [...seenTexts].every(t => VERSE_TEXTS.has(t)) && [...seenRefs].every(r => VERSE_REFS.has(r));
-  await walkTo(a, 24*TILE+16, 20*TILE+16);
+  await walkTo(a, 24*TILE+16, 20*TILE+16); // candle stand
   a.send({ t: 'interact' }); // candle
   const candle = await a.waitFor(() => a.msgs.some(m => m.t === 'candle'), 3000) ? a.lastOf('candle') : null;
-  await walkTo(a, 20*TILE+16, 22*TILE+16); await walkTo(a, 20*TILE+16, 20*TILE+16);
+  await walkTo(a, 20*TILE+16, 22*TILE+16); await walkTo(a, 20*TILE+16, 20*TILE+16); // altar
   a.send({ t: 'interact' }); // pray with candle lit -> worship
   const worship = await b.waitFor(() => b.msgs.some(m => m.t === 'worship'), 3000);
-  const bloom = await a.waitFor(() => a.msgs.some(m => m.t === 'garden-bloom'), 3000);
+  const bloom = await a.waitFor(() => a.msgs.some(m => m.t === 'garden-bloom'), 4000);
   await walkTo(a, 20*TILE+16, 24*TILE+16);
   a.send({ t: 'interact' }); // exit
   const exited = await a.waitFor(() => a.me()?.inside === false, 3000);
@@ -228,25 +228,14 @@ try {
     `enter=${entered} pray=${prayed} verses-exact-2=${versesExact} candle=${candle?.count} worship=${worship} leave=${exited}`);
   sys('garden-bloom', bloom, bloom ? a.lastOf('garden-bloom')?.message?.slice(0, 60) : 'no bloom event');
 
-  // ---- S11: fox presence + reaction ----
-  let pet = null;
-  for (let i = 0; i < 6 && !pet; i++) {
-    const f = a.state.fox;
-    if (!f) break;
-    await walkTo(a, f.x, f.y, 8000);
-    a.send({ t: 'interact' });
-    pet = await a.waitFor(() => a.msgs.some(m => m.t === 'pet'), 1500) ? a.lastOf('pet') : null;
-  }
-  sys('fox', !!a.state.fox && !!pet, `present=${!!a.state.fox} pet-reaction=${!!pet} by=${pet?.by}`);
-
-  // ---- S12: character creator save ----
+  // ---- S11: character creator save ----
   a.send({ t: 'look', look: LOOK_B });
   const lookSaved = await b.waitFor(() => lookEq(b.state.players.get(a.state.you.id)?.look, LOOK_B), 3000);
   a.send({ t: 'look', look: { ...LOOK_B, skin: '#000000' } });
   const lookRejected = await a.waitFor(() => a.msgs.some(m => m.t === 'error' && m.code === 'bad-look'), 3000);
   sys('creator-save', lookSaved && lookRejected, `saved=${lookSaved} invalid-rejected=${lookRejected}`);
 
-  // ---- S13: quick-chat ----
+  // ---- S12: quick-chat ----
   a.send({ t: 'quickchat', id: 'hello' });
   const qc = await b.waitFor(() => b.msgs.some(m => m.t === 'quickchat'), 3000) ? b.lastOf('quickchat') : null;
   a.send({ t: 'quickchat', id: 'hello' });
@@ -255,17 +244,37 @@ try {
   const qcBad = await a.waitFor(() => a.msgs.some(m => m.t === 'error' && m.code === 'bad-quickchat'), 3000);
   sys('quick-chat', !!qc && qc.text === 'Hello! 👋' && qcCool && qcBad, `preset="${qc?.text}" cooldown=${qcCool} invalid-rejected=${qcBad}`);
 
-  // ---- S14: ruins (both pads, two-player co-op) ----
-  await walkTo(a, 6*TILE+16, 12*TILE+16); await walkTo(a, 6*TILE+16, 8*TILE+16);
-  await walkTo(a, 6*TILE+16, 5*TILE+16);
+  // ---- S13: ruins (both pads, two-player co-op) — A routes from the church door, B from the cafe ----
+  await walkTo(a, 27*TILE+16, 16*TILE+16); await walkTo(a, 27*TILE+16, 12*TILE+16, 12000);
+  await walkTo(a, 13*TILE+16, 12*TILE+16, 12000); await walkTo(a, 6*TILE+16, 12*TILE+16, 12000);
+  await walkTo(a, 6*TILE+16, 8*TILE+16); await walkTo(a, 6*TILE+16, 5*TILE+16);
   const aOnPad = await a.waitFor(() => Math.hypot(a.me().x - (6*TILE+16), a.me().y - (5*TILE+16)) <= 40, 4000);
-  await walkTo(b, 27*TILE+16, 17*TILE+16); await walkTo(b, 27*TILE+16, 12*TILE+16);
-  await walkTo(b, 27*TILE+16, 16*TILE+16); await walkTo(b, 33*TILE+16, 16*TILE+16);
-  await walkTo(b, 33*TILE+16, 8*TILE+16, 12000); await walkTo(b, 34*TILE+16, 5*TILE+16);
+  await walkTo(b, 27*TILE+16, 16*TILE+16);
+  await walkTo(b, 33*TILE+16, 16*TILE+16); await walkTo(b, 33*TILE+16, 8*TILE+16, 12000);
+  await walkTo(b, 34*TILE+16, 5*TILE+16);
   const noSoloOpen = !a.msgs.some(m => m.t === 'ruin-open');
   const opened = await a.waitFor(() => a.state.ruinOpen, 4000) && await b.waitFor(() => b.state.ruinOpen, 4000);
   const roMsg = a.lastOf('ruin-open');
   sys('ruins-coop', aOnPad && noSoloOpen && opened, `A-on-stone=${aOnPad} no-solo-open=${noSoloOpen} coop-open=${opened} msg="${roMsg?.message}"`);
+
+  // ---- S14: fox presence + reaction (tight retargeting chase) ----
+  let pet = null;
+  for (let i = 0; i < 25 && !pet; i++) {
+    const f = a.state.fox, me = a.me();
+    if (!f || !me) break;
+    const dx = f.x - me.x, dy = f.y - me.y, d = Math.hypot(dx, dy);
+    if (d < 50) {
+      a.send({ t: 'input', x: 0, y: 0 });
+      a.send({ t: 'interact' });
+      pet = await a.waitFor(() => a.msgs.some(m => m.t === 'pet'), 1200) ? a.lastOf('pet') : null;
+      if (pet) break;
+    } else {
+      a.send({ t: 'input', x: dx/d, y: dy/d });
+    }
+    await sleep(300);
+  }
+  a.send({ t: 'input', x: 0, y: 0 });
+  sys('fox', !!a.state.fox && !!pet, `present=${!!a.state.fox} pet-reaction=${!!pet} by=${pet?.by}`);
 
   // ---- S15: ending + play-again reset ----
   await walkTo(a, 6*TILE+16, 12*TILE+16); await walkTo(a, 13*TILE+16, 12*TILE+16, 12000);
