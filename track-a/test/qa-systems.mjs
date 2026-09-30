@@ -214,7 +214,12 @@ try {
   const seenTexts = new Set(), seenRefs = new Set();
   for (let i = 0; i < 6; i++) { a.send({ t: 'interact' }); await sleep(300); const v = a.lastOf('verse'); if (v) { seenTexts.add(v.text); seenRefs.add(v.ref); } }
   const versesExact = seenTexts.size === 2 && [...seenTexts].every(t => VERSE_TEXTS.has(t)) && [...seenRefs].every(r => VERSE_REFS.has(r));
-  await walkTo(a, 24*TILE+16, 20*TILE+16); // candle stand
+  await walkTo(a, 20*TILE+16, 24*TILE+16);
+  a.send({ t: 'interact' }); // exit, then re-enter (proven main-suite approach to the candle stand)
+  await a.waitFor(() => a.me()?.inside === false, 3000);
+  a.send({ t: 'interact' }); // enter again
+  await a.waitFor(() => a.me()?.inside === true, 3000);
+  await walkTo(a, 24*TILE+16, 20*TILE+16); // candle stand, from the entrance
   a.send({ t: 'interact' }); // candle
   const candle = await a.waitFor(() => a.msgs.some(m => m.t === 'candle'), 3000) ? a.lastOf('candle') : null;
   await walkTo(a, 20*TILE+16, 22*TILE+16); await walkTo(a, 20*TILE+16, 20*TILE+16); // altar
@@ -249,10 +254,11 @@ try {
   await walkTo(a, 13*TILE+16, 12*TILE+16, 12000); await walkTo(a, 6*TILE+16, 12*TILE+16, 12000);
   await walkTo(a, 6*TILE+16, 8*TILE+16); await walkTo(a, 6*TILE+16, 5*TILE+16);
   const aOnPad = await a.waitFor(() => Math.hypot(a.me().x - (6*TILE+16), a.me().y - (5*TILE+16)) <= 40, 4000);
+  await sleep(2500); // A alone on the pad: the ruin must NOT open solo
+  const noSoloOpen = !a.msgs.some(m => m.t === 'ruin-open') && a.state.ruinOpen === false;
   await walkTo(b, 27*TILE+16, 16*TILE+16);
   await walkTo(b, 33*TILE+16, 16*TILE+16); await walkTo(b, 33*TILE+16, 8*TILE+16, 12000);
   await walkTo(b, 34*TILE+16, 5*TILE+16);
-  const noSoloOpen = !a.msgs.some(m => m.t === 'ruin-open');
   const opened = await a.waitFor(() => a.state.ruinOpen, 4000) && await b.waitFor(() => b.state.ruinOpen, 4000);
   const roMsg = a.lastOf('ruin-open');
   sys('ruins-coop', aOnPad && noSoloOpen && opened, `A-on-stone=${aOnPad} no-solo-open=${noSoloOpen} coop-open=${opened} msg="${roMsg?.message}"`);
