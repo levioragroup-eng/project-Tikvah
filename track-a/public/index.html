@@ -329,6 +329,37 @@
   #dayInfo { background:rgba(26,35,64,.7); border:1.5px solid rgba(212,169,64,.45); color:#e9dfc2; }
   #rhythm { background:rgba(26,35,64,.7); border:1.5px solid rgba(212,169,64,.45); }
 
+  /* VISUAL-PASS-CHARACTERS: board-style creator + relationship dialogue portraits */
+  #creatorScreen h2 { font-family:Georgia,'Times New Roman',serif; font-weight:normal; letter-spacing:4px; }
+  #creatorScreen .sub { font-family:Georgia,serif; }
+  #creatorTop { align-items:center; }
+  #creatorWrap { width:min(470px,94vw); }
+  #preview { width:112px; height:168px; background:linear-gradient(#fdf8e7,#f0e4c8);
+    box-shadow:inset 0 0 26px rgba(212,169,64,.28), 0 4px 14px rgba(93,66,38,.35); }
+  #ctabs { display:flex; flex-wrap:wrap; gap:6px; }
+  .ctab { font-family:Georgia,serif; font-variant:small-caps; letter-spacing:1.5px; font-size:12.5px;
+    padding:7px 11px; border-radius:10px 10px 0 0; border:1.5px solid #d4a940; border-bottom:none;
+    background:#e6d6ae; color:#5d4226; cursor:pointer; }
+  .ctab.sel { background:#fdf8e7; color:#3a2a12; font-weight:bold; box-shadow:inset 0 3px 0 #d4a940; }
+  .cpanel { background:rgba(253,248,231,.65); border:1.5px solid #d4a940; border-radius:0 10px 10px 10px;
+    padding:10px 10px 4px; }
+  .cpanel .crow:last-child { margin-bottom:4px; }
+  .sw canvas { image-rendering:pixelated; display:block; pointer-events:none; }
+  #creatorName { width:100%; box-sizing:border-box; font-size:16px; padding:9px 12px; border-radius:10px;
+    border:2px solid #b9a888; background:#fffdf4; color:#3a2a12; font-family:Georgia,serif; }
+  #creatorWrap .creator-quote { font-family:Georgia,serif; }
+  /* relationship dialogue: portrait beside the nameplate, warm double-gold frame */
+  #dialogue { border:2px solid #d4a940;
+    box-shadow:0 10px 34px rgba(0,0,0,.55), inset 0 0 0 3px #fdf8e7, inset 0 0 0 4.5px rgba(212,169,64,.55); }
+  #dialogue .who { display:flex; align-items:center; gap:12px; }
+  #dPortrait, #hannahPortrait { image-rendering:pixelated; width:40px; height:60px; flex:none;
+    border:2px solid #d4a940; border-radius:10px; background:linear-gradient(#e9f2dc,#d8e6c4);
+    box-shadow:0 2px 8px rgba(93,66,38,.3); }
+  #hannah .who { display:flex; align-items:center; gap:12px; background:none; border:none; padding:0;
+    margin-bottom:8px; }
+  #hannah .who .pill { display:inline-block; background:#1a2340; color:#f5eeda;
+    border:1px solid #d4a940; border-radius:999px; padding:4px 16px;
+    font-size:16px; font-weight:bold; letter-spacing:1px; font-variant:small-caps; }
   /* phone widths */
   @media (max-width:560px) {
     #titleScreen h1 { letter-spacing:5px; }
@@ -424,12 +455,25 @@
         <div id="creatorTop">
           <canvas id="preview" width="32" height="48"></canvas>
           <div id="creatorOpts">
-            <div class="crow"><span>Skin</span><div class="swatches" id="swSkin"></div></div>
-            <div class="crow"><span>Hair style</span><div class="swatches" id="swHair"></div></div>
-            <div class="crow"><span>Hair color</span><div class="swatches" id="swHairColor"></div></div>
-            <div class="crow"><span>Outfit</span><div class="swatches" id="swOutfit"></div></div>
-            <div class="crow"><span>Style</span><div class="swatches" id="swDress"></div></div>
-            <div class="crow"><span>Accessory</span><div class="swatches" id="swAcc"></div></div>
+            <div id="ctabs">
+              <button class="ctab sel" data-tab="skin">Skin</button>
+              <button class="ctab" data-tab="hair">Hair</button>
+              <button class="ctab" data-tab="outfit">Outfit</button>
+              <button class="ctab" data-tab="style">Style</button>
+              <button class="ctab" data-tab="acc">Accessories</button>
+              <button class="ctab" data-tab="name">Name</button>
+            </div>
+            <div class="cpanel" id="cp-skin"><div class="swatches" id="swSkin"></div></div>
+            <div class="cpanel" id="cp-hair" style="display:none">
+              <div class="crow"><span>Style</span><div class="swatches" id="swHair"></div></div>
+              <div class="crow"><span>Color</span><div class="swatches" id="swHairColor"></div></div>
+            </div>
+            <div class="cpanel" id="cp-outfit" style="display:none"><div class="swatches" id="swOutfit"></div></div>
+            <div class="cpanel" id="cp-style" style="display:none"><div class="swatches" id="swDress"></div></div>
+            <div class="cpanel" id="cp-acc" style="display:none"><div class="swatches" id="swAcc"></div></div>
+            <div class="cpanel" id="cp-name" style="display:none">
+              <div class="crow"><span>Name</span><input id="creatorName" maxlength="16" placeholder="Your name" autocomplete="off"></div>
+            </div>
           </div>
         </div>
         <p class="creator-quote">“You are more than what is behind you.”</p>
@@ -449,7 +493,7 @@
   </div>
 
   <div id="hannah" class="warmcard">
-    <div class="who">🌼 Hannah</div>
+    <div class="who"><canvas id="hannahPortrait" width="32" height="48"></canvas><span class="pill">🌼 Hannah</span></div>
     <div class="line" id="hannahLine"></div>
     <div class="choices" id="hannahChoices"></div>
     <div class="hrow">
@@ -466,7 +510,7 @@
   <button id="qcBtn" title="Quick chat">💬</button>
   <div id="qcPanel"></div>
 
-  <div id="dialogue" class="warmcard"><div class="who"><span id="dName"></span> <span class="hearts" id="dHearts"></span></div><div class="line" id="dText"></div><div class="next">Press E to continue</div></div>
+  <div id="dialogue" class="warmcard"><div class="who"><canvas id="dPortrait" width="32" height="48"></canvas><div class="wtext"><span id="dName"></span> <span class="hearts" id="dHearts"></span></div></div><div class="line" id="dText"></div><div class="next">Press E to continue</div></div>
 
   <div id="panel"><div class="card">
     <h3 id="pTitle"></h3>
@@ -622,7 +666,12 @@ document.getElementById('btnFriend').onclick = () => {
   document.getElementById('joinRow').style.display = 'block';
 };
 document.getElementById('btnHow').onclick = () => showPanel('howPanel');
-document.getElementById('btnChar').onclick = () => { creatorMode = 'title'; showPanel('creatorScreen'); };
+document.getElementById('btnChar').onclick = () => {
+  creatorMode = 'title';
+  const nameTab = document.querySelector('#ctabs .ctab[data-tab="name"]');
+  if (nameTab) nameTab.style.display = '';
+  showPanel('creatorScreen');
+};
 document.querySelectorAll('[data-back]').forEach(b => b.addEventListener('click', () => showPanel('titleScreen')));
 document.getElementById('creatorOk').onclick = () => {
   if (creatorMode === 'game') {
@@ -861,24 +910,56 @@ try {
 function saveLook() { try { localStorage.setItem('tikvah_look', JSON.stringify(look)); } catch(e) {} }
 
 function buildCreator() {
+  // mini visual swatches — actual tiny previews of the choice, never text radios
+  const thumb = (w, h, paint) => {
+    const c = document.createElement('canvas'); c.width = w; c.height = h;
+    const g = c.getContext('2d'); g.imageSmoothingEnabled = false; paint(g);
+    return c;
+  };
+  const headThumb = (lk) => thumb(28, 28, g => g.drawImage(lookSprite(lk), 0, 0, 16, 16, 0, 0, 28, 28));
+  const bodyThumb = (lk) => thumb(24, 32, g => g.drawImage(lookSprite(lk), 0, 0, 16, 24, 0, 0, 24, 32));
+  const torsoThumb = (lk) => thumb(30, 26, g => g.drawImage(lookSprite(lk), 2, 10, 12, 11, 0, 0, 30, 26));
   const mk = (id, values, cur, fmt, set) => {
     const el = document.getElementById(id); el.innerHTML = '';
     values.forEach(v => {
       const b = document.createElement('button');
-      b.className = 'sw' + (fmt(v) === 'txt' ? ' txt' : '') + (cur === v ? ' sel' : '');
-      if (fmt(v) === 'color') b.style.background = v;
-      else b.textContent = fmt(v);
+      const f = fmt(v);
+      b.className = 'sw' + (cur === v ? ' sel' : '');
+      if (f && f.nodeType === 1) { b.appendChild(f); b.title = f.title || ''; } // mini visual swatch
+      else if (typeof f === 'string' && f[0] === '#') b.style.background = f;   // color swatch
+      else { b.classList.add('txt'); b.textContent = f; }                        // text fallback
       b.onclick = () => { set(v); saveLook(); buildCreator(); drawPreview(); };
       el.appendChild(b);
     });
   };
-  mk('swSkin', LOOK_OPTS.skin, look.skin, v => 'color', v => look.skin = v);
-  mk('swHair', LOOK_OPTS.hair, look.hair, v => LOOK_LABELS.hair[v], v => look.hair = v);
-  mk('swHairColor', LOOK_OPTS.hairColor, look.hairColor, v => 'color', v => look.hairColor = v);
-  mk('swOutfit', LOOK_OPTS.outfit, look.outfit, v => 'color', v => look.outfit = v);
-  mk('swDress', LOOK_OPTS.dress, look.dress, v => LOOK_LABELS.dress[v], v => look.dress = v);
-  mk('swAcc', LOOK_OPTS.accessory, look.accessory, v => LOOK_LABELS.accessory[v], v => look.accessory = v);
+  mk('swSkin', LOOK_OPTS.skin, look.skin, v => v, v => look.skin = v);
+  mk('swHair', LOOK_OPTS.hair, look.hair,
+    v => Object.assign(headThumb({ ...look, hair: v }), { title: LOOK_LABELS.hair[v] }),
+    v => look.hair = v);
+  mk('swHairColor', LOOK_OPTS.hairColor, look.hairColor, v => v, v => look.hairColor = v);
+  mk('swOutfit', LOOK_OPTS.outfit, look.outfit,
+    v => Object.assign(torsoThumb({ ...look, outfit: v }), { title: 'Outfit' }),
+    v => look.outfit = v);
+  mk('swDress', LOOK_OPTS.dress, look.dress,
+    v => Object.assign(bodyThumb({ ...look, dress: v }), { title: LOOK_LABELS.dress[v] }),
+    v => look.dress = v);
+  mk('swAcc', LOOK_OPTS.accessory, look.accessory,
+    v => Object.assign(headThumb({ ...look, accessory: v }), { title: LOOK_LABELS.accessory[v] }),
+    v => look.accessory = v);
+  // NAME tab mirrors the room-panel name field (same value, same save)
+  const cn = document.getElementById('creatorName');
+  if (cn) {
+    if (document.activeElement !== cn) cn.value = document.getElementById('name').value;
+    cn.oninput = () => { document.getElementById('name').value = cn.value; saveName(cn.value.trim()); };
+  }
 }
+// board-style category tabs: one category open at a time (wired once — the
+// tab buttons are static HTML, only the swatches rebuild)
+document.querySelectorAll('#ctabs .ctab').forEach(b => b.onclick = () => {
+  document.querySelectorAll('#ctabs .ctab').forEach(x => x.classList.toggle('sel', x === b));
+  document.querySelectorAll('#creatorOpts .cpanel').forEach(p => { p.style.display = (p.id === 'cp-' + b.dataset.tab) ? '' : 'none'; });
+});
+
 function drawPreview() {
   const c = document.getElementById('preview'), g = c.getContext('2d');
   g.imageSmoothingEnabled = false; g.clearRect(0,0,32,48);
@@ -893,6 +974,11 @@ function openCreator() {
   menu.style.background = 'rgba(10,15,10,.78)';
   document.getElementById('creatorOk').textContent = '✔ Done';
   document.querySelector('#creatorScreen .backlink').style.display = 'none';
+  // wardrobe mode: rename is not a live verb in-game, so the name tab stays hidden
+  const skinTab = document.querySelector('#ctabs .ctab[data-tab="skin"]');
+  if (skinTab) skinTab.click();
+  const nameTab = document.querySelector('#ctabs .ctab[data-tab="name"]');
+  if (nameTab) nameTab.style.display = 'none';
   showPanel('creatorScreen');
 }
 
@@ -1136,6 +1222,8 @@ function openCookPanel() {
 }
 function showDialogue(name, text, hearts) {
   document.getElementById('dName').textContent = name;
+  const dp = document.getElementById('dPortrait');
+  if (dp) { const dg = dp.getContext('2d'); dg.imageSmoothingEnabled = false; dg.clearRect(0,0,32,48); dg.drawImage(npcSprite(name), 0, 0, 32, 48); }
   document.getElementById('dHearts').textContent = '❤'.repeat(Math.max(0, hearts || 0)) || '';
   document.getElementById('dText').textContent = '\u201C' + text + '\u201D';
   document.getElementById('dialogue').style.display = 'block';
@@ -1262,6 +1350,11 @@ function mixHex(a, b, t) {
 // BATCH3_CHARACTERS: board-style chibi painters — larger head, expressive
 // eyes with shine, blush, volumetric hair with shine, cream blouse base,
 // fabric folds, outfit-colored trim, anchor-green default skirt, brown boots.
+// VISUAL-PASS-CHARACTERS: unified layered painter — back hair → legs/boots →
+// torso → arms → head/face → front hair → accessory. One system feeds the
+// world sprite (spriteFor), NPCs (npcSprite), the creator preview, and the
+// creator's mini visual swatches. Walk motion stays offset-based (strideX +
+// bob in the render loop), so every frame of movement animates.
 function lookSprite(lk) {
   return px(16, 24, (g) => {
     const skin = lk.skin || '#f2c99a', hairC = lk.hairColor || '#4a2c14',
@@ -1275,14 +1368,22 @@ function lookSprite(lk) {
     const skirtD = mixHex(skirtC, '#1a0f08', .22), skirtL = mixHex(skirtC, '#ffffff', .30);
     const boot = '#6a4526', bootD = '#3a2a18', bootL = '#8a5f3a';
 
-    // back hair behind the body (long wavy falls, board anchor)
+    // ===== back hair: big expressive silhouette behind the body =====
     if (hair === 'long') {
+      // back hair behind the body (long wavy falls, board anchor)
       g.fillStyle = hairC;
-      g.fillRect(1,5,2,8); g.fillRect(13,5,2,8);
-      g.fillRect(1,7,1,1); g.fillRect(14,7,1,1);   // wave bumps
-      g.fillRect(1,10,1,1); g.fillRect(14,10,1,1);
-      g.fillStyle = hairD; g.fillRect(1,13,2,1); g.fillRect(13,13,2,1);
+      g.fillRect(0,5,2,9); g.fillRect(14,5,2,9);
+      g.fillRect(0,7,1,1); g.fillRect(15,7,1,1);   // wave bumps
+      g.fillRect(0,10,1,1); g.fillRect(15,10,1,1);
+      g.fillRect(1,12,1,2); g.fillRect(14,12,1,2); // curl tips resting at the waist
+      g.fillStyle = hairD; g.fillRect(0,13,2,1); g.fillRect(14,13,2,1);
       g.fillStyle = hairL; g.fillRect(1,6,1,2); g.fillRect(14,6,1,2); // shine on the falls
+    } else if (hair === 'curly') {
+      // afro/curls halo spilling behind the shoulders
+      g.fillStyle = hairC;
+      g.fillRect(0,3,2,6); g.fillRect(14,3,2,6);
+      g.fillStyle = hairD; g.fillRect(0,8,2,1); g.fillRect(14,8,2,1);
+      g.fillStyle = hairL; g.fillRect(0,3,1,2); g.fillRect(15,3,1,2); // halo shine
     }
     // brown boots + legs
     const boots = (x1, x2) => {
@@ -1297,6 +1398,7 @@ function lookSprite(lk) {
     } else {
       g.fillStyle = '#4a3a28'; g.fillRect(4,18,3,4); g.fillRect(9,18,3,4); // trousers
       g.fillStyle = mixHex('#4a3a28', '#1a0f08', .3); g.fillRect(6,18,1,4); g.fillRect(11,18,1,4);
+      g.fillStyle = mixHex('#4a3a28', '#ffffff', .25); g.fillRect(4,18,1,2); g.fillRect(9,18,1,2); // knee light
       boots(4, 9);
     }
     // cream blouse torso
@@ -1344,26 +1446,39 @@ function lookSprite(lk) {
     g.fillStyle = '#fff'; g.fillRect(5,7,1,1); g.fillRect(9,7,1,1); // eye shine
     g.fillStyle = '#f2a0a0'; g.fillRect(3,9,2,1); g.fillRect(11,9,2,1); // blush
     g.fillStyle = '#a05a4a'; g.fillRect(7,9,2,1);                  // smile
-    // hair per style: volume + shine in hairColor
+    // hair per style: large expressive silhouette + natural texture, in hairColor
     g.fillStyle = hairC;
     if (hair === 'long') {
       g.fillRect(2,1,12,2); g.fillRect(3,0,10,1);   // cap
       g.fillRect(3,3,10,1);                          // bangs
+      g.fillRect(0,4,2,3); g.fillRect(14,4,2,3);     // side volume puffs
       g.fillStyle = hairL; g.fillRect(5,1,2,1); g.fillRect(4,2,1,1); // shine
+      g.fillStyle = hairD;                            // natural curl texture
+      g.fillRect(2,2,1,1); g.fillRect(9,0,1,1); g.fillRect(12,2,1,1);
+      g.fillRect(1,4,1,1); g.fillRect(14,5,1,1); g.fillRect(0,6,1,1); g.fillRect(15,6,1,1);
     } else if (hair === 'short') {
       g.fillRect(2,1,12,2); g.fillRect(3,0,10,1);
       g.fillRect(3,3,10,1);
       g.fillRect(2,4,1,3); g.fillRect(13,4,1,3);     // sides to the jaw
       g.fillStyle = hairL; g.fillRect(5,1,2,1);
+      g.fillStyle = hairD;                            // textured crop
+      g.fillRect(4,0,1,1); g.fillRect(8,1,1,1); g.fillRect(11,0,1,1);
+      g.fillRect(6,2,1,1); g.fillRect(10,2,1,1);
     } else if (hair === 'curly') {
       g.fillRect(5,0,6,1); g.fillRect(3,1,10,1); g.fillRect(2,2,12,1);
       g.fillRect(1,3,14,1); g.fillRect(1,4,14,1);    // rounded volume
-      g.fillRect(1,5,2,2); g.fillRect(13,5,2,2);
+      g.fillRect(0,5,16,1); g.fillRect(0,6,14,1);    // full afro cloud
+      g.fillRect(1,7,2,2); g.fillRect(13,7,2,2);
       g.fillStyle = hairL; g.fillRect(4,1,3,1); g.fillRect(3,2,2,1); // shine cluster
+      g.fillStyle = hairD;                            // coil texture
+      g.fillRect(6,2,1,1); g.fillRect(10,3,1,1); g.fillRect(4,4,1,1); g.fillRect(11,5,1,1);
+      g.fillRect(7,6,1,1); g.fillRect(2,5,1,1); g.fillRect(13,6,1,1); g.fillRect(8,0,1,1);
     } else if (hair === 'bun') {
       g.fillRect(7,0,2,1); g.fillRect(6,1,4,1);      // bun ball
       g.fillStyle = hairL; g.fillRect(7,0,1,1);
+      g.fillStyle = hairD; g.fillRect(6,1,1,1); g.fillRect(9,1,1,1); // bun texture
       g.fillStyle = hairC; g.fillRect(2,2,12,1); g.fillRect(3,3,10,1); // cap + bangs
+      g.fillRect(2,4,1,2); g.fillRect(13,4,1,2);     // soft side curls
       g.fillStyle = trim; g.fillRect(7,2,2,1);      // hair tie
     }
     // accessories (same option names as the creator)
@@ -1382,6 +1497,7 @@ function lookSprite(lk) {
     }
   });
 }
+
 const npcLooks = {
   Hannah: { skin:'#9a6540', hair:'long', hairColor:'#241610', outfit:'#c96a4a', dress:true, accessory:'flower', apron:true },
   Elias:  { skin:'#e0ac7e', hair:'short', hairColor:'#5a3a1e', outfit:'#6aa84f', dress:false, accessory:'none' },
@@ -1392,6 +1508,13 @@ function npcSprite(name) {
   if (!npcSprites[name]) npcSprites[name] = lookSprite(npcLooks[name] || look);
   return npcSprites[name];
 }
+// Hannah's greeting panel portrait (painted once — her look is fixed)
+(function paintHannahPortrait() {
+  const c = document.getElementById('hannahPortrait');
+  if (!c) return;
+  const g = c.getContext('2d'); g.imageSmoothingEnabled = false;
+  g.drawImage(npcSprite('Hannah'), 0, 0, 32, 48);
+})();
 
 // ---- terrain tiles ----
 
@@ -2552,29 +2675,51 @@ const homeShelfTile = px(TILE,TILE,(g)=>{ g.drawImage(homeWall,0,0);
   g.fillStyle='#4a8f3c'; g.fillRect(22,12,6,5);               // plant
 });
 // BATCH3: storybook fox — rounder, fluffier, big bright eyes
-const foxSprite = px(16, 12, (g) => {
-  const fur = '#e08a3c', furL = '#f6c98a', furD = '#8a4f1f';
-  // big fluffy tail with white tip
-  g.fillStyle = fur; g.fillRect(1,5,4,5); g.fillRect(2,4,3,1); g.fillRect(2,10,3,1);
-  g.fillStyle = '#ffffff'; g.fillRect(0,6,2,3); g.fillRect(1,5,1,1); g.fillRect(1,9,1,1);
-  g.fillStyle = furL; g.fillRect(2,6,1,3);
-  // round body + fluffy belly
-  g.fillStyle = fur; g.fillRect(4,6,7,4);
-  g.fillStyle = furL; g.fillRect(5,8,5,2);
-  g.fillStyle = furD; g.fillRect(5,10,2,2); g.fillRect(8,10,2,2); // paws
-  // big head, tall ears
-  g.fillStyle = fur; g.fillRect(10,3,5,5);
-  g.fillRect(10,1,2,2); g.fillRect(13,1,2,2);
-  g.fillStyle = furD; g.fillRect(10,1,2,1); g.fillRect(13,1,2,1); // ear tips
-  g.fillStyle = furL; g.fillRect(11,2,1,1); g.fillRect(13,2,1,1); // inner ear
-  g.fillStyle = furL; g.fillRect(13,5,2,2);          // muzzle
-  g.fillStyle = '#2e1f14'; g.fillRect(14,5,1,1);     // nose
-  // big bright eye with shine
-  g.fillStyle = '#2e1f14'; g.fillRect(11,4,2,2);
-  g.fillStyle = '#fff'; g.fillRect(11,4,1,1);
-  // cheek fluff
-  g.fillStyle = '#ffffff'; g.fillRect(10,6,1,2);
-});
+// BATCH3: storybook fox — fully procedural, original design. Frame set:
+// idle (tail flick + ear twitch), walk (alternating stride), and a happy
+// reaction pose used when a traveler is near.
+function foxPaint(variant) {
+  return px(16, 12, (g) => {
+    const fur = '#e08a3c', furL = '#f6c98a', furD = '#8a4f1f';
+    const flick = variant === 'idle1', wag = variant === 'happy';
+    const walk = variant === 'walk0' || variant === 'walk1';
+    // big fluffy tail with white tip (idle1 flicks it up, happy wags it high)
+    const ty = wag ? 2 : flick ? 3 : walk ? 4 : 5;
+    g.fillStyle = fur; g.fillRect(1,ty,4,5); g.fillRect(2,ty-1,3,1); g.fillRect(2,ty+5,3,1);
+    g.fillStyle = '#ffffff'; g.fillRect(0,ty+1,2,3); g.fillRect(1,ty,1,1); g.fillRect(1,ty+4,1,1);
+    g.fillStyle = furL; g.fillRect(2,ty+1,1,3);
+    // round body + fluffy belly
+    g.fillStyle = fur; g.fillRect(4,6,7,4);
+    g.fillStyle = furL; g.fillRect(5,8,5,2);
+    // paws — walk frames alternate the stride
+    g.fillStyle = furD;
+    if (variant === 'walk0') { g.fillRect(4,10,2,2); g.fillRect(9,10,2,2); }
+    else if (variant === 'walk1') { g.fillRect(6,10,2,2); g.fillRect(8,10,2,2); }
+    else { g.fillRect(5,10,2,2); g.fillRect(8,10,2,2); }
+    // big head, tall ears (idle1 twitches the left ear, happy perks both up)
+    const hy = wag ? 2 : 3, ey = wag ? 0 : flick ? 2 : 1;
+    g.fillStyle = fur; g.fillRect(10,hy,5,5);
+    g.fillRect(10,ey,2,2); g.fillRect(13,ey,2,2);
+    g.fillStyle = furD; g.fillRect(10,ey,2,1); g.fillRect(13,ey,2,1); // ear tips
+    g.fillStyle = furL; g.fillRect(11,ey+1,1,1); g.fillRect(13,ey+1,1,1); // inner ear
+    g.fillStyle = furL; g.fillRect(13,hy+2,2,2);          // muzzle
+    g.fillStyle = '#2e1f14'; g.fillRect(14,hy+2,1,1);     // nose
+    // big bright eye with shine (happy frame closes it in a joyful squint)
+    if (wag) { g.fillStyle = '#2e1f14'; g.fillRect(11,hy+1,2,1); }
+    else {
+      g.fillStyle = '#2e1f14'; g.fillRect(11,hy+1,2,2);
+      g.fillStyle = '#fff'; g.fillRect(11,hy+1,1,1);
+    }
+    // cheek fluff
+    g.fillStyle = '#ffffff'; g.fillRect(10,hy+3,1,2);
+  });
+}
+const foxFrames = {
+  idle: [foxPaint('idle0'), foxPaint('idle1')],
+  walk: [foxPaint('walk0'), foxPaint('walk1')],
+  happy: foxPaint('happy'),
+};
+
 
 
 // ================= Map layout =================
@@ -3042,20 +3187,34 @@ function loop(now) {
   const night = day.phase === 'night' || day.phase === 'sunset';
 
   if (!inside) {
-    // fox — smoothed, hops when it trots, faces its direction of travel
+    // fox — smoothed, faces its direction of travel; idle tail-flick/ear-twitch,
+    // walk stride frames, and a happy bounce + heart when a traveler is near
     if (!foxSm) foxSm = { x: fox.x, y: fox.y };
     foxSm.x += (fox.x - foxSm.x) * 0.2;
     foxSm.y += (fox.y - foxSm.y) * 0.2;
     const foxD = Math.hypot(fox.x - foxSm.x, fox.y - foxSm.y);
-    const foxHop = foxD > 2 ? Math.abs(Math.sin(now/180))*3 : Math.sin(now/1100)*0.8;
+    let foxNear = false;
+    for (const p of players.values()) {
+      if (!p.inside && Math.hypot(p.x - foxSm.x, p.y - foxSm.y) < 2.2*TILE) { foxNear = true; break; }
+    }
+    const foxMoving = foxD > 2;
+    const foxFrm = foxNear ? foxFrames.happy
+      : foxMoving ? foxFrames.walk[(now/160|0) % 2]
+      : foxFrames.idle[(now/1700|0) % 2];
+    const foxHop = foxNear ? Math.abs(Math.sin(now/170))*4.5
+      : foxMoving ? Math.abs(Math.sin(now/180))*3 : Math.sin(now/1100)*0.8;
     if (fox.x - foxSm.x > 2) foxFace = 1; else if (foxSm.x - fox.x > 2) foxFace = -1;
     ctx.fillStyle = 'rgba(0,0,0,.16)';
     ctx.beginPath(); ctx.ellipse(Math.round(foxSm.x), Math.round(foxSm.y+1), 7, 3, 0, 0, 7); ctx.fill();
     ctx.save();
     ctx.translate(Math.round(foxSm.x), Math.round(foxSm.y-10+foxHop));
     ctx.scale(foxFace, 1);
-    ctx.drawImage(foxSprite, -8, 0);
+    ctx.drawImage(foxFrm, -8, 0);
     ctx.restore();
+    if (foxNear && ((now/1100|0) % 2) === 0) {
+      ctx.font = '12px monospace'; ctx.textAlign = 'center'; ctx.fillStyle = '#fff';
+      ctx.fillText('\uD83D\uDC9B', Math.round(foxSm.x), Math.round(foxSm.y - 26 + Math.sin(now/300)*2));
+    }
     // villagers — gentle idle sway, happy hop while chatting
     for (const n of npcs.values()) {
       const nBob = Math.sin(now/650 + n.x*0.5)*1.2 + Math.sin(now/1300 + n.y)*0.5;
