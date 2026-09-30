@@ -1406,61 +1406,247 @@ const BOARD_PALETTE = {
   roofTerracotta:'#b06030', spireBlue:'#5a7a9a',
   uiNavy:'#1a2340', gold:'#d4a940',
 };
+// VISUAL-PASS-TOWN: plaza + world base tiles toward the design board — 2026-09-30
+// Deterministic per-tile hash (0..1): stable variant picks, no random flicker.
+function hash2(tx, ty) {
+  let h = (tx*374761393 + ty*668265263) | 0;
+  h = Math.imul(h ^ (h >>> 13), 1274126177);
+  h ^= h >>> 16;
+  return (h >>> 0) / 4294967296;
+}
+// Deterministic PRNG for tile painters: tiles look identical on every page
+// load. Drop-in for rnd(a) inside px() painters (precomputed once, stable).
+function srand(seed) {
+  let s = seed >>> 0;
+  return (a) => {
+    s |= 0; s = (s + 0x6D2B79F5) | 0;
+    let t = Math.imul(s ^ (s >>> 15), 1 | s);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return Math.floor((((t ^ (t >>> 14)) >>> 0) / 4294967296) * a);
+  };
+}
+// Seasonal bloom sets: flower/bed painters take a season key so a future
+// seasonal variant only swaps this table (spring is the live season).
+const SEASON_BLOOMS = {
+  spring: { leaf:'#3f7a2e', blooms:['#ff9ec4','#ffe066','#ffffff','#ff6b8a'], center:'#fff8d8' },
+  summer: { leaf:'#2f6b2f', blooms:['#ff6b8a','#ffd166','#ffffff','#e84a6f'], center:'#fff3b0' },
+  autumn: { leaf:'#5a6b2a', blooms:['#e8863c','#d4a940','#c96a4a','#f0e0a0'], center:'#7a4a20' },
+  winter: { leaf:'#3a5a3a', blooms:['#e8ecf4','#c9d4e8','#ffffff','#a0b4d4'], center:'#f4f8ff' },
+};
 function grassTile(variant) {
   return px(TILE, TILE, (g) => {
     const P = BOARD_PALETTE;
-    g.fillStyle = P.grassBase; g.fillRect(0,0,TILE,TILE);
+    const R = srand(0x9e37 + variant*7919);   // deterministic: identical every load
+    // variant 2: deeper, cooler meadow tone (third tonal family)
+    const base  = variant === 2 ? '#418739' : P.grassBase;
+    const dark  = variant === 2 ? '#336b2c' : P.grassDark;
+    const light = variant === 2 ? '#5da244' : P.grassLight;
+    g.fillStyle = base; g.fillRect(0,0,TILE,TILE);
     // darker mottling
-    g.fillStyle = P.grassDark;
-    for (let i=0;i<10;i++) g.fillRect(rnd(TILE), rnd(TILE), 4, 3);
-    g.fillStyle = '#35702c';
-    for (let i=0;i<7;i++) g.fillRect(rnd(TILE), rnd(TILE), 3, 3);
+    g.fillStyle = dark;
+    for (let i=0;i<10;i++) g.fillRect(R(TILE), R(TILE), 4, 3);
+    g.fillStyle = variant === 2 ? '#2c5c26' : '#35702c';
+    for (let i=0;i<7;i++) g.fillRect(R(TILE), R(TILE), 3, 3);
     // light highlights
-    g.fillStyle = P.grassLight;
-    for (let i=0;i<9;i++) g.fillRect(rnd(TILE), rnd(TILE), 2, 2);
-    g.fillStyle = '#7cc465';
-    for (let i=0;i<4;i++) g.fillRect(rnd(TILE), rnd(TILE), 2, 1);
-    // tiny meadow flowers (pink, white, yellow) like the board's meadows
-    const cols = ['#f0a0c0','#ffffff','#ffe066'];
+    g.fillStyle = light;
+    for (let i=0;i<9;i++) g.fillRect(R(TILE), R(TILE), 2, 2);
+    g.fillStyle = variant === 2 ? '#6fb455' : '#7cc465';
+    for (let i=0;i<4;i++) g.fillRect(R(TILE), R(TILE), 2, 1);
+    // tiny meadow flowers like the board's meadows (season-parameterized set)
+    const S = SEASON_BLOOMS.spring;
     const n = variant === 1 ? 5 : 2;
     for (let i=0;i<n;i++) {
-      const x = 3+rnd(26), y = 3+rnd(26);
-      g.fillStyle = cols[rnd(3)]; g.fillRect(x, y, 2, 2);
-      g.fillStyle = '#fff8d8'; g.fillRect(x, y, 1, 1);
+      const x = 3+R(26), y = 3+R(26);
+      g.fillStyle = S.blooms[R(S.blooms.length)]; g.fillRect(x, y, 2, 2);
+      g.fillStyle = S.center; g.fillRect(x, y, 1, 1);
     }
     if (variant === 1) { // blooming meadow: extra petals + blades
-      for (let i=0;i<6;i++) { g.fillStyle = '#3a7230'; g.fillRect(rnd(TILE), rnd(TILE), 1, 3); }
-      for (let i=0;i<3;i++) { const x=3+rnd(26), y=3+rnd(26);
+      for (let i=0;i<6;i++) { g.fillStyle = dark; g.fillRect(R(TILE), R(TILE), 1, 3); }
+      for (let i=0;i<3;i++) { const x=3+R(26), y=3+R(26);
         g.fillStyle = '#ff9ec4'; g.fillRect(x,y,2,2); g.fillStyle = '#ffe066'; g.fillRect(x,y,1,1); }
+    }
+    if (variant === 2) { // dry golden flecks in the deeper meadow
+      g.fillStyle = '#c9b458';
+      for (let i=0;i<5;i++) g.fillRect(R(TILE), R(TILE), 2, 1);
     }
   });
 }
 const grassA = grassTile(0), grassB = grassTile(1);
+const grassC = grassTile(2);
 const pathTile = px(TILE,TILE,(g)=>{
   // winding warm-gray stone pavers with darker grout (tileable, 8px vertical period)
+  const R = srand(0x9a7e);
   g.fillStyle = '#8a7f6e'; g.fillRect(0,0,TILE,TILE);
   const shades = ['#b8a888','#b2a180','#beae90','#ac9c7c'];
   for (let row=0; row<4; row++) {
     const y = row*8, off = (row%2)*8;
     for (let x=-1; x<3; x++) {
       const sx = x*16 + off;
-      g.fillStyle = shades[rnd(4)]; g.fillRect(sx, y, 14, 6);
+      g.fillStyle = shades[R(4)]; g.fillRect(sx, y, 14, 6);
       g.fillStyle = 'rgba(255,255,255,.20)'; g.fillRect(sx, y, 14, 1);
       g.fillStyle = 'rgba(0,0,0,.14)'; g.fillRect(sx, y+5, 14, 1);
+      // worn stone speckle
+      g.fillStyle = 'rgba(90,78,60,.25)'; g.fillRect(sx+2+R(10), y+2+R(2), 2, 1);
     }
   }
 });
 const plazaTile = px(TILE,TILE,(g)=>{
   // denser circular-paver pattern, warmer tone (tileable)
+  const R = srand(0xc0da);
   g.fillStyle = '#a0865f'; g.fillRect(0,0,TILE,TILE);
   const shades = ['#c9a878','#d0b082','#c2a070','#d8b98c'];
   for (let cy=4; cy<TILE; cy+=8) for (let cx=4; cx<TILE; cx+=8) {
     const x = cx + ((cy/8)%2)*4;
-    g.fillStyle = shades[rnd(4)];
+    g.fillStyle = shades[R(4)];
     g.beginPath(); g.arc(x > TILE ? x-TILE : x, cy, 3, 0, 7); g.fill();
     g.fillStyle = 'rgba(255,255,255,.22)';
     g.beginPath(); g.arc(x > TILE ? x-TILE : x, cy-1, 1.5, 0, 7); g.fill();
   }
+  // warm mortar speckle between the pavers
+  g.fillStyle = 'rgba(110,95,70,.35)';
+  for (let i=0;i<8;i++) g.fillRect(R(TILE), R(TILE), 2, 1);
+});
+// ---- VISUAL-PASS-TOWN: plaza + path edge dressing (all precomputed, drawn as overlays) ----
+// Soft grass fringe for path tiles that border grass: ragged, deterministic, tileable.
+function fringeTile(edge) {
+  return px(TILE,TILE,(g)=>{
+    const P = BOARD_PALETTE;
+    const R = srand(0xf21e + edge.charCodeAt(0)*13);
+    g.clearRect(0,0,TILE,TILE);
+    for (let i=0;i<TILE;i+=2) {                       // ragged grass strip ~4-7px deep
+      const d = 4 + R(4);
+      g.fillStyle = P.grassBase;
+      if (edge==='N') g.fillRect(i, 0, 2, d);
+      else if (edge==='S') g.fillRect(i, TILE-d, 2, d);
+      else if (edge==='W') g.fillRect(0, i, d, 2);
+      else g.fillRect(TILE-d, i, d, 2);
+    }
+    g.fillStyle = P.grassDark;                        // darker fringe speckle
+    for (let i=0;i<24;i++) {
+      if (edge==='N') g.fillRect(R(32), R(8), 2, 2);
+      else if (edge==='S') g.fillRect(R(32), 24+R(8), 2, 2);
+      else if (edge==='W') g.fillRect(R(8), R(32), 2, 2);
+      else g.fillRect(24+R(8), R(32), 2, 2);
+    }
+    g.fillStyle = P.grassLight;                       // sunlit tips
+    for (let i=0;i<12;i++) {
+      if (edge==='N') g.fillRect(R(32), R(5), 1, 2);
+      else if (edge==='S') g.fillRect(R(32), 26+R(5), 1, 2);
+      else if (edge==='W') g.fillRect(R(5), R(32), 2, 1);
+      else g.fillRect(26+R(5), R(32), 2, 1);
+    }
+  });
+}
+const pathFringe = { N: fringeTile('N'), S: fringeTile('S'), E: fringeTile('E'), W: fringeTile('W') };
+// Low stone curb edging for plaza tiles that border grass.
+function curbTile(edge) {
+  return px(TILE,TILE,(g)=>{
+    g.clearRect(0,0,TILE,TILE);
+    const horiz = edge==='N' || edge==='S';
+    const x0 = edge==='W' ? 0 : edge==='E' ? TILE-6 : 0;
+    const y0 = edge==='N' ? 0 : edge==='S' ? TILE-6 : 0;
+    const w = horiz ? TILE : 6, h = horiz ? 6 : TILE;
+    g.fillStyle = '#8d826c'; g.fillRect(x0, y0, w, h);            // curb body
+    g.fillStyle = '#c9bfa8';                                      // sunlit top
+    if (horiz) g.fillRect(x0, y0, w, 2); else g.fillRect(x0, y0, 2, h);
+    g.fillStyle = '#6e6552';                                      // block joints + base shade
+    if (horiz) { g.fillRect(x0, y0+h-1, w, 1); for (let x=x0+4;x<x0+w;x+=8) g.fillRect(x, y0, 1, h); }
+    else { g.fillRect(x0+w-1, y0, 1, h); for (let y=y0+4;y<y0+h;y+=8) g.fillRect(x0, y, 1, h); }
+  });
+}
+const plazaCurb = { N: curbTile('N'), S: curbTile('S'), E: curbTile('E'), W: curbTile('W') };
+// Stone paving medallion ring around the fountain: each tile draws the arc of a
+// full ellipse centered on the fountain tile's center (local coords).
+function medallionTile(cx, cy) {
+  return px(TILE,TILE,(g)=>{
+    g.clearRect(0,0,TILE,TILE);
+    g.strokeStyle = 'rgba(201,183,151,.95)'; g.lineWidth = 3;
+    g.beginPath(); g.ellipse(cx, cy, 24, 17, 0, 0, 7); g.stroke();
+    g.strokeStyle = 'rgba(140,125,100,.85)'; g.lineWidth = 1.5;
+    g.beginPath(); g.ellipse(cx, cy, 19, 13, 0, 0, 7); g.stroke();
+    g.fillStyle = 'rgba(212,169,64,.9)';                          // gold accents at cardinals
+    for (const [dx,dy] of [[-24,0],[24,0],[0,-17],[0,17]]) g.fillRect(cx+dx-1, cy+dy-1, 3, 3);
+  });
+}
+const medallionN = medallionTile(16, 48), medallionS = medallionTile(16, -16),
+      medallionW = medallionTile(48, 16), medallionE = medallionTile(-16, 16);
+// Layered flower bed: low stone border, dark soil, two bloom rows (season key
+// re-themes it; pass SEASON_BLOOMS keys for future seasonal variants).
+function flowerBedTile(variant, season) {
+  return px(TILE,TILE,(g)=>{
+    const R = srand(0xbed + variant*131);
+    const S = SEASON_BLOOMS[season] || SEASON_BLOOMS.spring;
+    g.clearRect(0,0,TILE,TILE);
+    g.fillStyle = '#8d826c'; g.fillRect(2, 6, 28, 22);            // stone border
+    g.fillStyle = '#c9bfa8'; g.fillRect(2, 6, 28, 2);             // border sunlit top
+    g.fillStyle = '#6e6552'; g.fillRect(2, 26, 28, 2);
+    for (let x=2;x<30;x+=7) { g.fillStyle='#6e6552'; g.fillRect(x,6,1,2); g.fillRect(x,26,1,2); }
+    g.fillStyle = '#5d3f24'; g.fillRect(4, 8, 24, 18);            // soil
+    g.fillStyle = '#4a3018';
+    for (let i=0;i<10;i++) g.fillRect(4+R(24), 8+R(18), 2, 2);
+    for (let row=0; row<2; row++) {                              // layered blooms: tall back, short front
+      const y0 = row === 0 ? 11 : 19;
+      for (let i=0;i<5;i++) {
+        const x = 6 + i*5 + R(2), h = row === 0 ? 8 : 6;
+        g.fillStyle = S.leaf; g.fillRect(x+1, y0, 2, h);          // stem
+        g.fillStyle = S.blooms[R(S.blooms.length)]; g.fillRect(x-1, y0-3, 5, 4); // bloom
+        g.fillStyle = S.center; g.fillRect(x+1, y0-2, 1, 1);     // heart
+        g.fillStyle = 'rgba(255,255,255,.5)'; g.fillRect(x-1, y0-3, 5, 1); // petal light
+      }
+    }
+  });
+}
+const bedA = flowerBedTile(0, 'spring'), bedB = flowerBedTile(1, 'spring'), bedC = flowerBedTile(2, 'spring');
+// Terracotta planter pot with blooms (palette terracotta, season blooms).
+const planterTile = px(TILE,TILE,(g)=>{
+  const P = BOARD_PALETTE, S = SEASON_BLOOMS.spring, R = srand(0x9a7);
+  g.clearRect(0,0,TILE,TILE);
+  g.fillStyle = '#8a4a24'; g.fillRect(9, 18, 14, 10);            // pot shade
+  g.fillStyle = P.roofTerracotta; g.fillRect(10, 17, 12, 10);    // pot body
+  g.fillStyle = '#c97e4a'; g.fillRect(10, 17, 12, 2);            // rim light
+  g.fillStyle = '#7a3a1c'; g.fillRect(10, 25, 12, 2);            // base shade
+  g.fillStyle = '#4a3018'; g.fillRect(11, 15, 10, 3);            // soil
+  for (let i=0;i<3;i++) {                                       // blooms
+    const x = 11 + i*4;
+    g.fillStyle = S.leaf; g.fillRect(x+1, 10, 2, 6);
+    g.fillStyle = S.blooms[R(S.blooms.length)]; g.fillRect(x, 7, 4, 4);
+    g.fillStyle = S.center; g.fillRect(x+1, 8, 1, 1);
+  }
+});
+// Rounded ornamental shrub (palette canopy greens, seeded highlights).
+const shrubTile = px(TILE,TILE,(g)=>{
+  const P = BOARD_PALETTE, R = srand(0x5eed);
+  g.clearRect(0,0,TILE,TILE);
+  g.fillStyle = P.canopyDeep; g.fillRect(7, 12, 18, 12);
+  g.fillStyle = P.canopyDeep; g.fillRect(10, 8, 12, 6);
+  g.fillStyle = '#3a7230'; g.fillRect(7, 20, 18, 4);             // belly shade
+  g.fillStyle = '#6ab04c';
+  for (let i=0;i<26;i++) g.fillRect(7+R(18), 8+R(14), 2, 2);     // leaf dither
+  g.fillStyle = '#7cc465';
+  for (let i=0;i<10;i++) g.fillRect(9+R(14), 9+R(8), 1, 1);      // sunlit crown
+});
+// Small cluster of garden rocks.
+const rockTile = px(TILE,TILE,(g)=>{
+  const R = srand(0x20cc);
+  g.clearRect(0,0,TILE,TILE);
+  const rocks = [[8,20,9,7],[18,22,7,5],[20,16,5,4]];
+  for (const [x,y,w,h] of rocks) {
+    g.fillStyle = '#8a8578'; g.fillRect(x, y, w, h);
+    g.fillStyle = '#a8a294'; g.fillRect(x, y, w, 2);             // top light
+    g.fillStyle = '#6e695c'; g.fillRect(x, y+h-2, w, 2);         // base shade
+  }
+  g.fillStyle = '#c9c4b4';
+  for (let i=0;i<6;i++) g.fillRect(8+R(18), 16+R(10), 1, 1);
+});
+// Wooden park bench: iron legs, slatted backrest + seat.
+const benchTile = px(TILE,TILE,(g)=>{
+  g.clearRect(0,0,TILE,TILE);
+  g.fillStyle = '#33302c'; g.fillRect(6, 10, 3, 18); g.fillRect(23, 10, 3, 18); // iron legs
+  g.fillStyle = '#7a4f28'; g.fillRect(5, 8, 22, 3); g.fillRect(5, 12, 22, 3);   // backrest slats
+  g.fillStyle = '#a06a35'; g.fillRect(5, 8, 22, 1); g.fillRect(5, 12, 22, 1);   // slat light
+  g.fillStyle = '#7a4f28'; g.fillRect(5, 17, 22, 4); g.fillRect(5, 22, 22, 4);  // seat slats
+  g.fillStyle = '#c98d4e'; g.fillRect(5, 17, 22, 1); g.fillRect(5, 22, 22, 1);  // seat light
+  g.fillStyle = '#5f3d1f'; g.fillRect(5, 20, 22, 1); g.fillRect(5, 25, 22, 1);  // slat shade
 });
 const waterTile = px(TILE,TILE,(g)=>{
   // bright azure board-blue with white sparkle streaks (tileable)
@@ -1662,8 +1848,10 @@ function treeTile(v) {
 const treeA = treeTile(0), treeB = treeTile(1);
 const treeBlossom = treeTile(2), treeTallPine = treeTile(3);
 const flowerTile = px(TILE,TILE,(g)=>{ g.clearRect(0,0,TILE,TILE);
-  const cols=['#ff9ec4','#ffe066','#ffffff','#ff6b8a'];
-  for(let i=0;i<5;i++){ const x=4+rnd(22),y=8+rnd(16); g.fillStyle='#3f7a2e'; g.fillRect(x+1,y+3,2,5); g.fillStyle=cols[rnd(4)]; g.fillRect(x,y,4,4); }
+  const S = SEASON_BLOOMS.spring, R = srand(0xf10e2);
+  for(let i=0;i<5;i++){ const x=4+R(22),y=8+R(16); g.fillStyle=S.leaf; g.fillRect(x+1,y+3,2,5);
+    g.fillStyle=S.blooms[R(S.blooms.length)]; g.fillRect(x,y,4,4);
+    g.fillStyle=S.center; g.fillRect(x+1,y+1,1,1); }
 });
 const fenceTile = px(TILE,TILE,(g)=>{ g.clearRect(0,0,TILE,TILE);
   // warm wooden fence, board style: two rails + posts with caps
@@ -1678,9 +1866,21 @@ const fenceTile = px(TILE,TILE,(g)=>{ g.clearRect(0,0,TILE,TILE);
   g.fillStyle='#5f3d1f'; g.fillRect(4,6,4,1); g.fillRect(TILE-8,6,4,1);         // cap shadow
 });
 const lampTile = px(TILE,TILE,(g)=>{ g.clearRect(0,0,TILE,TILE);
-  g.fillStyle='#3a3a3a'; g.fillRect(14,10,4,20); g.fillRect(10,28,12,3);
-  g.fillStyle='#ffd76e'; g.fillRect(11,3,10,8);
-  g.fillStyle='#3a3a3a'; g.fillRect(11,3,10,2); g.fillRect(10,0,12,3);
+  // VISUAL-PASS-TOWN: classic Victorian lamppost — flared iron base, collared
+  // post, capped lantern with warm glass (halo added at night in drawWorld)
+  g.fillStyle='#26221e'; g.fillRect(11,26,10,4);                 // flared base
+  g.fillStyle='#17140f'; g.fillRect(11,29,10,1);
+  g.fillStyle='#3a352e'; g.fillRect(13,12,6,16);                 // iron post
+  g.fillStyle='#17140f'; g.fillRect(13,12,1,16);                 // post shade
+  g.fillStyle='#4a443a'; g.fillRect(17,12,1,16);                 // post light
+  g.fillStyle='#26221e'; g.fillRect(12,16,8,2); g.fillRect(12,22,8,1); // collar rings
+  g.fillStyle='#ffd76e'; g.fillRect(11,5,10,7);                  // warm lantern glass
+  g.fillStyle='#fff3c4'; g.fillRect(13,6,3,5);                  // glass highlight
+  g.fillStyle='#26221e';
+  g.fillRect(11,5,10,1); g.fillRect(11,11,10,1);                 // frame top/bottom
+  g.fillRect(11,5,1,7); g.fillRect(20,5,1,7);                    // frame sides
+  g.fillRect(10,2,12,3);                                        // lantern cap
+  g.fillRect(14,0,4,2);                                         // finial
 });
 // FINAL-FIX: tiered STONE water fountain redrawn from scratch — masonry basin
 // ring of individual blocks, calm deep-blue water, stacked stone tiers with
@@ -1704,6 +1904,8 @@ const fountainTile = px(TILE,TILE,(g)=>{
   // calm basin water (deep blue, thin ripple arcs — not neon)
   g.fillStyle = P.waterDeep; g.beginPath(); g.ellipse(cx,cy,rx-3.4,ry-3.2,0,0,7); g.fill();
   g.fillStyle = '#2b8bc4'; g.beginPath(); g.ellipse(cx-1,cy-1,rx-5.5,ry-4.6,0,0,7); g.fill();
+  g.fillStyle = '#4aa8d8'; g.beginPath(); g.ellipse(cx-2,cy-2,rx-8,ry-6.4,0,0,7); g.fill(); // sunlit sheen
+  g.fillStyle = 'rgba(255,255,255,.35)'; g.beginPath(); g.ellipse(cx-3,cy-3,4,2,0,0,7); g.fill();
   g.strokeStyle = 'rgba(255,255,255,.55)'; g.lineWidth = 1;
   g.beginPath(); g.ellipse(cx,cy,rx-4.6,ry-4,0,Math.PI*0.1,Math.PI*0.7); g.stroke();
   g.beginPath(); g.ellipse(cx+1,cy,rx-6.4,ry-5.2,0,Math.PI*1.1,Math.PI*1.7); g.stroke();
@@ -1716,16 +1918,18 @@ const fountainTile = px(TILE,TILE,(g)=>{
   g.fillStyle = '#8d826c'; g.beginPath(); g.ellipse(16,11,8,3.6,0,0,7); g.fill();
   g.fillStyle = '#b3a78d'; g.beginPath(); g.ellipse(16,10.4,8,3.2,0,0,7); g.fill();
   g.fillStyle = '#2e9fd8'; g.beginPath(); g.ellipse(16,10.2,5.4,2,0,0,7); g.fill();
-  g.fillStyle = 'rgba(220,240,255,.9)';
-  for (const sx of [9.5,12.5,16,19.5,22.5]) g.fillRect(sx,12.5,1.6,4);
-  g.fillStyle = 'rgba(255,255,255,.85)';
-  for (const sx of [10.5,17,21.5]) g.fillRect(sx,12.5,1,3);
+  g.fillStyle = 'rgba(215,240,255,.92)';
+  for (const sx of [9.5,12.5,16,19.5,22.5]) g.fillRect(sx,12.5,2.2,5);   // falling sheets
+  g.fillStyle = 'rgba(255,255,255,.9)';
+  for (const sx of [10.5,14,17,20]) g.fillRect(sx,12.5,1.2,4);            // sheet cores
+  g.fillStyle = 'rgba(255,255,255,.7)';
+  for (const sx of [10,13.5,17.5,21]) g.fillRect(sx,17,2,1.4);            // foam where sheets land
   // upper tier: smaller stone disc, smaller spill
   g.fillStyle = '#8d826c'; g.beginPath(); g.ellipse(16,6.4,5,2.4,0,0,7); g.fill();
   g.fillStyle = '#b3a78d'; g.beginPath(); g.ellipse(16,5.9,5,2.1,0,0,7); g.fill();
   g.fillStyle = '#2e9fd8'; g.beginPath(); g.ellipse(16,5.7,3.2,1.3,0,0,7); g.fill();
-  g.fillStyle = 'rgba(220,240,255,.9)';
-  for (const sx of [12,16,20]) g.fillRect(sx,7.4,1.4,3);
+  g.fillStyle = 'rgba(215,240,255,.92)';
+  for (const sx of [12,16,20]) g.fillRect(sx,7.4,2,3.6);
   // stone finial + modest upward jet (thin dashed stream, side droplets)
   g.fillStyle = '#a89e88'; g.fillRect(15,2.4,2,2.4);
   g.fillStyle = '#c4b797'; g.fillRect(15,2.4,2,1);
@@ -2389,13 +2593,47 @@ const RUIN_ARCH = {tx:31, ty:3};                  // 2 wide x 2 tall
 // BATCH7: landmark set-pieces — pink-blossom clusters along the lanes and plaza
 const BLOSSOM_SPOTS = [[15,17],[23,7],[12,7],[25,11],[21,7],[24,17],[14,19],[25,19],[9,6],[33,17]];
 function isBlossomSpot(tx,ty){ for (const s of BLOSSOM_SPOTS) if (s[0]===tx&&s[1]===ty) return true; return false; }
-const FLOWERS = [[14,12],[16,17],[23,11],[28,15],[12,22],[7,15],[33,8],[3,25],[15,5],[29,22]];
+const FLOWERS = [[14,12],[16,17],[23,11],[28,15],[12,20],[7,15],[33,8],[3,25],[15,5],[29,20],
+  // VISUAL-PASS-TOWN: extra meadow patches on grass verges near the plaza (walkable, never on paths)
+  [15,13],[15,16],[17,19],[22,19],[26,14],[26,16]];
+// VISUAL-PASS-TOWN: plaza dressing layout (pure decor — all tiles stay walkable,
+// collision constants untouched; fountain tile itself stays the solid anchor)
+const PLAZA_BEDS = [[17,13,bedA],[22,13,bedB],[17,17,bedC],[22,17,bedA]]; // flower beds, plaza corners
+const PLAZA_BENCHES = [[19,15],[21,15]];   // wooden benches flanking the fountain
+const PLANTERS = [[16,14],[16,16]];        // terracotta planters, west grass verge
+const SHRUBS = [[26,13],[26,15],[12,19]];  // ornamental shrubs on grass
+const ROCKS = [[24,19],[15,19]];           // garden rock clusters on grass
 const ZONE_LABELS = [
   {tx:8, ty:10, text:'Your House'}, {tx:8, ty:19, text:'Farms'},
   {tx:16, ty:9, text:'Market'}, {tx:24, ty:12, text:'Café'},
   {tx:30, ty:9, text:'Church'}, {tx:3, ty:4, text:'Forest'},
   {tx:34, ty:3, text:'Ruins'}, {tx:10, ty:23, text:'River'},
 ];
+// VISUAL-PASS-TOWN: stone medallion ring around the fountain (4 overlay tiles)
+const PLAZA_MEDALLION = {};
+PLAZA_MEDALLION[FOUNTAIN.tx + ',' + (FOUNTAIN.ty-1)] = medallionN;
+PLAZA_MEDALLION[FOUNTAIN.tx + ',' + (FOUNTAIN.ty+1)] = medallionS;
+PLAZA_MEDALLION[(FOUNTAIN.tx-1) + ',' + FOUNTAIN.ty] = medallionW;
+PLAZA_MEDALLION[(FOUNTAIN.tx+1) + ',' + FOUNTAIN.ty] = medallionE;
+// VISUAL-PASS-TOWN: precomputed edge overlays — computed once at load (no per-frame
+// allocation): soft grass fringe where paths meet grass, low stone curbs where the
+// plaza meets grass. Stone-on-stone and stone-on-path transitions stay clean.
+const PATH_FRINGE = new Map(), PLAZA_CURBS = new Map();
+(function () {
+  const grassEdges = (tx, ty) => {
+    const e = [];
+    if (baseTile(tx, ty-1) === 'grass') e.push('N');
+    if (baseTile(tx, ty+1) === 'grass') e.push('S');
+    if (baseTile(tx-1, ty) === 'grass') e.push('W');
+    if (baseTile(tx+1, ty) === 'grass') e.push('E');
+    return e;
+  };
+  for (let ty = 0; ty < WH; ty++) for (let tx = 0; tx < WW; tx++) {
+    const b = baseTile(tx, ty);
+    if (b === 'path') { const e = grassEdges(tx, ty); if (e.length) PATH_FRINGE.set(tx + ',' + ty, e); }
+    else if (b === 'plaza') { const e = grassEdges(tx, ty); if (e.length) PLAZA_CURBS.set(tx + ',' + ty, e); }
+  }
+})();
 
 function baseTile(tx, ty) {
   // BATCH6a: river along the bottom rows (board composition), stone bridge crossing
@@ -2470,10 +2708,22 @@ function drawWorld(g, now) {
       }
     }
     else if (b === 'sand') g.drawImage(sandTile, x, y);
-    else if (b === 'path') g.drawImage(pathTile, x, y);
-    else if (b === 'plaza') g.drawImage(plazaTile, x, y);
+    else if (b === 'path') {
+      g.drawImage(pathTile, x, y);
+      // VISUAL-PASS-TOWN: soft grass fringe where the path meets grass
+      const fr = PATH_FRINGE.get(tx + ',' + ty);
+      if (fr) for (const d of fr) g.drawImage(pathFringe[d], x, y);
+    }
+    else if (b === 'plaza') {
+      g.drawImage(plazaTile, x, y);
+      // VISUAL-PASS-TOWN: low stone curb where the plaza meets grass + medallion ring
+      const cu = PLAZA_CURBS.get(tx + ',' + ty);
+      if (cu) for (const d of cu) g.drawImage(plazaCurb[d], x, y);
+      const md = PLAZA_MEDALLION[tx + ',' + ty];
+      if (md) g.drawImage(md, x, y);
+    }
     else if (b === 'bridge') g.drawImage(bridgeTile, x, y);
-    else g.drawImage(((tx*7+ty*13)%5===0) ? grassB : grassA, x, y);
+    else { const gh = hash2(tx, ty); g.drawImage(gh < 0.42 ? grassA : gh < 0.72 ? grassB : grassC, x, y); }
     // garden: ruin-open reveal, fuller bloom after the day rhythm completes
     if (tx>=17 && tx<=22 && ty>=13 && ty<=17 && !(tx===FOUNTAIN.tx&&ty===FOUNTAIN.ty)) {
       if (gardenBloomed) g.drawImage(bloomTile, x, y);
@@ -2520,21 +2770,43 @@ function drawWorld(g, now) {
     if ((tx===23||tx===25) && ty===17) g.drawImage(tableTile, x, y);
     // market stalls
     for (const s of STALLS) if (s.tx===tx && s.ty===ty) g.drawImage(s.s, x, y);
-    // fountain — FINAL-FIX: subtle in-basin shimmer only, no glow above the tile
+    // fountain — VISUAL-PASS-TOWN: living water. fountainSparkle is the animated
+    // spill sheets + expanding basin ripples + twinkling spray, all clocked by `now`
     if (tx===FOUNTAIN.tx && ty===FOUNTAIN.ty) {
       g.drawImage(fountainTile, x, y);
-      // fountainSparkle: retired the bright burst; gentle ripple flicker in the basin
-      const sh = Math.sin(now/420);
-      g.fillStyle = 'rgba(255,255,255,.5)';
-      g.fillRect(x+11+(sh>0?1:0), y+20, 2, 1);
-      g.fillRect(x+20-(sh>0?1:0), y+22, 2, 1);
+      for (let i=0;i<3;i++) {                                   // falling spill sheets
+        const oy = (now/38 + i*11) % 5;
+        g.fillStyle = 'rgba(220,242,255,.85)';
+        g.fillRect(x+12+i*4, y+7+oy, 1.5, 3);                    // upper tier -> lower tier
+        const oy2 = (now/44 + i*13 + 5) % 6;
+        g.fillRect(x+9.5+i*3.2, y+12.5+oy2, 1.6, 3.5);           // lower tier -> basin
+      }
+      const rp = (now/1100) % 1;                                // expanding basin ripple
+      g.strokeStyle = 'rgba(255,255,255,' + (0.55*(1-rp)).toFixed(2) + ')';
+      g.lineWidth = 1;
+      g.beginPath(); g.ellipse(x+16, y+21, 3+rp*8, 2+rp*5, 0, 0, 7); g.stroke();
+      for (let i=0;i<3;i++) {                                   // twinkling spray
+        const tw = (Math.sin(now/260 + i*2.1) + 1) / 2;
+        g.fillStyle = 'rgba(255,255,255,' + (0.25 + 0.55*tw).toFixed(2) + ')';
+        g.fillRect(x+13+i*3, y+19+((i*5)%3), 1.5, 1.5);
+      }
     }
-    // lamps
-    for (const l of LAMPS) if (l.tx===tx && l.ty===ty) g.drawImage(lampTile, x, y-8);
+    // lamps — VISUAL-PASS-TOWN: warm halo at night from the shared glow helper
+    for (const l of LAMPS) if (l.tx===tx && l.ty===ty) {
+      g.drawImage(lampTile, x, y-8);
+      if (night) drawGlow(g, x+16, y+2, 26, 'rgba(255,205,110,A)', now, l.tx*3+l.ty);
+    }
     // dock
     if (tx===17 && ty===20) g.drawImage(dockTile, x, y);
     // flowers
     for (const fl of FLOWERS) if (fl[0]===tx && fl[1]===ty) g.drawImage(flowerTile, x, y);
+    // VISUAL-PASS-TOWN: plaza dressing — beds, benches, planters, shrubs, rocks
+    // (pure decor; every tile stays walkable, collision constants untouched)
+    for (const s of PLAZA_BEDS) if (s[0]===tx && s[1]===ty) g.drawImage(s[2], x, y);
+    for (const s of PLAZA_BENCHES) if (s[0]===tx && s[1]===ty) g.drawImage(benchTile, x, y);
+    for (const s of PLANTERS) if (s[0]===tx && s[1]===ty) g.drawImage(planterTile, x, y);
+    for (const s of SHRUBS) if (s[0]===tx && s[1]===ty) g.drawImage(shrubTile, x, y-4);
+    for (const s of ROCKS) if (s[0]===tx && s[1]===ty) g.drawImage(rockTile, x, y);
     // ruin pillars flanking the arch (waterfalls + arch draw after the tile loop)
     if ((tx===30 && ty===4) || (tx===33 && ty===4)) g.drawImage(pillarTile, x, y);
     for (const s of STONES) if (s.tx===tx && s.ty===ty) {
