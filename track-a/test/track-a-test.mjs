@@ -1149,6 +1149,7 @@ try {
   i1.send({ t: 'interact' }); // harvest -> produce
   ok('i1 harvests produce', await i1.waitFor(() => (i1.me()?.inv?.produce || 0) >= 1, 3000));
   await sleep(300); // let the 20 Hz tick sync the identity record
+  const i1pos = { x: i1.me().x, y: i1.me().y }; // far from spawn (plot 3)
   i1.close();
   await sleep(300);
   const i2 = new C('Ident2'); await i2.connect();
@@ -1156,6 +1157,9 @@ try {
   ok('rejoin with the same uuid -> joined', await i2.waitFor(() => i2.state.code === 'TIKVAH', 3000));
   ok('inventory restored on rejoin with the same uuid',
      await i2.waitFor(() => (i2.me()?.inv?.produce || 0) >= 1, 3000), JSON.stringify(i2.me()?.inv));
+  ok('position restored on rejoin with the same uuid (no spawn teleport)',
+     await i2.waitFor(() => !!i2.me(), 2000) && Math.hypot(i2.me().x - i1pos.x, i2.me().y - i1pos.y) < 60,
+     `rejoined at (${Math.round(i2.me()?.x)},${Math.round(i2.me()?.y)}), was (${Math.round(i1pos.x)},${Math.round(i1pos.y)})`);
 
   // 3d. villager friendship hearts persist by uuid across reconnects
   const HID = 'm3-uuid-hearts';
@@ -1193,6 +1197,9 @@ try {
   ok('different uuid starts with an empty inventory',
      await f1.waitFor(() => !!f1.me(), 2000) && f1.me().inv.produce === 0 && f1.me().inv.fish === 0 && f1.me().inv.meals === 0,
      JSON.stringify(f1.me()?.inv));
+  ok('fresh uuid still starts at spawn',
+     Math.hypot(f1.me().x - (13*TILE+16), f1.me().y - (14*TILE+16)) < 40,
+     `(${Math.round(f1.me().x)},${Math.round(f1.me().y)})`);
 
   [a, b, c, d, k, v2, v3, i2, h2, f1, ...fillers].forEach(x => x.close());
 } finally {

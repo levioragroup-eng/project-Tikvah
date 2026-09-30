@@ -312,24 +312,34 @@ function addPlayer(room, ws, name, look, uuid) {
   const rec = room.identities.get(uid);
   // A returning traveler picks up where they left off: inventory is always
   // restored; name/look fall back to the stored identity when the client
-  // didn't resend them.
+  // didn't resend them. Position is restored too — validated against the
+  // collision map so a stale record can never strand anyone inside a wall
+  // (falls back to spawn in that case).
   const nameS = String(name || '').slice(0, MAX_NAME_LEN);
+  let px = SPAWN.tx*TILE + TILE/2, py = SPAWN.ty*TILE + TILE/2, pplace = null;
+  if (rec && Number.isFinite(rec.x) && Number.isFinite(rec.y)) {
+    const rtx = Math.floor(rec.x / TILE), rty = Math.floor(rec.y / TILE);
+    const rplc = (rec.place === 'church' || rec.place === 'home') ? rec.place : null;
+    if (rtx >= 0 && rty >= 0 && rtx < WORLD_W && rty < WORLD_H && !isSolid(rtx, rty, rplc)) {
+      px = rec.x; py = rec.y; pplace = rplc;
+    }
+  }
   const p = {
     id: 'p' + Math.random().toString(36).slice(2, 9),
     uuid: uid,
     name: nameS || (rec && rec.name) || 'Traveler',
     look: validLook(look) ? { ...sanitizeLook(look) } : (rec && validLook(rec.look) ? { ...rec.look } : defaultLook()),
-    x: SPAWN.tx*TILE + TILE/2, y: SPAWN.ty*TILE + TILE/2,
+    x: px, y: py,
     dir: 'right', moving: false,              // new travelers face the village (east)
     ix: 0, iy: 0,                       // current input vector
     emote: null, emoteAt: 0,
-    inside: false,                       // inside any interior
-    place: null,                         // 'church' | 'home' | null
+    inside: pplace !== null,             // inside any interior
+    place: pplace,                       // 'church' | 'home' | null
     fishing: null,                       // {state:'cast', biteAt, windowUntil} | null
     qcAt: 0,                           // last quick-chat time (2 s anti-spam cooldown)
     inv: rec ? { ...rec.inv } : { produce: 0, fish: 0, meals: 0 },
   };
-  room.identities.set(uid, { name: p.name, look: { ...p.look }, inv: { ...p.inv } });
+  room.identities.set(uid, { name: p.name, look: { ...p.look }, inv: { ...p.inv }, x: p.x, y: p.y, place: p.place });
   room.players.set(ws, p);
   room.sockets.add(ws);
   return p;
@@ -608,11 +618,11 @@ function tickRoom(room) {
     if (l > 4) { n.x += dx/l*28*dt; n.y += dy/l*28*dt; room.npcMoved = true; }
   }
   // M3: persist identity each tick (in-memory, per room) — inventory, look,
-  // and name keyed by uuid, so a returning traveler restores them after a
-  // disconnect while the server runs.
+  // name, and last position keyed by uuid, so a returning traveler restores
+  // them after a disconnect while the server runs.
   for (const [, p] of room.players) {
     const rec = room.identities.get(p.uuid);
-    if (rec) { rec.inv = { ...p.inv }; rec.look = { ...p.look }; rec.name = p.name; }
+    if (rec) { rec.inv = { ...p.inv }; rec.look = { ...p.look }; rec.name = p.name; rec.x = p.x; rec.y = p.y; rec.place = p.place; }
   }
   if (moved || room.npcMoved) {
     const msg = { t: 'tick', players: [...room.players.values()].map(playerPublic) };
