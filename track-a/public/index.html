@@ -493,8 +493,8 @@
               <button class="ctab sel" data-tab="skin">Skin</button>
               <button class="ctab" data-tab="hair">Hair</button>
               <button class="ctab" data-tab="outfit">Outfit</button>
-              <button class="ctab" data-tab="style">Style</button>
               <button class="ctab" data-tab="acc">Accessories</button>
+              <button class="ctab" data-tab="style">Style</button>
               <button class="ctab" data-tab="name">Name</button>
             </div>
             <div class="cpanel" id="cp-skin"><div class="swatches" id="swSkin"></div></div>
@@ -1400,23 +1400,28 @@ function mixHex(a, b, t) {
   return '#' + A.map((v,i)=>Math.round(v+(B[i]-v)*t).toString(16).padStart(2,'0')).join('');
 }
 // ---- character sprite from a look ----
-// BATCH3_CHARACTERS: board-style chibi painters — larger head, expressive
-// eyes with shine, blush, volumetric hair with shine, cream blouse base,
-// fabric folds, outfit-colored trim, anchor-green default skirt, brown boots.
-// VISUAL-PASS-CHARACTERS: unified layered painter — back hair → legs/boots →
-// torso → arms → head/face → front hair → accessory. One system feeds the
-// world sprite (spriteFor), NPCs (npcSprite), the creator preview, and the
-// creator's mini visual swatches. Walk motion stays offset-based (strideX +
-// bob in the render loop), so every frame of movement animates.
-function lookSprite(lk) {
+function lookSprite(lk) { return lookSpriteF(lk, 0); }
+// PERFECTION-PASS characters: unified layered painter with painted walk
+// frames — back hair → legs/boots → torso → arms → head/face → front hair →
+// accessory. fr 0 = idle/planted, 1/2 = stride alternates: legs scissor with
+// a lifted foot, dress hems sway, arms swing. The render loop picks 1/2 by
+// stride phase while moving (idle stays 0), layered under the existing
+// strideX + bob offsets, so every frame of movement animates smoothly.
+// Board anchor: long voluminous curls, warm brown skin, cream blouse with
+// sleeves, long modest flared skirt, brown boots.
+// (BATCH3_CHARACTERS lineage: same look-field contract, same unified painter.)
+function lookSpriteF(lk, fr) {
   return px(16, 24, (g) => {
+    fr = (fr === 1 || fr === 2) ? fr : 0;
+    const sA = fr === 1, sB = fr === 2;
     const skin = lk.skin || '#f2c99a', hairC = lk.hairColor || '#4a2c14',
           hair = lk.hair || 'long', acc = lk.accessory || 'none';
     const blouse = '#f6ead2';                    // cream blouse (board anchor)
     const trim = lk.outfit || '#4a8ac9';         // outfit color: collar, cuffs, waist, hem
     const skirtC = trim === '#4a8ac9' ? '#5f8f4a' : trim; // default look = anchor green skirt
-    const skinD = mixHex(skin, '#1a0f08', .18);
-    const hairL = mixHex(hairC, '#ffffff', .38), hairD = mixHex(hairC, '#1a0f08', .25);
+    const skinD = mixHex(skin, '#1a0f08', .18), skinDD = mixHex(skin, '#1a0f08', .34);
+    const hairL = mixHex(hairC, '#ffffff', .38), hairD = mixHex(hairC, '#1a0f08', .25),
+          hairDD = mixHex(hairC, '#1a0f08', .5);
     const blouseD = mixHex(blouse, '#1a0f08', .12), blouseL = mixHex(blouse, '#ffffff', .5);
     const skirtD = mixHex(skirtC, '#1a0f08', .22), skirtL = mixHex(skirtC, '#ffffff', .30);
     const boot = '#6a4526', bootD = '#3a2a18', bootL = '#8a5f3a';
@@ -1425,128 +1430,177 @@ function lookSprite(lk) {
     if (hair === 'long') {
       // back hair behind the body (long wavy falls, board anchor)
       g.fillStyle = hairC;
-      g.fillRect(0,5,2,9); g.fillRect(14,5,2,9);
-      g.fillRect(0,7,1,1); g.fillRect(15,7,1,1);   // wave bumps
-      g.fillRect(0,10,1,1); g.fillRect(15,10,1,1);
-      g.fillRect(1,12,1,2); g.fillRect(14,12,1,2); // curl tips resting at the waist
-      g.fillStyle = hairD; g.fillRect(0,13,2,1); g.fillRect(14,13,2,1);
-      g.fillStyle = hairL; g.fillRect(1,6,1,2); g.fillRect(14,6,1,2); // shine on the falls
+      // wide falls with scalloped curl edges, tapering to curl tips at the waist
+      const bands = [[4,3],[5,3],[6,3],[7,2],[8,3],[9,3],[10,2],[11,3],[12,3],[13,2],[14,2],[15,2]];
+      for (const [by, bw] of bands) { g.fillRect(0, by, bw, 1); g.fillRect(16 - bw, by, bw, 1); }
+      g.fillStyle = hairD;   // coil shadow along the inner edges
+      for (const by of [4, 5, 8, 9, 11, 12]) { g.fillRect(2, by, 1, 1); g.fillRect(13, by, 1, 1); }
+      g.fillStyle = hairDD;  // curl-tip shadow
+      g.fillRect(0, 15, 2, 1); g.fillRect(14, 15, 2, 1);
+      g.fillStyle = hairL; g.fillRect(1, 5, 1, 3); g.fillRect(14, 5, 1, 3); // shine on the falls
     } else if (hair === 'curly') {
-      // afro/curls halo spilling behind the shoulders
+      // afro halo spilling behind the shoulders
       g.fillStyle = hairC;
-      g.fillRect(0,3,2,6); g.fillRect(14,3,2,6);
-      g.fillStyle = hairD; g.fillRect(0,8,2,1); g.fillRect(14,8,2,1);
-      g.fillStyle = hairL; g.fillRect(0,3,1,2); g.fillRect(15,3,1,2); // halo shine
+      g.fillRect(0, 3, 2, 7); g.fillRect(14, 3, 2, 7);
+      g.fillRect(1, 9, 2, 2); g.fillRect(13, 9, 2, 2);
+      g.fillStyle = hairD; g.fillRect(0, 9, 2, 1); g.fillRect(14, 9, 2, 1);
+      g.fillStyle = hairL; g.fillRect(0, 3, 1, 2); g.fillRect(15, 3, 1, 2); // halo shine
     }
-    // brown boots + legs
-    const boots = (x1, x2) => {
-      g.fillStyle = boot; g.fillRect(x1,22,3,2); g.fillRect(x2,22,3,2);
-      g.fillStyle = bootL; g.fillRect(x1,22,3,1); g.fillRect(x2,22,3,1);
-      g.fillStyle = bootD; g.fillRect(x1,23,3,1); g.fillRect(x2,23,3,1);
+
+    // ===== legs + boots (stride frames scissor the legs, one foot lifts) =====
+    const bootPx = (bx, lift) => {
+      g.fillStyle = boot; g.fillRect(bx, 22 - lift, 3, 2);
+      g.fillStyle = bootL; g.fillRect(bx, 22 - lift, 3, 1);
+      g.fillStyle = bootD; g.fillRect(bx, 23 - lift, 3, 1);
     };
     if (lk.dress) {
-      g.fillStyle = skin; g.fillRect(5,21,2,1); g.fillRect(9,21,2,1);
-      g.fillStyle = skinD; g.fillRect(6,21,1,1); g.fillRect(10,21,1,1);
-      boots(4, 9);
+      // dress: boots peek below the hem; stride spreads them, hem sway carries the motion
+      if (!sA && !sB) { bootPx(4, 0); bootPx(9, 0); }
+      else if (sA) { bootPx(3, 0); bootPx(10, 0); }
+      else { bootPx(5, 0); bootPx(8, 0); }
     } else {
-      g.fillStyle = '#4a3a28'; g.fillRect(4,18,3,4); g.fillRect(9,18,3,4); // trousers
-      g.fillStyle = mixHex('#4a3a28', '#1a0f08', .3); g.fillRect(6,18,1,4); g.fillRect(11,18,1,4);
-      g.fillStyle = mixHex('#4a3a28', '#ffffff', .25); g.fillRect(4,18,1,2); g.fillRect(9,18,1,2); // knee light
-      boots(4, 9);
+      // trousers: two clearly separated legs
+      const legPx = (lx, lift) => {
+        g.fillStyle = '#4a3a28'; g.fillRect(lx, 18 - lift, 3, 4);
+        g.fillStyle = mixHex('#4a3a28', '#1a0f08', .3); g.fillRect(lx + 2, 18 - lift, 1, 4);
+        g.fillStyle = mixHex('#4a3a28', '#ffffff', .25); g.fillRect(lx, 18 - lift, 1, 2); // knee light
+      };
+      if (!sA && !sB) { legPx(4, 0); legPx(9, 0); bootPx(4, 0); bootPx(9, 0); }
+      else if (sA) { legPx(3, 0); legPx(10, 1); bootPx(3, 0); bootPx(10, 1); }
+      else { legPx(5, 1); legPx(8, 0); bootPx(5, 1); bootPx(8, 0); }
     }
-    // cream blouse torso
-    g.fillStyle = blouse; g.fillRect(4,12,8,5);
-    // fabric folds (soft shading)
-    g.fillStyle = blouseD; g.fillRect(6,13,1,3); g.fillRect(9,13,1,3);
-    g.fillStyle = blouseL; g.fillRect(5,13,1,2);
+
+    // ===== cream blouse torso =====
+    g.fillStyle = blouse; g.fillRect(4, 12, 8, 5);
+    g.fillStyle = blouseD; g.fillRect(6,13,1,3); g.fillRect(9,13,1,3); // fabric folds (soft shading)
+    g.fillStyle = blouseL; g.fillRect(5, 13, 1, 2);
     // outfit trim: collar, waistband
     g.fillStyle = trim; g.fillRect(6,12,4,1); g.fillRect(4,16,8,1);
+
     if (lk.dress) {
-      // skirt with flare + hem
+      // long modest A-line skirt: flare + pleats + light hem, sways with stride
+      const dx = sA ? -1 : sB ? 1 : 0;
       g.fillStyle = skirtC;
-      g.fillRect(4,17,8,1); g.fillRect(3,18,10,2); g.fillRect(3,20,10,1);
-      g.fillStyle = skirtD; g.fillRect(5,18,1,2); g.fillRect(8,18,1,2); g.fillRect(11,18,1,2);
-      g.fillStyle = skirtL; g.fillRect(3,20,10,1);
+      g.fillRect(4, 17, 8, 1);
+      g.fillRect(3, 18, 10, 1);
+      g.fillRect(3 + dx, 19, 10, 1);
+      g.fillRect(2 + dx, 20, 12, 1);
+      g.fillRect(2 + dx, 21, 12, 1);
+      g.fillStyle = skirtD;                        // pleats
+      for (const plx of [4, 7, 10]) g.fillRect(plx + dx, 19, 1, 2);
+      g.fillStyle = skirtL; g.fillRect(2 + dx, 21, 12, 1); // hem light
     } else {
-      // tunic: longer blouse + trim hem
-      g.fillStyle = blouse; g.fillRect(4,17,8,1);
-      g.fillStyle = blouseD; g.fillRect(6,17,1,1); g.fillRect(9,17,1,1);
-      g.fillStyle = trim; g.fillRect(4,18,8,1);
+      // tunic: longer blouse + trim hem over the trousers
+      g.fillStyle = blouse; g.fillRect(4, 17, 8, 1);
+      g.fillStyle = blouseD; g.fillRect(6, 17, 1, 1); g.fillRect(9, 17, 1, 1);
+      g.fillStyle = trim; g.fillRect(4, 18, 8, 1);
     }
-    // sleeves + arms
-    g.fillStyle = blouse; g.fillRect(2,12,2,2); g.fillRect(12,12,2,2);
-    g.fillStyle = trim; g.fillRect(2,14,2,1); g.fillRect(12,14,2,1); // cuffs
-    g.fillStyle = skin; g.fillRect(2,15,2,2); g.fillRect(12,15,2,2);
-    g.fillStyle = skinD; g.fillRect(2,17,2,1); g.fillRect(12,17,2,1);
+
+    // ===== sleeves + arms (swing with the stride) =====
+    const armPx = (ax, adx) => {
+      g.fillStyle = blouse; g.fillRect(ax + adx, 12, 2, 2);
+      g.fillStyle = blouseD; g.fillRect(ax + adx, 13, 1, 1);
+      g.fillStyle = trim; g.fillRect(ax + adx, 14, 2, 1);   // cuffs
+      g.fillStyle = skin; g.fillRect(ax + adx, 15, 2, 2);
+      g.fillStyle = skinD; g.fillRect(ax + adx, 16, 2, 1);
+    };
+    armPx(2, sA ? -1 : sB ? 1 : 0);
+    armPx(12, sA ? 1 : sB ? -1 : 0);
+
     // Hannah's apron (warm hostess apron over the dress)
     if (lk.apron) {
       g.fillStyle = '#fbf6ea';
-      g.fillRect(5,12,1,2); g.fillRect(10,12,1,2);   // straps
-      g.fillRect(6,13,4,4); g.fillRect(6,17,4,3);    // bib + skirt panel
-      g.fillRect(4,16,2,1); g.fillRect(10,16,2,1);   // waist ties
-      g.fillStyle = mixHex('#fbf6ea', '#1a0f08', .18); g.fillRect(6,19,4,1);
-      g.fillStyle = mixHex('#fbf6ea', '#1a0f08', .08); g.fillRect(7,14,2,2); // pocket
+      g.fillRect(5, 12, 1, 2); g.fillRect(10, 12, 1, 2);   // straps
+      g.fillRect(6, 13, 4, 3);                              // bib
+      g.fillRect(4, 16, 2, 1); g.fillRect(10, 16, 2, 1);   // waist ties
+      g.fillRect(6, 17, 4, 4);                              // skirt panel
+      g.fillStyle = mixHex('#fbf6ea', '#1a0f08', .18); g.fillRect(6, 20, 4, 1);
+      g.fillStyle = mixHex('#fbf6ea', '#1a0f08', .08); g.fillRect(7, 14, 2, 2); // pocket
     }
-    // neck + face
-    g.fillStyle = skin; g.fillRect(7,11,2,1);
-    g.fillStyle = skin; g.fillRect(3,4,10,7);
-    g.fillStyle = skinD; g.fillRect(12,5,1,5);                    // cheek shadow
-    g.fillStyle = mixHex(skin, '#1a0f08', .12); g.fillRect(4,10,8,1);
-    g.fillStyle = mixHex(skin, '#ffffff', .3); g.fillRect(4,5,1,1); // cheek light
+
+    // ===== neck + face: readable at gameplay size =====
+    g.fillStyle = skin; g.fillRect(7, 11, 2, 1);
+    g.fillStyle = skin; g.fillRect(3, 3, 10, 8);
+    g.fillStyle = skinD; g.fillRect(12, 4, 1, 6);                    // cheek shadow
+    g.fillStyle = mixHex(skin, '#1a0f08', .12); g.fillRect(4, 10, 8, 1); // jaw shade
+    g.fillStyle = mixHex(skin, '#ffffff', .3); g.fillRect(4, 4, 1, 1); // cheek light
     // expressive board eyes with shine
-    g.fillStyle = hairD; g.fillRect(5,6,2,1); g.fillRect(9,6,2,1); // brows
-    g.fillStyle = '#2e1f14'; g.fillRect(5,7,2,2); g.fillRect(9,7,2,2);
-    g.fillStyle = '#fff'; g.fillRect(5,7,1,1); g.fillRect(9,7,1,1); // eye shine
-    g.fillStyle = '#f2a0a0'; g.fillRect(3,9,2,1); g.fillRect(11,9,2,1); // blush
-    g.fillStyle = '#a05a4a'; g.fillRect(7,9,2,1);                  // smile
-    // hair per style: large expressive silhouette + natural texture, in hairColor
+    g.fillStyle = hairD; g.fillRect(5, 6, 2, 1); g.fillRect(9, 6, 2, 1); // brows
+    g.fillStyle = '#2e1f14'; g.fillRect(5, 7, 2, 2); g.fillRect(9, 7, 2, 2);
+    g.fillStyle = '#fff'; g.fillRect(5, 7, 1, 1); g.fillRect(9, 7, 1, 1); // eye shine
+    g.fillStyle = skinDD; g.fillRect(7, 8, 1, 1);                     // soft nose
+    g.fillStyle = '#f2a0a0'; g.fillRect(3, 9, 2, 1); g.fillRect(11, 9, 2, 1); // blush
+    g.fillStyle = '#a05a4a'; g.fillRect(7, 9, 2, 1);                  // smile
+
+    // ===== hair per style: large expressive silhouette + natural texture =====
     g.fillStyle = hairC;
     if (hair === 'long') {
-      g.fillRect(2,1,12,2); g.fillRect(3,0,10,1);   // cap
-      g.fillRect(3,3,10,1);                          // bangs
-      g.fillRect(0,4,2,3); g.fillRect(14,4,2,3);     // side volume puffs
-      g.fillStyle = hairL; g.fillRect(5,1,2,1); g.fillRect(4,2,1,1); // shine
-      g.fillStyle = hairD;                            // natural curl texture
-      g.fillRect(2,2,1,1); g.fillRect(9,0,1,1); g.fillRect(12,2,1,1);
-      g.fillRect(1,4,1,1); g.fillRect(14,5,1,1); g.fillRect(0,6,1,1); g.fillRect(15,6,1,1);
+      g.fillRect(3, 0, 10, 1); g.fillRect(2, 1, 12, 2);   // cap
+      // scalloped hairline — forehead peeks between the bangs
+      g.fillRect(2, 2, 3, 1); g.fillRect(7, 2, 2, 1); g.fillRect(11, 2, 3, 1);
+      g.fillRect(3, 3, 1, 1); g.fillRect(7, 3, 2, 1); g.fillRect(12, 3, 1, 1);
+      // thick curls falling in front of the shoulders, over the blouse
+      for (const fy of [9, 10, 11, 12, 13, 14]) { g.fillRect(2, fy, 1, 1); g.fillRect(13, fy, 1, 1); }
+      g.fillStyle = hairD;   // curl-clump texture on the falls
+      g.fillRect(2, 10, 1, 1); g.fillRect(13, 12, 1, 1);
+      g.fillStyle = hairDD; g.fillRect(2, 14, 1, 1); g.fillRect(13, 14, 1, 1);
+      g.fillStyle = hairC;   // outer curl bumps
+      g.fillRect(1, 10, 1, 1); g.fillRect(1, 12, 1, 1);
+      g.fillRect(14, 10, 1, 1); g.fillRect(14, 12, 1, 1);
+      g.fillStyle = hairL; g.fillRect(5, 1, 3, 1); g.fillRect(4, 2, 2, 1); // cap shine
+      g.fillStyle = hairD;   // natural curl texture on the cap
+      g.fillRect(3, 1, 1, 1); g.fillRect(9, 0, 1, 1); g.fillRect(11, 1, 1, 1);
+      g.fillRect(6, 2, 1, 1); g.fillRect(10, 2, 1, 1);
     } else if (hair === 'short') {
-      g.fillRect(2,1,12,2); g.fillRect(3,0,10,1);
-      g.fillRect(3,3,10,1);
-      g.fillRect(2,4,1,3); g.fillRect(13,4,1,3);     // sides to the jaw
-      g.fillStyle = hairL; g.fillRect(5,1,2,1);
-      g.fillStyle = hairD;                            // textured crop
-      g.fillRect(4,0,1,1); g.fillRect(8,1,1,1); g.fillRect(11,0,1,1);
-      g.fillRect(6,2,1,1); g.fillRect(10,2,1,1);
+      g.fillRect(3, 0, 10, 1); g.fillRect(2, 1, 12, 2);   // cap
+      g.fillRect(1, 2, 2, 3); g.fillRect(13, 2, 2, 3);    // rounded sides
+      g.fillRect(2, 4, 1, 3); g.fillRect(13, 4, 1, 3);    // to the jaw
+      g.fillStyle = hairC; g.fillRect(0, 3, 1, 2); g.fillRect(15, 3, 1, 2); // curl-bump silhouette
+      g.fillStyle = hairL; g.fillRect(5, 1, 3, 1);        // shine
+      g.fillStyle = hairD;                                 // textured crop
+      g.fillRect(4, 0, 1, 1); g.fillRect(8, 1, 1, 1); g.fillRect(11, 0, 1, 1);
+      g.fillRect(6, 2, 1, 1); g.fillRect(10, 2, 1, 1); g.fillRect(2, 3, 1, 1); g.fillRect(13, 3, 1, 1);
     } else if (hair === 'curly') {
-      g.fillRect(5,0,6,1); g.fillRect(3,1,10,1); g.fillRect(2,2,12,1);
-      g.fillRect(1,3,14,1); g.fillRect(1,4,14,1);    // rounded volume
-      g.fillRect(0,5,16,1); g.fillRect(0,6,14,1);    // full afro cloud
-      g.fillRect(1,7,2,2); g.fillRect(13,7,2,2);
-      g.fillStyle = hairL; g.fillRect(4,1,3,1); g.fillRect(3,2,2,1); // shine cluster
-      g.fillStyle = hairD;                            // coil texture
-      g.fillRect(6,2,1,1); g.fillRect(10,3,1,1); g.fillRect(4,4,1,1); g.fillRect(11,5,1,1);
-      g.fillRect(7,6,1,1); g.fillRect(2,5,1,1); g.fillRect(13,6,1,1); g.fillRect(8,0,1,1);
+      // big round afro cloud framing the face
+      g.fillRect(4, 0, 8, 1);
+      g.fillRect(2, 1, 12, 1);
+      g.fillRect(1, 2, 14, 1);
+      const sides = [[3,3],[4,3],[5,2],[6,3],[7,3],[8,2]];
+      for (const [sy, sw] of sides) { g.fillRect(0, sy, sw, 1); g.fillRect(16 - sw, sy, sw, 1); }
+      g.fillStyle = hairC;                                // individual curl-clump bumps
+      g.fillRect(0, 2, 1, 1); g.fillRect(15, 2, 1, 1);
+      g.fillRect(4, 3, 1, 1); g.fillRect(11, 3, 1, 1);    // forehead frame
+      g.fillStyle = hairL; g.fillRect(4, 1, 3, 1); g.fillRect(3, 2, 2, 1); // shine cluster
+      g.fillStyle = hairD;                                // coil texture
+      g.fillRect(7, 0, 1, 1); g.fillRect(10, 1, 1, 1); g.fillRect(12, 2, 1, 1);
+      g.fillRect(5, 2, 1, 1); g.fillRect(1, 4, 1, 1); g.fillRect(14, 5, 1, 1);
+      g.fillRect(0, 6, 1, 1); g.fillRect(15, 6, 1, 1); g.fillRect(1, 7, 1, 1); g.fillRect(14, 7, 1, 1);
     } else if (hair === 'bun') {
-      g.fillRect(7,0,2,1); g.fillRect(6,1,4,1);      // bun ball
-      g.fillStyle = hairL; g.fillRect(7,0,1,1);
-      g.fillStyle = hairD; g.fillRect(6,1,1,1); g.fillRect(9,1,1,1); // bun texture
-      g.fillStyle = hairC; g.fillRect(2,2,12,1); g.fillRect(3,3,10,1); // cap + bangs
-      g.fillRect(2,4,1,2); g.fillRect(13,4,1,2);     // soft side curls
-      g.fillStyle = trim; g.fillRect(7,2,2,1);      // hair tie
+      g.fillStyle = hairC; g.fillRect(6, 0, 4, 2); g.fillRect(5, 1, 6, 1); // bun ball
+      g.fillStyle = hairL; g.fillRect(6, 0, 2, 1);
+      g.fillStyle = hairD; g.fillRect(5, 1, 1, 1); g.fillRect(10, 1, 1, 1); g.fillRect(8, 1, 1, 1);
+      g.fillStyle = hairC; g.fillRect(2, 2, 12, 1); g.fillRect(3, 3, 10, 1); // cap + hairline
+      g.fillRect(2, 4, 1, 4); g.fillRect(13, 4, 1, 4);     // tendril curls
+      g.fillRect(1, 5, 1, 1); g.fillRect(14, 5, 1, 1);
+      g.fillRect(1, 7, 1, 1); g.fillRect(14, 7, 1, 1);
+      g.fillStyle = hairD; g.fillRect(2, 6, 1, 1); g.fillRect(13, 6, 1, 1);
+      g.fillStyle = trim; g.fillRect(7, 2, 2, 1);      // hair tie
     }
+
     // accessories (same option names as the creator)
     if (acc === 'hat') {
       // straw hat
       g.fillStyle = '#d9b978';
-      g.fillRect(4,0,8,2); g.fillRect(0,2,16,2);
-      g.fillStyle = trim; g.fillRect(4,1,8,1);       // band
-      g.fillStyle = mixHex('#d9b978', '#ffffff', .4); g.fillRect(0,2,16,1);
-      g.fillStyle = mixHex('#d9b978', '#1a0f08', .25); g.fillRect(0,3,16,1);
+      g.fillRect(4, 0, 8, 2); g.fillRect(0, 2, 16, 2);
+      g.fillStyle = trim; g.fillRect(4, 1, 8, 1);       // band
+      g.fillStyle = mixHex('#d9b978', '#ffffff', .4); g.fillRect(0, 2, 16, 1);
+      g.fillStyle = mixHex('#d9b978', '#1a0f08', .25); g.fillRect(0, 3, 16, 1);
     } else if (acc === 'flower') {
       // hair flower with leaf
-      g.fillStyle = '#ff9ec4'; g.fillRect(12,3,3,3);
-      g.fillStyle = '#ffe066'; g.fillRect(13,4,1,1);
-      g.fillStyle = '#6aa84f'; g.fillRect(11,5,1,1);
+      g.fillStyle = '#ff9ec4'; g.fillRect(12, 3, 3, 3);
+      g.fillStyle = mixHex('#ff9ec4', '#1a0f08', .2); g.fillRect(12, 5, 3, 1);
+      g.fillStyle = '#ffe066'; g.fillRect(13, 4, 1, 1);
+      g.fillStyle = '#6aa84f'; g.fillRect(11, 5, 1, 1);
     }
   });
 }
@@ -3471,44 +3525,50 @@ const bookcaseTile = px(TILE,TILE,(g)=>{ g.drawImage(woodFloor,0,0);
   g.fillStyle='#9a6ac9'; g.fillRect(19,18,3,8);               // one leaning book
   g.fillStyle='#d9c4a0'; g.fillRect(23,20,3,6);               // small jar
 });
-// BATCH3: storybook fox — rounder, fluffier, big bright eyes
-// BATCH3: storybook fox — fully procedural, original design. Frame set:
-// idle (tail flick + ear twitch), walk (alternating stride), and a happy
-// reaction pose used when a traveler is near.
+// PERFECTION-PASS fox: fluffier layered tail with white tip, white chest bib,
+// bigger head, tall ears — fully procedural, original design. Frame set:
+// idle0 (rest), idle1 (blink + tail flick + ear twitch), walk (alternating
+// stride), happy (perked ears, joyful squint, tail up) for nearby travelers.
 function foxPaint(variant) {
   return px(16, 12, (g) => {
     const fur = '#e08a3c', furL = '#f6c98a', furD = '#8a4f1f';
     const flick = variant === 'idle1', wag = variant === 'happy';
     const walk = variant === 'walk0' || variant === 'walk1';
-    // big fluffy tail with white tip (idle1 flicks it up, happy wags it high)
-    const ty = wag ? 2 : flick ? 3 : walk ? 4 : 5;
-    g.fillStyle = fur; g.fillRect(1,ty,4,5); g.fillRect(2,ty-1,3,1); g.fillRect(2,ty+5,3,1);
-    g.fillStyle = '#ffffff'; g.fillRect(0,ty+1,2,3); g.fillRect(1,ty,1,1); g.fillRect(1,ty+4,1,1);
-    g.fillStyle = furL; g.fillRect(2,ty+1,1,3);
-    // round body + fluffy belly
-    g.fillStyle = fur; g.fillRect(4,6,7,4);
-    g.fillStyle = furL; g.fillRect(5,8,5,2);
+    // big fluffy tail: layered plume with white tip
+    // (idle1 flicks it up, happy wags it high)
+    const ty = wag ? 1 : flick ? 3 : walk ? 4 : 5;
+    g.fillStyle = fur;
+    g.fillRect(1, ty, 4, 6); g.fillRect(2, ty - 1, 3, 1); g.fillRect(2, ty + 6, 3, 1);
+    g.fillStyle = furL; g.fillRect(2, ty + 1, 2, 4);
+    g.fillStyle = '#ffffff';
+    g.fillRect(0, ty + 1, 2, 4); g.fillRect(1, ty, 1, 1); g.fillRect(1, ty + 5, 1, 1);
+    g.fillStyle = furD; g.fillRect(4, ty + 2, 1, 2);      // tail-base shadow
+    // round body + fluffy belly + white chest bib
+    g.fillStyle = fur; g.fillRect(5, 7, 6, 3);
+    g.fillStyle = furL; g.fillRect(6, 8, 4, 2);
+    g.fillStyle = '#ffffff'; g.fillRect(9, 7, 2, 3);       // chest bib
+    g.fillStyle = furD; g.fillRect(5, 6, 2, 1);           // back ridge tuft
     // paws — walk frames alternate the stride
     g.fillStyle = furD;
-    if (variant === 'walk0') { g.fillRect(4,10,2,2); g.fillRect(9,10,2,2); }
-    else if (variant === 'walk1') { g.fillRect(6,10,2,2); g.fillRect(8,10,2,2); }
-    else { g.fillRect(5,10,2,2); g.fillRect(8,10,2,2); }
+    if (variant === 'walk0') { g.fillRect(5, 10, 2, 2); g.fillRect(9, 10, 2, 2); }
+    else if (variant === 'walk1') { g.fillRect(7, 10, 2, 2); g.fillRect(8, 10, 2, 2); }
+    else { g.fillRect(6, 10, 2, 2); g.fillRect(9, 10, 2, 2); }
     // big head, tall ears (idle1 twitches the left ear, happy perks both up)
-    const hy = wag ? 2 : 3, ey = wag ? 0 : flick ? 2 : 1;
-    g.fillStyle = fur; g.fillRect(10,hy,5,5);
-    g.fillRect(10,ey,2,2); g.fillRect(13,ey,2,2);
-    g.fillStyle = furD; g.fillRect(10,ey,2,1); g.fillRect(13,ey,2,1); // ear tips
-    g.fillStyle = furL; g.fillRect(11,ey+1,1,1); g.fillRect(13,ey+1,1,1); // inner ear
-    g.fillStyle = furL; g.fillRect(13,hy+2,2,2);          // muzzle
-    g.fillStyle = '#2e1f14'; g.fillRect(14,hy+2,1,1);     // nose
-    // big bright eye with shine (happy frame closes it in a joyful squint)
-    if (wag) { g.fillStyle = '#2e1f14'; g.fillRect(11,hy+1,2,1); }
+    const hy = wag ? 1 : 2, ex = flick ? -1 : 0;
+    g.fillStyle = fur; g.fillRect(10, hy, 6, 6);
+    g.fillRect(10 + ex, 0, 2, 2); g.fillRect(14, 0, 2, 2);
+    g.fillStyle = furD; g.fillRect(10 + ex, 0, 2, 1); g.fillRect(14, 0, 2, 1); // ear tips
+    g.fillStyle = furL; g.fillRect(11 + ex, 1, 1, 1); g.fillRect(14, 1, 1, 1); // inner ear
+    g.fillStyle = furL; g.fillRect(13, hy + 3, 3, 2);          // muzzle
+    g.fillStyle = '#2e1f14'; g.fillRect(15, hy + 3, 1, 1);     // nose
+    // big bright eye with shine (idle1 blinks, happy squints with joy)
+    if (flick || wag) { g.fillStyle = '#2e1f14'; g.fillRect(11, hy + 2, 2, 1); }
     else {
-      g.fillStyle = '#2e1f14'; g.fillRect(11,hy+1,2,2);
-      g.fillStyle = '#fff'; g.fillRect(11,hy+1,1,1);
+      g.fillStyle = '#2e1f14'; g.fillRect(11, hy + 2, 2, 2);
+      g.fillStyle = '#fff'; g.fillRect(11, hy + 2, 1, 1);
     }
     // cheek fluff
-    g.fillStyle = '#ffffff'; g.fillRect(10,hy+3,1,2);
+    g.fillStyle = '#ffffff'; g.fillRect(10, hy + 3, 1, 2);
   });
 }
 const foxFrames = {
@@ -4242,11 +4302,12 @@ let foxSm = null, foxFace = 1;
 let hannahFocusT = 0, hannahGreetUntil = 0;
 const hannahBoxEl = document.getElementById('hannah');
 const spriteCache = new Map();
-function spriteFor(lk) {
-  const k = JSON.stringify(lk || {});
+function spriteFor(lk) { return spriteForF(lk, 0); }
+function spriteForF(lk, fr) {
+  const k = JSON.stringify(lk || {}) + '|' + (fr | 0);
   if (!spriteCache.has(k)) {
-    if (spriteCache.size > 40) spriteCache.clear();
-    spriteCache.set(k, lookSprite(lk || {}));
+    if (spriteCache.size > 60) spriteCache.clear();
+    spriteCache.set(k, lookSpriteF(lk || {}, fr | 0));
   }
   return spriteCache.get(k);
 }
@@ -4355,12 +4416,14 @@ function loop(now) {
   // players sorted by y
   const list = [...players.values()].sort((a,b)=>a.y-b.y);
   list.forEach((p) => {
-    const spr = spriteFor(p.look);
+    // stride + bob walk cycle: painted stride frames (1/2) selected by stride
+    // phase while moving, idle frame 0 otherwise; a slow breath-like sway when idle
+    const stridePhase = now/150 + p.x*0.01;
+    const wfr = p.moving ? 1 + ((stridePhase/Math.PI | 0) % 2) : 0;
+    const spr = spriteForF(p.look, wfr);
     // soft grounding shadow + smoother two-step walk bounce
     ctx.fillStyle = 'rgba(0,0,0,.18)';
     ctx.beginPath(); ctx.ellipse(Math.round(p.x), Math.round(p.y+1), 7, 3, 0, 0, 7); ctx.fill();
-    // stride + bob walk cycle; a slow breath-like sway when idle
-    const stridePhase = now/150 + p.x*0.01;
     const strideX = p.moving ? Math.sin(stridePhase)*1.8 : 0;
     const idleSway = Math.sin(now/1400 + p.x*0.02)*0.8;
     const bob = p.moving ? Math.abs(Math.sin(stridePhase))*2.2 : idleSway;
