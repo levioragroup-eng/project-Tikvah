@@ -2093,27 +2093,202 @@ function paintRuinPad(state) {
   if (state === 'lit') return { stone: stoneGlow, halo: 0.32 };
   return { stone: stoneTile, halo: 0.12 };   // dormant = as today
 }
-const gardenTile = px(TILE,TILE,(g)=>{
-  g.drawImage(grassA,0,0);
-  const cols=['#f0a0c0','#ff6b8a','#ffe066','#ffffff','#c49aff'];
-  for(let i=0;i<10;i++){ const x=rnd(26)+3,y=rnd(22)+3;
-    g.fillStyle='#3f7a2e'; g.fillRect(x+1,y+4,2,4);                 // stem
-    g.fillStyle='#4a8f3c'; g.fillRect(x-1,y+3,6,2);                 // leaves
-    g.fillStyle=cols[rnd(cols.length)]; g.fillRect(x,y,4,4);        // bloom
-    g.fillStyle='rgba(255,255,255,.7)'; g.fillRect(x+1,y+1,2,2);    // light
-  }
-});
-const bloomTile = px(TILE,TILE,(g)=>{
-  g.drawImage(grassA,0,0);
-  const cols=['#f0a0c0','#ff6b8a','#ffe066','#ffffff','#c49aff','#ffb347'];
-  for(let i=0;i<16;i++){ const x=rnd(24)+4,y=rnd(20)+4;
-    g.fillStyle='#3f7a2e'; g.fillRect(x+2,y+6,2,5);                 // stem
-    g.fillStyle='#4a8f3c'; g.fillRect(x,y+5,7,2);                  // leaves
-    g.fillStyle=cols[rnd(cols.length)]; g.fillRect(x,y,6,6);        // full bloom
-    g.fillStyle='rgba(255,255,255,.75)'; g.fillRect(x+1,y+1,2,2);   // petal light
-    g.fillStyle='#ffe066'; g.fillRect(x+2,y+2,2,2);                // golden heart
-  }
-});
+// VISUAL-PASS-GARDEN: the Garden of Hope — TIKVAH's competition climax.
+// State-addressable painters: gardenBed(state, variant, sway) where state is
+// 'dormant' (quiet, waiting), 'waking' (first green — reserved for the future
+// RESTORE-THE-LIGHT progression), or 'blooming' (the extraordinary full
+// bloom). Default world behavior uses dormant -> blooming exactly as before;
+// no systems, triggers, or collision touched.
+function gardenBed(state, variant, sway) {
+  return px(TILE,TILE,(g)=>{
+    const P = BOARD_PALETTE, S = SEASON_BLOOMS.spring;
+    const R = srand(0x6a2d + variant*977 + (sway ? 7919 : 0));
+    const blooming = state === 'blooming', waking = state === 'waking';
+    // ---- ground ----
+    if (variant === 1) {
+      // raised bed: low stone edging, dark soil heart
+      g.fillStyle = blooming ? '#84755c' : '#6e6250'; g.fillRect(1,5,30,24);
+      g.fillStyle = blooming ? '#b3a488' : '#94876e'; g.fillRect(1,5,30,2);   // sunlit lip
+      g.fillStyle = blooming ? '#5d5240' : '#4e4436'; g.fillRect(1,27,30,2);   // shade
+      for (let sx=1;sx<31;sx+=7) { g.fillStyle = blooming ? '#5d5240' : '#4e4436'; g.fillRect(sx,5,1,2); g.fillRect(sx,27,1,2); }
+      g.fillStyle = P.soilRich; g.fillRect(4,8,24,18);                        // soil
+      g.fillStyle = P.soilDark;
+      for (let i=0;i<10;i++) g.fillRect(4+R(22), 8+R(16), 2, 2);
+      g.fillStyle = P.soilRidge;
+      for (let i=0;i<6;i++) g.fillRect(5+R(20), 9+R(15), 3, 1);
+    } else if (variant === 2) {
+      // lawn: lush meadow grass, calm
+      g.fillStyle = blooming ? '#4f9440' : '#458239'; g.fillRect(0,0,TILE,TILE);
+      g.fillStyle = blooming ? '#3a7230' : '#33682c';
+      for (let i=0;i<40;i++) g.fillRect(R(32), R(32), 2, 1);
+      g.fillStyle = blooming ? '#6ab04c' : '#5a9a44';
+      for (let i=0;i<26;i++) g.fillRect(R(31), R(30), 1, 2);
+    } else {
+      // meadow: warm grassy blend
+      g.fillStyle = blooming ? '#55853f' : '#4c7a38'; g.fillRect(0,0,TILE,TILE);
+      g.fillStyle = blooming ? '#3f7030' : '#38632c';
+      for (let i=0;i<34;i++) g.fillRect(R(32), R(32), 2, 1);
+      g.fillStyle = blooming ? '#6ab04c' : '#5d9440';
+      for (let i=0;i<22;i++) g.fillRect(R(31), R(31), 1, 2);
+    }
+    // ---- planting ----
+    const spireCols = ['#8a7ae0','#c49aff','#e87aa0','#7ab8e0'];   // lupine/delphinium spires
+    if (blooming) {
+      const sh = sway ? 1 : 0;                                    // back row sways one way…
+      for (let i=0;i<4;i++) {                                     // …tall spires
+        const x = 3 + i*7 + R(3) + sh, y = 4 + R(3);
+        g.fillStyle = '#3a7230'; g.fillRect(x+1, y+3, 2, 10);      // stem
+        g.fillStyle = '#4a8f3c'; g.fillRect(x-1, y+8, 2, 2); g.fillRect(x+2, y+10, 2, 2);
+        g.fillStyle = spireCols[R(spireCols.length)];
+        for (let sgm=0;sgm<4;sgm++) g.fillRect(x-(sgm%2), y-sgm*2, 3+(sgm%2), 2); // stacked spike
+        g.fillStyle = 'rgba(255,255,255,.55)'; g.fillRect(x, y-6, 1, 6);
+      }
+      const sh2 = sway ? -1 : 0;                                  // …mid row the other (parallax)
+      for (let i=0;i<5;i++) {                                     // round blooms
+        const x = 2 + i*6 + R(2) + sh2, y = 13 + R(3);
+        g.fillStyle = '#3f7a2e'; g.fillRect(x+2, y+4, 2, 6);
+        g.fillStyle = '#4a8f3c'; g.fillRect(x, y+6, 2, 2); g.fillRect(x+4, y+7, 2, 2);
+        g.fillStyle = S.blooms[R(S.blooms.length)]; g.fillRect(x, y, 6, 5);
+        g.fillStyle = S.center; g.fillRect(x+2, y+1, 2, 2);
+        g.fillStyle = 'rgba(255,255,255,.6)'; g.fillRect(x, y, 6, 1);
+      }
+      for (let i=0;i<6;i++) {                                     // front row: low blossoms
+        const x = 1 + i*5 + R(2), y = 23 + R(3);
+        g.fillStyle = '#467a30'; g.fillRect(x+1, y+2, 2, 4);
+        g.fillStyle = S.blooms[R(S.blooms.length)]; g.fillRect(x, y, 4, 3);
+        g.fillStyle = S.center; g.fillRect(x+1, y+1, 1, 1);
+      }
+      g.fillStyle = 'rgba(255,255,255,.8)';
+      for (let i=0;i<6;i++) g.fillRect(R(30), R(30), 1, 1);        // drifting petal specks
+    } else if (waking) {
+      g.fillStyle = 'rgba(31,19,10,.35)';                          // moist soil patches
+      for (let i=0;i<6;i++) g.fillRect(3+R(24), 6+R(20), 3, 2);
+      for (let i=0;i<12;i++) {                                    // fresh shoots
+        const x = 3+R(26), y = 6+R(22);
+        g.fillStyle = '#7cc465'; g.fillRect(x, y, 1, 4); g.fillRect(x-1, y+2, 3, 1);
+      }
+      for (let i=0;i<4;i++) {                                     // opening buds
+        const x = 4+R(24), y = 8+R(16);
+        g.fillStyle = '#5a8f3c'; g.fillRect(x, y, 3, 4);
+        g.fillStyle = '#f0a0c0'; g.fillRect(x+1, y, 1, 1);         // pink tip
+      }
+    } else {
+      // dormant: tight buds, dry sprigs, pebbles, faint dew — beautiful but waiting
+      for (let i=0;i<7;i++) {
+        const x = 3+R(26), y = 7+R(20);
+        g.fillStyle = '#5d3a17'; g.fillRect(x+1, y+3, 1, 4);       // dry stem
+        g.fillStyle = '#5a6b3a'; g.fillRect(x, y, 3, 3);           // tight bud
+        g.fillStyle = '#8a9a5a'; g.fillRect(x+1, y, 1, 1);         // furled tip
+      }
+      g.fillStyle = '#a89a6a';
+      for (let i=0;i<8;i++) { const x=R(30), y=R(28); g.fillRect(x, y, 1, 4); g.fillRect(x-1, y+2, 3, 1); }
+      g.fillStyle = '#b8a888';
+      for (let i=0;i<5;i++) g.fillRect(2+R(28), 4+R(24), 2, 1);    // pebbles
+      g.fillStyle = 'rgba(255,255,255,.25)';
+      for (let i=0;i<4;i++) g.fillRect(R(30), 6+R(20), 1, 1);     // faint dew
+    }
+  });
+}
+// Legacy consts the world code + tests expect; defaults = current behavior.
+const gardenTile  = gardenBed('dormant', 0, 0);
+const gardenTileB = gardenBed('dormant', 1, 0);
+const bloomTile   = gardenBed('blooming', 0, 0);
+const bloomTileB  = gardenBed('blooming', 1, 0);
+const bloomTileC  = gardenBed('blooming', 2, 0);
+const bloomTileS  = gardenBed('blooming', 0, 1);   // sway frames: blooms breathe ±1px
+const bloomTileBS = gardenBed('blooming', 1, 1);
+const bloomTileCS = gardenBed('blooming', 2, 1);
+// VISUAL-PASS-GARDEN: garden composition overlays — clearRect decor drawn over
+// the meadow tiles. Every tile stays walkable (verified headless against
+// server isSolid; only the fountain tile is solid, as before).
+function gardenPathTile(state) {   // warm cream path slabs, moss seams
+  return px(TILE,TILE,(g)=>{ g.clearRect(0,0,TILE,TILE);
+    const R = srand(0x9a7e);
+    g.fillStyle = state==='blooming' ? '#dcc79c' : '#d3bd92'; g.fillRect(0,0,TILE,TILE);
+    g.fillStyle = state==='blooming' ? '#b99f72' : '#ac9268';
+    for (let y=0;y<32;y+=8) g.fillRect(0,y,32,1);
+    for (let y=0;y<32;y+=8) for (let x=((y/8)%2)*8;x<32;x+=16) g.fillRect(x,y,1,8);
+    g.fillStyle = state==='blooming' ? '#7aa04e' : '#5f7f42';
+    for (let i=0;i<14;i++) g.fillRect(R(32), R(32), 1, 2);
+    if (state==='blooming') {                                     // fallen petals
+      g.fillStyle = '#f0a0c0';
+      for (let i=0;i<5;i++) g.fillRect(R(30), R(30), 2, 1);
+      g.fillStyle = '#ffffff';
+      for (let i=0;i<3;i++) g.fillRect(R(30), R(30), 1, 1);
+    }
+  });
+}
+const gardenPathD = gardenPathTile('dormant'), gardenPathB = gardenPathTile('blooming');
+function gardenEdgeTile(state) {   // low clipped hedge edging the garden
+  return px(TILE,TILE,(g)=>{ g.clearRect(0,0,TILE,TILE);
+    const S = SEASON_BLOOMS.spring, R = srand(0xed6e);
+    g.fillStyle = state==='blooming' ? '#2f6b2f' : '#2a5f2a';
+    g.fillRect(4,12,24,14); g.fillRect(8,7,16,7);
+    g.fillStyle = state==='blooming' ? '#3a7230' : '#244e24';
+    g.fillRect(4,22,24,4);                                        // belly shade
+    g.fillStyle = state==='blooming' ? '#6ab04c' : '#527a3a';
+    for (let i=0;i<30;i++) g.fillRect(4+R(24), 7+R(16), 2, 2);     // leaf dither
+    g.fillStyle = state==='blooming' ? '#7cc465' : '#6a9a4a';
+    for (let i=0;i<12;i++) g.fillRect(6+R(20), 8+R(8), 1, 1);     // sunlit crown
+    if (state==='blooming') for (let i=0;i<5;i++) {               // tiny blooms on the hedge
+      const x = 6+R(20), y = 9+R(10);
+      g.fillStyle = S.blooms[R(S.blooms.length)]; g.fillRect(x, y, 2, 2);
+      g.fillStyle = S.center; g.fillRect(x, y, 1, 1);
+    }
+    else { g.fillStyle = '#5d3a17'; for (let i=0;i<4;i++) g.fillRect(8+R(16), 5, 1, 4); } // bare twigs
+  });
+}
+const gardenEdgeD = gardenEdgeTile('dormant'), gardenEdgeB = gardenEdgeTile('blooming');
+function gardenSeatTile(state) {   // round resting stone, mossy
+  return px(TILE,TILE,(g)=>{ g.clearRect(0,0,TILE,TILE);
+    const R = srand(0x5ea7);
+    g.fillStyle = '#7a6e58'; g.fillRect(6,14,20,12);               // stone shade
+    g.fillStyle = state==='blooming' ? '#b3a488' : '#a89a80'; g.fillRect(6,12,20,12);
+    g.fillStyle = state==='blooming' ? '#d4c8ac' : '#c9bfa8'; g.fillRect(6,12,20,3); // sunlit top
+    g.fillStyle = '#5d5240'; g.fillRect(6,23,20,2);
+    g.fillStyle = '#6a8f4a';
+    for (let i=0;i<8;i++) g.fillRect(7+R(18), 14+R(8), 2, 1);      // moss patches
+    if (state==='blooming') {
+      g.fillStyle = '#f0a0c0'; g.fillRect(10,13,2,1); g.fillRect(20,16,2,1);
+      g.fillStyle = '#ffffff'; g.fillRect(15,14,1,1);              // resting petals
+    }
+  });
+}
+const gardenSeatD = gardenSeatTile('dormant'), gardenSeatB = gardenSeatTile('blooming');
+function gardenArchTile(state, side) {   // rose trellis pillar flanking the north gate
+  return px(TILE,TILE,(g)=>{ g.clearRect(0,0,TILE,TILE);
+    const S = SEASON_BLOOMS.spring, R = srand(0xa2c4 + side*31);
+    const cx = side === 0 ? 9 : 23, dir = side === 0 ? 1 : -1;
+    g.fillStyle = '#5d5240'; g.fillRect(cx-7, 26, 14, 4);          // footing
+    g.fillStyle = '#8d826c'; g.fillRect(cx-6, 8, 12, 18);         // stone pillar
+    g.fillStyle = '#c9bfa8'; g.fillRect(cx-6, 8, 12, 2);           // cap light
+    g.fillStyle = '#6e6552';
+    for (let y=10;y<26;y+=5) g.fillRect(cx-6, y, 12, 1);           // ashlar courses
+    g.fillStyle = '#7a5a34';
+    g.fillRect(dir===1 ? cx+6 : cx-18, 4, 12, 2);                  // trellis arm toward the path
+    g.fillRect(dir===1 ? cx+16 : cx-16, 4, 2, 6);                  // arm drop
+    if (state === 'blooming') {
+      g.fillStyle = '#3f7a2e';
+      for (let i=0;i<10;i++) g.fillRect(cx-6+R(12), 4+R(22), 2, 3);   // climbing leaves
+      for (let i=0;i<6;i++) {                                        // roses
+        const x = cx-7+R(13), y = 5+R(18);
+        g.fillStyle = ['#e87aa0','#ff6b8a','#f0a0c0'][R(3)]; g.fillRect(x, y, 3, 3);
+        g.fillStyle = '#fff0f6'; g.fillRect(x, y, 1, 1);
+      }
+      for (let i=0;i<3;i++) {                                        // roses along the arm
+        const x = (dir===1 ? cx+8 : cx-16) + R(8), y = 2+R(3);
+        g.fillStyle = '#ff6b8a'; g.fillRect(x, y, 3, 2);
+      }
+    } else {
+      g.fillStyle = '#5d3a17';                                       // bare winter vine
+      for (let i=0;i<6;i++) g.fillRect(cx-5+R(10), 6+R(18), 1, 5);
+      g.fillStyle = '#5a6b3a';
+      for (let i=0;i<3;i++) g.fillRect(cx-4+R(9), 8+R(14), 2, 2);     // waiting buds
+    }
+  });
+}
+const gardenArchD = [gardenArchTile('dormant',0), gardenArchTile('dormant',1)];
+const gardenArchB = [gardenArchTile('blooming',0), gardenArchTile('blooming',1)];
 
 // ---- decor sprites ----
 // v: 0 = dense pine, 1 = dense round canopy, 2 = cherry blossom, 3 = tall pine
@@ -3556,10 +3731,43 @@ function drawWorld(g, now) {
       if (FOREST_ROCK.has(fk)) g.drawImage(forestRock, x, y);
       if (FOREST_SHROOM.has(fk)) g.drawImage(forestShroom, x, y);
     }
-    // garden: ruin-open reveal, fuller bloom after the day rhythm completes
+    // VISUAL-PASS-GARDEN: the Garden of Hope — ruin-open reveal (dormant,
+    // quiet), fuller bloom after the day rhythm completes. World-state logic
+    // identical to before: the overlay covers the same plaza ground, the
+    // fountain tile stays the fountain, blooms sway on a 650ms clock.
     if (tx>=17 && tx<=22 && ty>=13 && ty<=17 && !(tx===FOUNTAIN.tx&&ty===FOUNTAIN.ty)) {
-      if (gardenBloomed) g.drawImage(bloomTile, x, y);
-      else if (ruinOpen && (tx+ty)%2===0) g.drawImage(gardenTile, x, y);
+      const gv = hash2(tx, ty);
+      if (gardenBloomed) {
+        const sw = ((now/650)|0) % 2 === 1;
+        const bt = gv < 0.34 ? (sw ? bloomTileS : bloomTile)
+                 : gv < 0.67 ? (sw ? bloomTileBS : bloomTileB)
+                 : (sw ? bloomTileCS : bloomTileC);
+        g.drawImage(bt, x, y);
+      }
+      else if (ruinOpen && (tx+ty)%2===0) g.drawImage(gv < 0.5 ? gardenTile : gardenTileB, x, y);
+      // garden composition: path, edge planting, resting stone, north gate —
+      // all walkable decor; footprint and collision untouched
+      if (ruinOpen || gardenBloomed) {
+        const gs = gardenBloomed ? 'blooming' : 'dormant';
+        if (ty===13 && (tx===18 || tx===21))
+          g.drawImage(gs==='blooming' ? gardenArchB[tx===18?0:1] : gardenArchD[tx===18?0:1], x, y);
+        else if (ty===13 && tx>=19 && tx<=20) {
+          g.drawImage(gs==='blooming' ? gardenPathB : gardenPathD, x, y);
+          // distant mountains beyond the north gate — the world past the garden
+          const fa = gs==='blooming' ? '0.55' : '0.30', na = gs==='blooming' ? '0.65' : '0.38';
+          g.fillStyle = 'rgba(168,176,214,' + fa + ')';
+          g.fillRect(x+2, y+6, 8, 3); g.fillRect(x+4, y+4, 4, 2);
+          g.fillRect(x+20, y+7, 9, 3); g.fillRect(x+22, y+5, 4, 2);
+          g.fillStyle = 'rgba(128,138,186,' + na + ')';
+          g.fillRect(x+8, y+8, 10, 4); g.fillRect(x+11, y+6, 4, 2);
+          g.fillStyle = 'rgba(240,242,252,' + (gs==='blooming' ? '0.7' : '0.4') + ')';
+          g.fillRect(x+12, y+6, 2, 1); g.fillRect(x+5, y+4, 1, 1);   // snow glints
+        }
+        else if (ty===17 && tx!==19) g.drawImage(gs==='blooming' ? gardenPathB : gardenPathD, x, y);
+        else if ((tx===17 || tx===22) && ty>=14 && ty<=16)
+          g.drawImage(gs==='blooming' ? gardenEdgeB : gardenEdgeD, x, y);
+        else if (tx===18 && ty===16) g.drawImage(gs==='blooming' ? gardenSeatB : gardenSeatD, x, y);
+      }
     }
     // farm plots
     const f = farm.find(f => f.tx===tx && f.ty===ty);
@@ -3734,6 +3942,48 @@ function drawWorld(g, now) {
   }
   if (gardenBloomed && !inside) { // the garden glows softly once it has bloomed
     drawGlow(g, 20*TILE, 15*TILE, 110, 'rgba(255,190,215,A)', now, 13, 0.5 + 0.12*Math.sin(now/600));
+    // VISUAL-PASS-GARDEN: living-water shimmer around the fountain basin —
+    // the garden's water feature breathes with the bloom
+    for (let i=0;i<2;i++) {
+      const rp = (now/1400 + i*0.5) % 1;
+      g.strokeStyle = 'rgba(255,255,255,' + (0.45*(1-rp)).toFixed(2) + ')';
+      g.lineWidth = 1;
+      g.beginPath(); g.ellipse(20*TILE+16, 15*TILE+22, 10+rp*15, 6+rp*8, 0, 0, 7); g.stroke();
+    }
+    for (let i=0;i<5;i++) {                                         // rising spray sparkle
+      const sy = (now/750 + i*0.23) % 1, tw = (Math.sin(now/200 + i*2.4) + 1) / 2;
+      g.fillStyle = 'rgba(255,252,240,' + (0.25 + 0.5*tw).toFixed(2) + ')';
+      g.fillRect(20*TILE+8 + ((i*7)%16), 15*TILE+20 - sy*16, 2, 2);
+    }
+    drawDust(g, 20*TILE+16, 15*TILE+14, now);                       // golden pollen over the blooms
+    if (!night) {
+      // soft warm god-rays — diagonal shafts, never neon
+      for (let i=0;i<3;i++) {
+        const rx = (17.2 + i*1.9)*TILE, rw = 30 - i*5;
+        const grd = g.createLinearGradient(rx, 11*TILE, rx+rw+28, 18*TILE);
+        grd.addColorStop(0, 'rgba(255,244,214,0)');
+        grd.addColorStop(0.5, 'rgba(255,244,214,' + (0.09 + 0.03*Math.sin(now/900 + i*2)).toFixed(3) + ')');
+        grd.addColorStop(1, 'rgba(255,244,214,0)');
+        g.fillStyle = grd;
+        g.beginPath();
+        g.moveTo(rx, 11*TILE); g.lineTo(rx+rw, 11*TILE);
+        g.lineTo(rx+rw+28, 18*TILE); g.lineTo(rx+28, 18*TILE);
+        g.closePath(); g.fill();
+      }
+      // butterflies — original procedural, Lissajous flight over the blooms
+      const bcols = ['#f2a65a', '#f5f0e6', '#a8c4e8'];
+      for (let i=0;i<3;i++) {
+        const t = now/1000;
+        const bx = 20*TILE + 16 + Math.sin(t*0.35 + i*2.1)*2.4*TILE + Math.sin(t*0.93 + i*1.1)*9;
+        const by = 14.6*TILE + Math.sin(t*0.52 + i*1.4)*1.5*TILE + Math.cos(t*0.71 + i*2.2)*7;
+        const w = 2 + Math.round(Math.abs(Math.sin(t*9 + i*1.7))*2);   // wing flap
+        g.fillStyle = '#4a3520'; g.fillRect(bx-1, by-2, 2, 4);          // body
+        g.fillStyle = bcols[i];
+        g.fillRect(bx-1-w, by-2, w, 2); g.fillRect(bx+1, by-2, w, 2);   // wings
+        g.fillStyle = 'rgba(255,255,255,.65)';
+        g.fillRect(bx-1-w, by-2, 1, 1); g.fillRect(bx+1, by-2, 1, 1);   // wing glint
+      }
+    }
   }
   if (worshipFlash && Date.now() - worshipFlash < 4000 && inside) {
     g.fillStyle = `rgba(255,236,170,${0.22 * (1 - (Date.now()-worshipFlash)/4000)})`;

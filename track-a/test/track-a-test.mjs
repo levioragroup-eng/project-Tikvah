@@ -481,6 +481,35 @@ const frChecks = [
 ];
 for (const [label, needle] of frChecks) ok('forestruins contains ' + label, pageHtml.includes(needle));
 
+// ---------- Visual pass: garden of hope toward the design board (static page) ----------
+console.log('visual-pass garden (static page):');
+const gChecks = [
+  ['garden marker', 'VISUAL-PASS-GARDEN'],
+  ['state-addressable garden bed', 'function gardenBed(state, variant, sway)'],
+  ['dormant state', "'dormant' (quiet, waiting)"],
+  ['waking state', "'waking' (first green"],
+  ['blooming state', "'blooming' (the extraordinary full"],
+  ['dormant const kept', 'const gardenTile  = gardenBed('],
+  ['bloom const kept', 'const bloomTile   = gardenBed('],
+  ['sway frames', 'const bloomTileS  = gardenBed('],
+  ['tall spire blooms', 'lupine/delphinium spires'],
+  ['layered bloom rows', 'front row: low blossoms'],
+  ['bloom sway clock', 'now/650'],
+  ['garden path painter', 'function gardenPathTile(state)'],
+  ['garden hedge painter', 'function gardenEdgeTile(state)'],
+  ['garden seat painter', 'function gardenSeatTile(state)'],
+  ['garden arch painter', 'function gardenArchTile(state, side)'],
+  ['north gate arch drawn', "gardenArchB[tx===18?0:1]"],
+  ['mountain vista strip', 'distant mountains beyond the north gate'],
+  ['fountain shimmer', "living-water shimmer"],
+  ['garden pollen', "golden pollen over the blooms"],
+  ['god-rays', 'soft warm god-rays'],
+  ['butterflies', 'Lissajous flight over the blooms'],
+  ['garden region kept', 'tx>=17 && tx<=22 && ty>=13 && ty<=17'],
+  ['fountain tile excluded', '!(tx===FOUNTAIN.tx&&ty===FOUNTAIN.ty)'],
+];
+for (const [label, needle] of gChecks) ok('garden contains ' + label, pageHtml.includes(needle));
+
 // ---------- client helper ----------
 class C {
   constructor(name) { this.name = name; this.msgs = []; this.state = { players: new Map(), farm: [], ruinOpen: false, you: null, code: null }; }
