@@ -264,19 +264,29 @@ try {
   sys('ruins-coop', aOnPad && noSoloOpen && opened, `A-on-stone=${aOnPad} no-solo-open=${noSoloOpen} coop-open=${opened} msg="${roMsg?.message}"`);
 
   // ---- S14: fox presence + reaction (retargeting chase with wall unstick) ----
+  // Bring A down the proven lanes to the fox's home ground first — a
+  // straight-line chase launched from the ruins lane dies on the riverbank.
+  await walkTo(a, 6*TILE+16, 12*TILE+16); await walkTo(a, 13*TILE+16, 12*TILE+16, 12000);
+  await walkTo(a, 19*TILE+16, 12*TILE+16, 12000); await walkTo(a, 19*TILE+16, 15*TILE+16, 12000);
   let pet = null, lastD = 1e9, stuck = 0;
   const foxT0 = Date.now();
   for (let i = 0; i < 60 && !pet && Date.now() - foxT0 < 45000; i++) {
     const f = a.state.fox, me = a.me();
     if (!f || !me) { await sleep(300); continue; }
     const dx = f.x - me.x, dy = f.y - me.y, d = Math.hypot(dx, dy);
+    // Steer at the fox — but route over the stone bridge (columns 19-21)
+    // whenever A and the fox are on opposite banks of the river (water rows
+    // 21-24); the fox strolls straight over the water, A cannot follow.
+    const cross = (me.y < 21*TILE) !== (f.y < 21*TILE);
+    const gx = cross ? 20*TILE+16 : f.x, gy = cross ? 22*TILE+16 : f.y;
+    const gdx = gx - me.x, gdy = gy - me.y, gd = Math.hypot(gdx, gdy) || 1;
     if (d < 50) {
       a.send({ t: 'input', x: 0, y: 0 });
       a.send({ t: 'interact' });
       pet = await a.waitFor(() => a.msgs.some(m => m.t === 'pet'), 1000) ? a.lastOf('pet') : null;
-    } else if (d < lastD - 5) { stuck = 0; a.send({ t: 'input', x: dx/d, y: dy/d }); }
-    else if (++stuck >= 6) { a.send({ t: 'input', x: -dy/d, y: dx/d }); if (stuck >= 12) stuck = 0; }
-    else { a.send({ t: 'input', x: dx/d, y: dy/d }); }
+    } else if (d < lastD - 5) { stuck = 0; a.send({ t: 'input', x: gdx/gd, y: gdy/gd }); }
+    else if (++stuck >= 6) { a.send({ t: 'input', x: -gdy/gd, y: gdx/gd }); if (stuck >= 12) stuck = 0; }
+    else { a.send({ t: 'input', x: gdx/gd, y: gdy/gd }); }
     lastD = d;
     await sleep(300);
   }
@@ -288,13 +298,17 @@ try {
   await walkTo(a, 19*TILE+16, 12*TILE+16, 12000); await walkTo(a, 19*TILE+16, 15*TILE+16, 12000);
   await walkTo(b, 33*TILE+16, 16*TILE+16, 15000); await walkTo(b, 21*TILE+16, 16*TILE+16, 12000);
   await walkTo(b, 21*TILE+16, 15*TILE+16, 12000);
-  const ending = await a.waitFor(() => a.msgs.some(m => m.t === 'ending'), 5000) ? a.lastOf('ending') : null;
+  // RESTORE THE LIGHT: the Return relights the six lanterns one by one
+  // (900ms apart at production pacing) before the ending fires — wait for
+  // the whole walk, and record whether the Discovery was witnessed.
+  const sawDiscovery = a.msgs.some(m => m.t === 'discovery');
+  const ending = await a.waitFor(() => a.msgs.some(m => m.t === 'ending'), 20000) ? a.lastOf('ending') : null;
   a.send({ t: 'play-again' });
   const reset = await a.waitFor(() => a.msgs.some(m => m.t === 'reset'), 3000) ? a.lastOf('reset') : null;
   const resetOk = !!reset && reset.farm.every(f => f.stage === 'empty') && reset.ruin.open === false &&
     reset.candles === 0 && reset.garden.bloomed === false && reset.day.n === 1 &&
     Object.values(reset.day.rhythm).every(v => v === false);
-  sys('ending-reset', !!ending && resetOk, `ending="${ending?.title}" reset-clears-world=${resetOk}`);
+  sys('ending-reset', !!ending && resetOk, `ending="${ending?.title}" discovery-seen=${sawDiscovery} reset-clears-world=${resetOk}`);
 
   // ---- S16: day/night phases advance ----
   const dn = new C('Day'); await dn.connect();
