@@ -178,10 +178,81 @@ const DAY_MS = parseInt(process.env.DAY_MS || '480000', 10); // one full day/nig
 const WORSHIP_COOLDOWN_MS = 20000;
 const MAX_CANDLES = 12;
 
+// ---------- RESTORE THE LIGHT: quiet town-restoration engine ----------
+// Free life-sim play quietly restores the town. There is NO checklist and NO
+// progress bar — players feel progress through the world changing. Only the
+// stage and its world-effects are synced; the raw contribution counts are
+// server-private and never leave this file.
+export const RESTORE_KINDS = ['farm','fish','cook','give','greet','candle','fox','explore'];
+export const RESTORE_STAGES = ['dimmed','stirring','awake','discovered','relight','complete'];
+export const LANTERN_TOTAL = 6;   // mirrors the client's LAMPS list (count only;
+// the client owns the tile positions and lights nearest-the-plaza first)
+const RESTORE_STIR = parseInt(process.env.RESTORE_STIR || '3', 10);    // warmth where the town begins to stir
+const RESTORE_AWAKE = parseInt(process.env.RESTORE_AWAKE || '8', 10);  // warmth where the Old Garden wakes
+const RELIGHT_STEP_MS = parseInt(process.env.RELIGHT_STEP_MS || '900', 10); // one lantern per step on the Return
+const RESTORE_GATHER_MS = parseInt(process.env.RESTORE_GATHER_MS || '90000', 10); // villagers gather this long
+function newRestore() {
+  return {
+    stage: 'dimmed',          // RESTORE_STAGES ladder; only moves forward
+    acts: { farm: 0, fish: 0, cook: 0, give: 0, greet: 0, candle: 0, fox: 0, explore: 0 },
+    explorers: new Set(),     // uuids that have reached the wild north (counts once each)
+    discoverySeen: false,     // the ruin has been opened and its writing witnessed
+    gardenWoke: false,        // the Old Garden has come back to life (beds waking)
+    lit: 0,                   // town lanterns relit so far on the Return
+    central: false,           // the central light is on (finale)
+    gatherUntil: 0,           // villagers drift to the garden/plaza while > now
+    relightAt: 0,             // last lantern-step timestamp
+  };
+}
+function stageRank(s) { return RESTORE_STAGES.indexOf(s); }
+function restorePublic(room) {
+  const r = room.restore;
+  return {
+    stage: r.stage,
+    garden: room.garden.bloomed ? 'blooming' : (r.gardenWoke ? 'waking' : 'dormant'),
+    lit: r.lit, lanterns: LANTERN_TOTAL,
+    central: r.central, discovery: r.discoverySeen,
+  };
+}
+function sendRestore(room) { broadcast(room, { t: 'restore', restore: restorePublic(room) }); }
+// Warmth is deliberately forgiving: each kind of living counts, and doing a
+// couple of things twice matters as much as doing everything once. The raw
+// number stays server-side; players only ever see the town change.
+function restoreWarmth(room) {
+  let w = 0;
+  for (const k of RESTORE_KINDS) w += Math.min(room.restore.acts[k] || 0, 2);
+  return w;
+}
+function contribute(room, kind) {
+  if (!room.restore.acts.hasOwnProperty(kind)) return;
+  room.restore.acts[kind]++;
+  advanceRestore(room);
+}
+function advanceRestore(room) {
+  const r = room.restore;
+  const key = () => r.stage + '|' + r.gardenWoke + '|' + r.gatherUntil;
+  const before = key();
+  const rhythmDone = room.rhythm.farm && room.rhythm.fish && room.rhythm.cook && room.rhythm.greet && room.rhythm.candle;
+  const warmth = restoreWarmth(room);
+  if (r.stage === 'dimmed' && warmth >= RESTORE_STIR) r.stage = 'stirring';
+  if ((r.stage === 'dimmed' || r.stage === 'stirring') && (warmth >= RESTORE_AWAKE || rhythmDone)) r.stage = 'awake';
+  // The discovery out in the ruins turns the story homeward — even if
+  // travelers found the ruin before the garden woke.
+  if (r.discoverySeen && stageRank(r.stage) < stageRank('discovered')) r.stage = 'discovered';
+  if ((stageRank(r.stage) >= stageRank('awake') || r.discoverySeen) && !r.gardenWoke) {
+    r.gardenWoke = true;
+    r.gatherUntil = Date.now() + RESTORE_GATHER_MS;   // the villagers come outside
+  }
+  if (key() !== before) sendRestore(room);
+}
+
 const VERSES = [
   { ref: 'Jeremiah 29:11', text: 'For I know the thoughts that I think toward you, saith the LORD, thoughts of peace, and not of evil, to give you an expected end.' },
   { ref: 'Psalm 23:1', text: 'The LORD is my shepherd; I shall not want.' },
 ];
+// RESTORE THE LIGHT — the Discovery (the one new Scripture for this build).
+// Jesus is the Light; the players restore a community, never saviors.
+const JOHN_812 = { ref: 'John 8:12', text: 'I am the light of the world: he that followeth me shall not walk in darkness, but shall have the light of life.' };
 
 // ---------- Character looks ----------
 const LOOK_ENUMS = {
@@ -260,6 +331,7 @@ function buildRoom(code, isPublic = false) {
     candles: 0,
     lastWorship: 0,
     garden: { bloomed: false },
+    restore: newRestore(),   // RESTORE THE LIGHT: hidden town-restoration state (per room)
     home: { rug: 0 },
     // M3: persistent identity (no logins — the competition forbids accounts).
     // uuid -> { name, look, inv }. Keyed per room; the client generates the
@@ -442,6 +514,7 @@ function handleInteract(room, ws, p) {
       // Worship moment: candles are lit -> a shared gentle beat
       if (room.candles > 0 && now - room.lastWorship > WORSHIP_COOLDOWN_MS) {
         room.lastWorship = now;
+        contribute(room, 'candle');   // prayer among the candles feeds the light too
         broadcast(room, {t:'worship', by: p.name});
       }
       return {ok:true, action:'pray'};
@@ -451,6 +524,7 @@ function handleInteract(room, ws, p) {
       if (room.candles >= MAX_CANDLES) return {ok:false, reason:'candles-full'};
       room.candles++;
       setRhythm(room, 'candle');
+      contribute(room, 'candle');
       broadcast(room, {t:'candle', count: room.candles, by: p.name});
       return {ok:true, action:'candle'};
     }
@@ -493,6 +567,7 @@ function handleInteract(room, ws, p) {
       plot.stage = 'empty';
       p.inv.produce++;
       setRhythm(room, 'farm');
+      contribute(room, 'farm');
       broadcast(room, {t:'harvest', by: p.name});
       broadcast(room, {t:'player', p: playerPublic(p)});
     }
@@ -511,6 +586,7 @@ function handleInteract(room, ws, p) {
       p.fishing = null;
       p.inv.fish++;
       setRhythm(room, 'fish');
+      contribute(room, 'fish');
       broadcast(room, {t:'catch', by: p.name});
       broadcast(room, {t:'player', p: playerPublic(p)});
       return {ok:true, action:'catch'};
@@ -520,6 +596,7 @@ function handleInteract(room, ws, p) {
   // fox -> pet
   if (dist(p.x, p.y, room.fox.x, room.fox.y) <= INTERACT_RANGE) {
     p.emote='heart'; p.emoteAt=now; broadcast(room, {t:'player', p: playerPublic(p)});
+    contribute(room, 'fox');
     broadcast(room, {t:'pet', by: p.name});
     return {ok:true, action:'pet'};
   }
@@ -533,6 +610,7 @@ function handleInteract(room, ws, p) {
     const hearts = Math.min(5, (npc.hearts[p.uuid] || 0) + 1);
     npc.hearts[p.uuid] = hearts;
     setRhythm(room, 'greet');
+    contribute(room, 'greet');
     broadcast(room, {t:'say', name: npc.name, text, hearts, by: p.name});
     return {ok:true, action:'talk'};
   }
@@ -545,6 +623,7 @@ function handleCook(room, ws, p, action) {
     if (p.inv.produce < 1 || p.inv.fish < 1) { send(ws, {t:'cook-fail', reason:'need-produce-and-fish'}); return; }
     p.inv.produce--; p.inv.fish--; p.inv.meals++;
     setRhythm(room, 'cook');
+    contribute(room, 'cook');
     broadcast(room, {t:'cooked', by: p.name, meal: 'Harvest Stew', meals: p.inv.meals});
     broadcast(room, {t:'player', p: playerPublic(p)});
   } else if (action === 'eat') {
@@ -563,6 +642,7 @@ function handleCook(room, ws, p, action) {
     }
     if (best) {
       p.inv.meals--; best.inv.meals++;
+      contribute(room, 'give');
       broadcast(room, {t:'gift', from: p.name, to: best.name, meal: 'Harvest Stew'});
       broadcast(room, {t:'player', p: playerPublic(p)});
       broadcast(room, {t:'player', p: playerPublic(best)});
@@ -571,6 +651,7 @@ function handleCook(room, ws, p, action) {
       if (!npc) { send(ws, {t:'cook-fail', reason:'nobody-nearby'}); return; }
       p.inv.meals--;
       npc.hearts[p.uuid] = Math.min(5, (npc.hearts[p.uuid] || 0) + 1);
+      contribute(room, 'give');
       broadcast(room, {t:'gift', from: p.name, to: npc.name, meal: 'Harvest Stew'});
       broadcast(room, {t:'player', p: playerPublic(p)});
     }
@@ -604,15 +685,25 @@ function tickRoom(room) {
       p.fishing = null; broadcast(room, {t:'player', p: playerPublic(p)});
     }
   }
-  // villagers wander (slow, cozy)
+  // villagers wander (slow, cozy). RESTORE THE LIGHT: while the village is
+  // gathering (the garden waking, the Return), they drift out to the garden
+  // and plaza instead of staying by their homes.
+  const gathering = room.restore.gatherUntil > now;
   for (const n of room.npcs) {
     if (now >= n.nextMove) {
-      const hx = n.hx*TILE+TILE/2, hy = n.hy*TILE+TILE/2;
-      n.tx = Math.max((n.hx-n.r)*TILE, Math.min((n.hx+n.r)*TILE, n.x + (Math.random()-0.5)*4*TILE));
-      n.ty = Math.max((n.hy-n.r)*TILE, Math.min((n.hy+n.r)*TILE, n.y + (Math.random()-0.5)*4*TILE));
-      n.tx = Math.max(hx - n.r*TILE, Math.min(hx + n.r*TILE, n.tx));
-      n.ty = Math.max(hy - n.r*TILE, Math.min(hy + n.r*TILE, n.ty));
-      n.nextMove = now + 4000 + Math.random()*6000;
+      if (gathering) {
+        n.tx = (20 + (Math.random()-0.5)*5)*TILE;
+        n.ty = (16.5 + (Math.random()-0.5)*2)*TILE;
+        if (Math.floor(n.tx/TILE) === FOUNTAIN_TILE.tx && Math.floor(n.ty/TILE) === FOUNTAIN_TILE.ty) n.tx += TILE;
+        n.nextMove = now + 4000 + Math.random()*4000;
+      } else {
+        const hx = n.hx*TILE+TILE/2, hy = n.hy*TILE+TILE/2;
+        n.tx = Math.max((n.hx-n.r)*TILE, Math.min((n.hx+n.r)*TILE, n.x + (Math.random()-0.5)*4*TILE));
+        n.ty = Math.max((n.hy-n.r)*TILE, Math.min((n.hy+n.r)*TILE, n.y + (Math.random()-0.5)*4*TILE));
+        n.tx = Math.max(hx - n.r*TILE, Math.min(hx + n.r*TILE, n.tx));
+        n.ty = Math.max(hy - n.r*TILE, Math.min(hy + n.r*TILE, n.ty));
+        n.nextMove = now + 4000 + Math.random()*6000;
+      }
     }
     const dx = n.tx - n.x, dy = n.ty - n.y, l = Math.hypot(dx, dy);
     if (l > 4) { n.x += dx/l*28*dt; n.y += dy/l*28*dt; room.npcMoved = true; }
@@ -662,16 +753,65 @@ function tickRoom(room) {
       broadcast(room, {t:'ruin-open', message: 'Hope lives here — discovered together.'});
     }
   }
-  // ending: once the ruin is open, 2 or more travelers step into the garden
-  // together — the rest of the village may be anywhere (mini-MMO: up to 10).
-  if (room.ruin.open && !room.ending.done) {
+  // RESTORE THE LIGHT — quiet tracking: a traveler's first steps into the
+  // wild north (forest clearings, the ruins lane) count once, silently.
+  for (const [, p] of room.players) {
+    if (p.inside) continue;
+    if (Math.floor(p.y / TILE) <= 7 && !room.restore.explorers.has(p.uuid)) {
+      room.restore.explorers.add(p.uuid);
+      contribute(room, 'explore');
+    }
+  }
+  // RESTORE THE LIGHT — the Discovery: once the ruin stands open, the first
+  // traveler to step into the ruins clearing witnesses what is written
+  // there. Jesus is the Light; the players were restoring a community.
+  if (room.ruin.open && !room.restore.discoverySeen) {
+    const cx = STONE_B.tx*TILE+TILE/2, cy = STONE_B.ty*TILE+TILE/2;
+    for (const [, p] of room.players) {
+      if (p.inside) continue;
+      if (dist(p.x, p.y, cx, cy) <= 3*TILE) {
+        room.restore.discoverySeen = true;
+        advanceRestore(room);
+        broadcast(room, { t: 'discovery', ref: JOHN_812.ref, text: JOHN_812.text, by: p.name });
+        break;
+      }
+    }
+  }
+  // RESTORE THE LIGHT — the Return and the Final Moment. Once the discovery
+  // has been made, two or more travelers standing together in the garden
+  // begin the Return: the town lanterns relight one by one, then the central
+  // light, then the whole village gathers. (Same trigger shape as the old
+  // instant ending — ruin open, discovery made, 2+ in the garden plaza.)
+  if (!room.ending.done) {
     const ps = [...room.players.values()].filter(p => !p.inside);
     const inGarden = (p) => p.x >= 17*TILE && p.x < 23*TILE && p.y >= 13*TILE && p.y < 18*TILE;
-    if (ps.filter(inGarden).length >= 2) {
-      room.ending.done = true;
-      broadcast(room, {t:'ending',
-        title: 'The Garden of Hope',
-        message: 'Two travelers. One village. A hope discovered together.'});
+    const r = room.restore;
+    if (room.ruin.open && r.discoverySeen && r.stage === 'discovered' && ps.filter(inGarden).length >= 2) {
+      r.stage = 'relight';
+      r.relightAt = now;
+      r.gatherUntil = now + RESTORE_GATHER_MS;   // the village comes outside
+      sendRestore(room);
+    }
+    if (r.stage === 'relight') {
+      if (r.lit < LANTERN_TOTAL && now - r.relightAt >= RELIGHT_STEP_MS) {
+        r.lit++;
+        r.relightAt = now;
+        sendRestore(room);
+      }
+      if (r.lit >= LANTERN_TOTAL) {
+        r.central = true;
+        r.stage = 'complete';
+        room.ending.done = true;
+        if (!room.garden.bloomed) {
+          room.garden.bloomed = true;
+          broadcast(room, { t: 'garden-bloom',
+            message: 'The Garden of Hope blooms — tended with love, day after day. 🌸' });
+        }
+        broadcast(room, { t: 'ending',
+          title: 'The Garden of Hope',
+          message: 'Two travelers. One village. A hope discovered together.' });
+        sendRestore(room);
+      }
     }
   }
 }
@@ -685,6 +825,7 @@ function joinedPayload(room, p, code) {
            day: dayPublic(room),
            candles: room.candles,
            garden: { bloomed: room.garden.bloomed },
+           restore: restorePublic(room),
            home: { rug: room.home.rug } };
 }
 
@@ -847,6 +988,7 @@ wss.on('connection', (ws, req) => {
           room.candles = 0;
           room.lastWorship = 0;
           room.garden.bloomed = false;
+          room.restore = newRestore();   // RESTORE THE LIGHT: the town dims again
           room.home.rug = 0;
           room.npcs = NPC_DEFS.map(d => ({
             name: d.name, lines: d.lines, hx: d.hx, hy: d.hy, r: d.r,
@@ -868,7 +1010,7 @@ wss.on('connection', (ws, req) => {
             farm: farmPublic(room), ruin: room.ruin,
             fox: { x: Math.round(room.fox.x), y: Math.round(room.fox.y) },
             npcs: r.npcs, day: r.day, candles: room.candles,
-            garden: r.garden, home: r.home });
+            garden: r.garden, restore: r.restore, home: r.home });
           break;
         }
         default: err(ws, 'unknown', 'Unknown message type');

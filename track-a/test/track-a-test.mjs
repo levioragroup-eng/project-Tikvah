@@ -38,7 +38,7 @@ function ok(name, cond, detail='') {
 // ---------- server ----------
 console.log('starting server...');
 const srv = spawn('node', ['server.js'], {
-  cwd: ROOT, env: { ...process.env, PORT: String(PORT), CROP_GROW_MS: '1500', FISH_WAIT_MIN: '800', FISH_WAIT_MAX: '1200', FISH_CATCH_WINDOW: '3000', DAY_MS: '45000', REAP_MS: '500' },
+  cwd: ROOT, env: { ...process.env, PORT: String(PORT), CROP_GROW_MS: '1500', FISH_WAIT_MIN: '800', FISH_WAIT_MAX: '1200', FISH_CATCH_WINDOW: '3000', DAY_MS: '45000', REAP_MS: '500', RELIGHT_STEP_MS: '150' },
   stdio: ['ignore', 'pipe', 'pipe'],
 });
 srv.stderr.on('data', d => process.stderr.write('[srv] ' + d));
@@ -863,6 +863,12 @@ try {
   ok('ruin-open fires for B (shared world event)', await b.waitFor(() => b.state.ruinOpen, 4000));
   const ro = a.lastOf('ruin-open');
   ok('ruin message is hope/community themed', !!ro && /hope/i.test(ro.message), ro?.message);
+  // RESTORE THE LIGHT: the Discovery — B is standing in the ruins clearing
+  const disc = await a.waitFor(() => a.msgs.some(m => m.t === 'discovery'), 3000) ? a.lastOf('discovery') : null;
+  ok('discovery fires once the ruin stands open', !!disc);
+  ok('discovery is John 8:12 KJV, verbatim', !!disc && disc.ref === 'John 8:12' &&
+     disc.text === 'I am the light of the world: he that followeth me shall not walk in darkness, but shall have the light of life.',
+     disc ? (disc.ref + ': ' + disc.text) : 'none');
 
   // ---------- 7b. ENDING: both enter the garden together -> shared ending -> play again resets ----------
   console.log('ending:');
@@ -878,6 +884,11 @@ try {
   ok('B walks north to the garden', await walkTo(b, GARDEN_B.x, GARDEN_B.y, 12000));
   ok('ending fires for A', await a.waitFor(() => a.msgs.some(m => m.t === 'ending'), 5000));
   ok('ending fires for B (shared ending)', await b.waitFor(() => b.msgs.some(m => m.t === 'ending'), 5000));
+  // RESTORE THE LIGHT: the lanterns relit one by one before that moment
+  ok('finale: lanterns all relit, central light on', await a.waitFor(() => {
+    const r = a.lastOf('restore')?.restore;
+    return !!r && r.stage === 'complete' && r.central === true && r.lit === r.lanterns;
+  }, 4000), JSON.stringify(a.lastOf('restore')?.restore));
   const endMsg = a.lastOf('ending');
   ok('ending message is hopeful, not preachy', !!endMsg && /hope/i.test(endMsg.message) && !/repent|sin|hell/i.test(endMsg.message), endMsg?.message);
   a.send({ t: 'play-again' });
@@ -1200,6 +1211,109 @@ try {
   ok('fresh uuid still starts at spawn',
      Math.hypot(f1.me().x - (13*TILE+16), f1.me().y - (14*TILE+16)) < 40,
      `(${Math.round(f1.me().x)},${Math.round(f1.me().y)})`);
+
+  // ---------- RESTORE THE LIGHT: the quiet restoration engine ----------
+  // A fresh private room: the town starts dimmed and dark-lanterned. Ordinary
+  // life — farming, greeting, candles, fishing — quietly moves it. No score,
+  // no checklist, no progress bar is ever synced to the client.
+  console.log('restore the light (quiet engine):');
+  ok('page renders the waking garden beds', pageHtml.includes("gardenBed('waking'"));
+  ok('page takes restoration state from the server', pageHtml.includes("case 'restore':"));
+  ok('page shows the discovery writing', pageHtml.includes("case 'discovery':"));
+  const s1 = new C('Restorer'); await s1.connect();
+  s1.send({ t: 'create', name: 'Restorer' });
+  ok('restore room created', await s1.waitFor(() => !!s1.state.code, 3000));
+  const jr = s1.lastOf('joined')?.restore;
+  ok('town starts dimmed, lanterns dark', !!jr && jr.stage === 'dimmed' && jr.lit === 0 && jr.central === false && jr.garden === 'dormant' && jr.discovery === false, JSON.stringify(jr));
+  ok('restoration is quiet: no counts or score are synced', !!jr && !('acts' in jr) && !('warmth' in jr) && !('score' in jr), JSON.stringify(jr && Object.keys(jr)));
+
+  async function tendPlot(c, plot, idx) {
+    await walkTo(c, plot.x, plot.y, 8000);
+    c.send({ t: 'interact' }); // plant
+    await c.waitFor(() => c.state.farm[idx]?.stage === 'planted', 2000);
+    c.send({ t: 'interact' }); // water
+    await c.waitFor(() => c.state.farm[idx]?.stage === 'growing', 2000);
+    await c.waitFor(() => c.state.farm[idx]?.stage === 'ready', 8000);
+    c.send({ t: 'interact' }); // harvest
+    return c.waitFor(() => c.state.farm[idx]?.stage === 'empty', 3000);
+  }
+  const PLOT_B = { x: 8*TILE+16, y: 15*TILE+16 };   // FARM_PLOTS[1]
+  ok('S walks south to the south lane', await walkTo(s1, 13*TILE+16, 18*TILE+16, 12000));
+  ok('S walks north to the market lane', await walkTo(s1, 13*TILE+16, 12*TILE+16, 12000));
+  ok('S walks west on the market lane', await walkTo(s1, 8*TILE+16, 12*TILE+16, 8000));
+  ok('S walks south to the farm gate', await walkTo(s1, 8*TILE+16, 14*TILE+16, 8000));
+  ok('S walks south into the farm', await walkTo(s1, 8*TILE+16, 16*TILE+16, 8000));
+  ok('S harvests plot 1', await tendPlot(s1, PLOT0, 0));
+  ok('S harvests plot 2', await tendPlot(s1, PLOT_B, 1));
+  ok('two harvests alone do not wake the town', (s1.lastOf('restore')?.restore?.stage || 'dimmed') === 'dimmed',
+     s1.lastOf('restore')?.restore?.stage);
+
+  async function greetHannah(c) {
+    for (let attempt = 0; attempt < 3; attempt++) {
+      const h = c.state.npcs.get('Hannah');
+      if (!h) continue;
+      await walkTo(c, h.x, h.y, 8000);
+      const before = c.msgs.filter(m => m.t === 'say').length;
+      c.send({ t: 'interact' }); // talk
+      if (await c.waitFor(() => c.msgs.filter(m => m.t === 'say').length > before, 2000)) return true;
+    }
+    return false;
+  }
+  ok('S exits the farm via the north gate', await walkTo(s1, 8*TILE+16, 14*TILE+16, 8000));
+  ok('S walks east to the west lane', await walkTo(s1, 13*TILE+16, 12*TILE+16, 8000));
+  ok('S walks to the plaza', await walkTo(s1, 21*TILE+16, 17*TILE+16, 8000));
+  ok('S greets Hannah', await greetHannah(s1));
+  ok('S greets Hannah again', await greetHannah(s1));
+  ok('the town stirs (felt, not announced)', await s1.waitFor(() => s1.lastOf('restore')?.restore?.stage === 'stirring', 3000),
+     JSON.stringify(s1.lastOf('restore')?.restore));
+
+  ok('S walks east to the east lane', await walkTo(s1, 27*TILE+16, 12*TILE+16, 12000));
+  ok('S walks south down the east lane', await walkTo(s1, 27*TILE+16, 15*TILE+16, 8000));
+  ok('S walks to church door', await walkTo(s1, CHURCH_DOOR.x, CHURCH_DOOR.y + 8, 8000));
+  s1.send({ t: 'interact' }); // enter
+  ok('S enters the church', await s1.waitFor(() => s1.me()?.inside === true, 2000));
+  const CANDLE_S = { x: 24*TILE+16, y: 20*TILE+16 };
+  ok('S walks to the candle stand', await walkTo(s1, CANDLE_S.x, CANDLE_S.y, 8000));
+  s1.send({ t: 'interact' }); // light candle 1
+  ok('S lights a candle', await s1.waitFor(() => s1.msgs.some(m => m.t === 'candle' && m.count === 1), 2000));
+  s1.send({ t: 'interact' }); // light candle 2
+  ok('S lights a second candle', await s1.waitFor(() => s1.msgs.some(m => m.t === 'candle' && m.count === 2), 2000));
+  ok('candles alone do not yet wake the garden', (s1.lastOf('restore')?.restore?.stage || '') === 'stirring',
+     s1.lastOf('restore')?.restore?.stage);
+  ok('S walks to the church exit', await walkTo(s1, 20*TILE+16, 24*TILE+16, 8000));
+  s1.send({ t: 'interact' }); // exit
+  ok('S exits the church', await s1.waitFor(() => s1.me()?.inside === false, 2000));
+
+  async function catchFish(c) {
+    const bitesBefore = c.msgs.filter(m => m.t === 'bite').length;
+    const catchBefore = c.msgs.filter(m => m.t === 'catch').length;
+    c.send({ t: 'interact' }); // cast
+    if (!await c.waitFor(() => c.me()?.fishing === 'cast', 2000)) return false;
+    if (!await c.waitFor(() => c.msgs.filter(m => m.t === 'bite').length > bitesBefore, 6000)) return false;
+    c.send({ t: 'interact' }); // catch
+    return c.waitFor(() => c.msgs.filter(m => m.t === 'catch').length > catchBefore, 3000);
+  }
+  ok('S walks south to the south lane', await walkTo(s1, 27*TILE+16, 18*TILE+16, 8000));
+  ok('S walks west below the church', await walkTo(s1, 21*TILE+16, 18*TILE+16, 8000));
+  ok('S walks west to the dock lane', await walkTo(s1, 17*TILE+16, 18*TILE+16, 8000));
+  ok('S walks to the dock', await walkTo(s1, DOCK.x, DOCK.y, 8000));
+  ok('S catches a fish', await catchFish(s1));
+  ok('S catches another fish', await catchFish(s1));
+  ok('the Old Garden wakes — quietly, through play', await s1.waitFor(() => s1.lastOf('restore')?.restore?.stage === 'awake', 4000),
+     JSON.stringify(s1.lastOf('restore')?.restore));
+  ok('garden reads waking (first green, not the full bloom)', s1.lastOf('restore')?.restore?.garden === 'waking',
+     s1.lastOf('restore')?.restore?.garden);
+  ok('no garden-bloom fanfare yet (the rhythm was not lived)', !s1.msgs.some(m => m.t === 'garden-bloom'));
+
+  const s2 = new C('Latecomer'); await s2.connect();
+  s2.send({ t: 'join', name: 'Latecomer', code: s1.state.code });
+  ok('late joiner sees the same waking town', await s2.waitFor(() => s2.lastOf('joined')?.restore?.stage === 'awake', 3000),
+     JSON.stringify(s2.lastOf('joined')?.restore));
+  s1.send({ t: 'play-again' });
+  const rr = await s1.waitFor(() => s1.msgs.some(m => m.t === 'reset'), 3000) ? s1.lastOf('reset') : null;
+  ok('reset dims the town again', !!rr && rr.restore.stage === 'dimmed' && rr.restore.lit === 0 && rr.restore.central === false && rr.restore.garden === 'dormant' && rr.restore.discovery === false,
+     JSON.stringify(rr?.restore));
+  s1.close(); s2.close();
 
   [a, b, c, d, k, v2, v3, i2, h2, f1, ...fillers].forEach(x => x.close());
 } finally {

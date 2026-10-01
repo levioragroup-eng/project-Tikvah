@@ -748,6 +748,7 @@ let players = new Map(), npcs = new Map(), farm = [], ruinOpen = false, fox = {x
 let fishing = null, biteFlash = 0;
 let day = { n: 1, phase: 'morning', label: 'Morning', rhythm: { farm:false, fish:false, cook:false, greet:false, candle:false } };
 let candles = 0, gardenBloomed = false, homeRug = 0;
+let restore = null;   // RESTORE THE LIGHT: synced town-restoration state (stage + world effects only)
 let sayFlash = null;       // {name, until} — dialogue bubble over NPC
 let worshipFlash = 0;
 // ================= Persistent identity (M3) =================
@@ -821,6 +822,7 @@ function onMsg(m) {
       npcs = new Map(m.npcs.map(n => [n.name, n]));
       farm = m.farm; ruinOpen = m.ruin.open; fox = m.fox;
       day = m.day; candles = m.candles; gardenBloomed = m.garden.bloomed; homeRug = m.home.rug;
+      restore = m.restore || null;
       document.getElementById('menu').style.display = 'none';
       document.getElementById('game').style.display = 'block';
       document.getElementById('hud').style.display = 'flex';
@@ -863,6 +865,13 @@ function onMsg(m) {
     case 'garden-bloom':
       gardenBloomed = true; burst = 200;
       toast('🌸 ' + m.message); bloomChime(); break;
+    case 'restore':
+      // RESTORE THE LIGHT: the town itself changing is the only "progress
+      // UI" there is — no bars, no checklists, just the world.
+      restore = m.restore; break;
+    case 'discovery':
+      // the writing in the ruins — the one Scripture moment of the arc
+      showVerse(m.ref, m.text); break;
     case 'harvest': {
       toast('🌾 ' + m.by + ' harvested a crop!'); chime();
       const hp = playerByName(m.by);
@@ -906,6 +915,7 @@ function onMsg(m) {
       npcs = new Map(m.npcs.map(n => [n.name, n]));
       farm = m.farm; ruinOpen = m.ruin.open; fox = m.fox;
       day = m.day; candles = m.candles; gardenBloomed = m.garden.bloomed; homeRug = m.home.rug;
+      restore = m.restore || null;
       updateDayHud();
       document.getElementById('ending').style.display = 'none';
       document.getElementById('verse').style.display = 'none';
@@ -2301,6 +2311,14 @@ const bloomTileC  = gardenBed('blooming', 2, 0);
 const bloomTileS  = gardenBed('blooming', 0, 1);   // sway frames: blooms breathe ±1px
 const bloomTileBS = gardenBed('blooming', 1, 1);
 const bloomTileCS = gardenBed('blooming', 2, 1);
+// RESTORE THE LIGHT: the waking beds — the Old Garden's first green,
+// between dormant waiting and the extraordinary full bloom.
+const wakeTile    = gardenBed('waking', 0, 0);
+const wakeTileB   = gardenBed('waking', 1, 0);
+const wakeTileC   = gardenBed('waking', 2, 0);
+const wakeTileS   = gardenBed('waking', 0, 1);
+const wakeTileBS  = gardenBed('waking', 1, 1);
+const wakeTileCS  = gardenBed('waking', 2, 1);
 // VISUAL-PASS-GARDEN: garden composition overlays — clearRect decor drawn over
 // the meadow tiles. Every tile stays walkable (verified headless against
 // server isSolid; only the fountain tile is solid, as before).
@@ -3846,18 +3864,31 @@ function drawWorld(g, now) {
     // fountain tile stays the fountain, blooms sway on a 650ms clock.
     if (tx>=17 && tx<=22 && ty>=13 && ty<=17 && !(tx===FOUNTAIN.tx&&ty===FOUNTAIN.ty)) {
       const gv = hash2(tx, ty);
-      if (gardenBloomed) {
+      // RESTORE THE LIGHT: the Old Garden reads its state from the town —
+      // blooming (full glory) > waking (first green) > dormant (quiet and
+      // waiting, revealed once the ruin opens, as before).
+      const bedState = gardenBloomed ? 'blooming'
+        : (restore && restore.garden === 'waking') ? 'waking'
+        : (ruinOpen ? 'dormant' : null);
+      if (bedState === 'blooming') {
         const sw = ((now/650)|0) % 2 === 1;
         const bt = gv < 0.34 ? (sw ? bloomTileS : bloomTile)
                  : gv < 0.67 ? (sw ? bloomTileBS : bloomTileB)
                  : (sw ? bloomTileCS : bloomTileC);
         g.drawImage(bt, x, y);
       }
-      else if (ruinOpen && (tx+ty)%2===0) g.drawImage(gv < 0.5 ? gardenTile : gardenTileB, x, y);
+      else if (bedState === 'waking') {
+        const sw = ((now/650)|0) % 2 === 1;
+        const bt = gv < 0.34 ? (sw ? wakeTileS : wakeTile)
+                 : gv < 0.67 ? (sw ? wakeTileBS : wakeTileB)
+                 : (sw ? wakeTileCS : wakeTileC);
+        g.drawImage(bt, x, y);
+      }
+      else if (bedState === 'dormant' && (tx+ty)%2===0) g.drawImage(gv < 0.5 ? gardenTile : gardenTileB, x, y);
       // garden composition: path, edge planting, resting stone, north gate —
       // all walkable decor; footprint and collision untouched
-      if (ruinOpen || gardenBloomed) {
-        const gs = gardenBloomed ? 'blooming' : 'dormant';
+      if (bedState) {
+        const gs = bedState === 'blooming' ? 'blooming' : 'dormant';
         if (ty===13 && (tx===18 || tx===21))
           g.drawImage(gs==='blooming' ? gardenArchB[tx===18?0:1] : gardenArchD[tx===18?0:1], x, y);
         else if (ty===13 && tx>=19 && tx<=20) {
