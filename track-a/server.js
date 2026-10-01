@@ -57,6 +57,29 @@ export const VERSE_STAND = { tx: 16, ty: 20 };    // interior: read one verse
 export const CANDLE_STAND = { tx: 24, ty: 20 };   // interior: light a candle
 export const STONE_A = { tx: 6, ty: 5 };          // forest clearing
 export const STONE_B = { tx: 34, ty: 5 };         // ruins clearing
+// RESTORE THE LIGHT (M4): fallen stones bar every approach to the ruins
+// clearing until the forest stone answers. Gate tiles seal the clearing
+// (arch mouth, west grass, lane head, clearing floor) — while shut they are
+// solid to players; the moment the way opens they are walkable mossy stone.
+export const GATE_TILES = [ {tx:33,ty:4}, {tx:34,ty:3}, {tx:33,ty:5}, {tx:33,ty:6}, {tx:34,ty:6} ];
+const RUIN_HOLD_MS = parseInt(process.env.RUIN_HOLD_MS || '2000', 10); // stand-and-hold to wake a stone
+function newRuin() {
+  return { open: false, a: false, b: false, gate: false, aSince: 0, bSince: 0, sentKey: null };
+}
+// The way into the ruins stands open while the forest stone is held, and
+// stays open once either stone has truly woken (the ruin remembers).
+function ruinGateOpen(room, onA) {
+  const R = room.ruin;
+  return R.open || R.a || R.b || !!onA;
+}
+function ruinPublic(room, onA, onB) {
+  const R = room.ruin;
+  // a/b mean the stone has truly woken (held a moment, or answered together
+  // when the ruin opened) — merely standing on a stone must not claim it
+  // answered, or a lone traveler hears "the way is open" before it stays open.
+  return { open: R.open, a: R.a, b: R.b, gate: ruinGateOpen(room, onA) };
+}
+function sendRuin(room, onA, onB) { broadcast(room, { t: 'ruin', ruin: ruinPublic(room, onA, onB) }); }
 export const SPAWN = { tx: 13, ty: 14 };       // west lane just east of home: first view looks
                                                 // east down the market lane toward the plaza
 // Home (exterior)
@@ -163,11 +186,14 @@ function solidAt(place, x, y) {
   return isSolid(Math.floor(x / TILE), Math.floor(y / TILE), place);
 }
 
-function collideMove(p, nx, ny) {
+function collideMove(room, p, nx, ny) {
   // Axis-separated slide: try x, then y — players glide around obstacles
-  // instead of sticking to them.
-  if (!solidAt(p.place, nx, p.y)) p.x = nx;
-  if (!solidAt(p.place, p.x, ny)) p.y = ny;
+  // instead of sticking to them. RESTORE THE LIGHT: the fallen stones at
+  // the ruin mouth are solid until the way opens.
+  const gateBlocked = (x, y) => !p.inside && room && !room.ruin.gate &&
+    GATE_TILES.some(t => Math.floor(x / TILE) === t.tx && Math.floor(y / TILE) === t.ty);
+  if (!solidAt(p.place, nx, p.y) && !gateBlocked(nx, p.y)) p.x = nx;
+  if (!solidAt(p.place, p.x, ny) && !gateBlocked(p.x, ny)) p.y = ny;
 }
 
 const CROP_GROW_MS = parseInt(process.env.CROP_GROW_MS || '45000', 10); // watered -> ready
@@ -318,7 +344,7 @@ function buildRoom(code, isPublic = false) {
     players: new Map(),   // ws -> player
     sockets: new Set(),
     farm: FARM_PLOTS.map(p => ({ tx: p.tx, ty: p.ty, stage: 'empty', t: 0 })),
-    ruin: { open: false },
+    ruin: newRuin(),   // RESTORE THE LIGHT M4: { open, a, b, gate, hold timers }
     ending: { done: false },
     fox: { x: 15*TILE, y: 18*TILE, tx: 15*TILE, ty: 18*TILE, nextMove: now+2000 },
     npcs: NPC_DEFS.map(d => ({
@@ -672,7 +698,7 @@ function tickRoom(room) {
       const len = Math.hypot(p.ix, p.iy) || 1;
       const nx = Math.max(TILE/2, Math.min(WORLD_W*TILE - TILE/2, p.x + (p.ix/len)*MAX_SPEED*dt));
       const ny = Math.max(TILE/2, Math.min(WORLD_H*TILE - TILE/2, p.y + (p.iy/len)*MAX_SPEED*dt));
-      collideMove(p, nx, ny);   // server-authoritative: solids block, walls slide
+      collideMove(room, p, nx, ny);   // server-authoritative: solids block, walls slide
       if (!p.moving) { p.moving = true; moved = true; }
       else moved = true;
       if (p.ix < 0) p.dir='left'; else if (p.ix > 0) p.dir='right';
@@ -741,20 +767,36 @@ function tickRoom(room) {
   }
   const fdx = fox.tx - fox.x, fdy = fox.ty - fox.y, fl = Math.hypot(fdx, fdy);
   if (fl > 4) { fox.x += fdx/fl*40*dt; fox.y += fdy/fl*40*dt; broadcast(room, {t:'fox', x: Math.round(fox.x), y: Math.round(fox.y)}); }
-  // ruin: both stones occupied simultaneously?
-  if (!room.ruin.open) {
-    const a = {x: STONE_A.tx*TILE+TILE/2, y: STONE_A.ty*TILE+TILE/2};
-    const b = {x: STONE_B.tx*TILE+TILE/2, y: STONE_B.ty*TILE+TILE/2};
+  // RESTORE THE LIGHT — the ruins puzzle. One traveler stands on the forest
+  // stone and the fallen stones at the ruin mouth roll aside; a second
+  // crosses and wakes the inner stone; then the two stones, answered
+  // together, open the ruin. A stone truly wakes by being HELD a moment —
+  // so a lone traveler can still complete the way, stone by stone, and no
+  // one is ever locked out of the story.
+  {
+    const R = room.ruin;
+    const aPt = {x: STONE_A.tx*TILE+TILE/2, y: STONE_A.ty*TILE+TILE/2};
+    const bPt = {x: STONE_B.tx*TILE+TILE/2, y: STONE_B.ty*TILE+TILE/2};
     let onA = false, onB = false;
     for (const [, p] of room.players) {
       if (p.inside) continue;
-      if (dist(p.x, p.y, a.x, a.y) <= RUIN_STONE_RADIUS) onA = true;
-      if (dist(p.x, p.y, b.x, b.y) <= RUIN_STONE_RADIUS) onB = true;
+      if (dist(p.x, p.y, aPt.x, aPt.y) <= RUIN_STONE_RADIUS) onA = true;
+      if (dist(p.x, p.y, bPt.x, bPt.y) <= RUIN_STONE_RADIUS) onB = true;
     }
-    if (onA && onB) {
-      room.ruin.open = true;
+    const pubKey = () => { const q = ruinPublic(room, onA, onB); return q.open + '|' + q.a + '|' + q.b + '|' + q.gate; };
+    if (onA) { R.aSince = R.aSince || now; if (now - R.aSince >= RUIN_HOLD_MS) R.a = true; } else R.aSince = 0;
+    if (onB) { R.bSince = R.bSince || now; if (now - R.bSince >= RUIN_HOLD_MS) R.b = true; } else R.bSince = 0;
+    if (!R.open && ((onA && onB) || (R.a && R.b && (onA || onB)))) {
+      R.open = true; R.a = true; R.b = true; // answered together, both stones wake
       broadcast(room, {t:'ruin-open', message: 'Hope lives here — discovered together.'});
     }
+    R.gate = ruinGateOpen(room, onA);
+    // Broadcast whenever the public ruin state differs from what clients were
+    // last sent. (A same-tick before/after compare misses the gate: gate reads
+    // live occupancy, so the tick a stone is stepped on already reads "open"
+    // on both sides of the compare — that change would never be sent.)
+    const key = pubKey();
+    if (key !== R.sentKey) { R.sentKey = key; sendRuin(room, onA, onB); }
   }
   // RESTORE THE LIGHT — quiet tracking: a traveler's first steps into the
   // wild north (forest clearings, the ruins lane) count once, silently.
@@ -822,7 +864,7 @@ function tickRoom(room) {
 function joinedPayload(room, p, code) {
   return { t: 'joined', code, uuid: p.uuid, you: playerPublic(p),
            players: [...room.players.values()].map(playerPublic),
-           farm: farmPublic(room), ruin: room.ruin, ending: room.ending.done,
+           farm: farmPublic(room), ruin: ruinPublic(room), ending: room.ending.done,
            fox: {x: Math.round(room.fox.x), y: Math.round(room.fox.y)},
            npcs: room.npcs.map(npcPublic),
            day: dayPublic(room),
@@ -984,7 +1026,7 @@ wss.on('connection', (ws, req) => {
           // private rooms: reset the shared world for a fresh run
           const now2 = Date.now();
           room.farm = FARM_PLOTS.map(p => ({ tx: p.tx, ty: p.ty, stage: 'empty', t: 0 }));
-          room.ruin.open = false;
+          room.ruin = newRuin();
           room.ending.done = false;
           room.day = { n: 1, start: now2 };
           room.rhythm = { farm: false, fish: false, cook: false, greet: false, candle: false };
@@ -1010,7 +1052,7 @@ wss.on('connection', (ws, req) => {
           const r = joinedPayload(room, [...room.players.values()][0] || { id:'', name:'' }, room.code);
           broadcast(room, { t: 'reset',
             players: [...room.players.values()].map(playerPublic),
-            farm: farmPublic(room), ruin: room.ruin,
+            farm: farmPublic(room), ruin: ruinPublic(room),
             fox: { x: Math.round(room.fox.x), y: Math.round(room.fox.y) },
             npcs: r.npcs, day: r.day, candles: room.candles,
             garden: r.garden, restore: r.restore, home: r.home });

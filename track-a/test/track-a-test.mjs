@@ -38,7 +38,7 @@ function ok(name, cond, detail='') {
 // ---------- server ----------
 console.log('starting server...');
 const srv = spawn('node', ['server.js'], {
-  cwd: ROOT, env: { ...process.env, PORT: String(PORT), CROP_GROW_MS: '1500', FISH_WAIT_MIN: '800', FISH_WAIT_MAX: '1200', FISH_CATCH_WINDOW: '3000', DAY_MS: '45000', REAP_MS: '500', RELIGHT_STEP_MS: '150' },
+  cwd: ROOT, env: { ...process.env, PORT: String(PORT), CROP_GROW_MS: '1500', FISH_WAIT_MIN: '800', FISH_WAIT_MAX: '1200', FISH_CATCH_WINDOW: '3000', DAY_MS: '45000', REAP_MS: '500', RELIGHT_STEP_MS: '150', RUIN_HOLD_MS: '300' },
   stdio: ['ignore', 'pipe', 'pipe'],
 });
 srv.stderr.on('data', d => process.stderr.write('[srv] ' + d));
@@ -863,6 +863,10 @@ try {
   ok('ruin-open fires for B (shared world event)', await b.waitFor(() => b.state.ruinOpen, 4000));
   const ro = a.lastOf('ruin-open');
   ok('ruin message is hope/community themed', !!ro && /hope/i.test(ro.message), ro?.message);
+  // RESTORE THE LIGHT M4: the ruin puzzle state itself is synced (stones/gate)
+  const rs = a.lastOf('ruin');
+  ok('ruin state syncs stones answered + gate open', !!rs && rs.ruin.open === true && rs.ruin.gate === true && rs.ruin.a === true && rs.ruin.b === true,
+     rs ? JSON.stringify(rs.ruin) : 'none');
   // RESTORE THE LIGHT: the Discovery — B is standing in the ruins clearing
   const disc = await a.waitFor(() => a.msgs.some(m => m.t === 'discovery'), 3000) ? a.lastOf('discovery') : null;
   ok('discovery fires once the ruin stands open', !!disc);
@@ -943,6 +947,26 @@ try {
   const kme = k.me();
   const kInGarden = !!kme && kme.x >= 17*TILE && kme.x < 23*TILE && kme.y >= 13*TILE && kme.y < 18*TILE;
   ok('third player was NOT in the garden plaza', !kInGarden, `k at ${kme?.x?.toFixed(0)},${kme?.y?.toFixed(0)}`);
+
+  // ---------- 7d. RESTORE THE LIGHT: the ruins, solo — gate, latch, no dead end ----------
+  // One traveler alone: the fallen stones bar the ruins clearing until the
+  // forest stone is held a moment; then the way stays open, and holding the
+  // inner stone (both now answered) opens the ruin. No co-op dead end.
+  console.log('ruins (solo: gate + latch):');
+  const solo = new C('Solo'); await solo.connect();
+  solo.send({ t: 'create', name: 'Solo' });
+  ok('solo traveler arrives', await solo.waitFor(() => solo.me(), 3000));
+  ok('solo: east along the upper lane', await walkTo(solo, 33*TILE+16, 8*TILE+16, 15000));
+  ok('solo: the fallen stones bar the ruins clearing', !(await walkTo(solo, STONE_B.x, STONE_B.y, 5000)));
+  ok('solo: west along the upper lane', await walkTo(solo, 19*TILE+16, 8*TILE+16, 15000));
+  ok('solo: west toward the forest', await walkTo(solo, 13*TILE+16, 8*TILE+16, 10000));
+  ok('solo: to the forest stone', await walkTo(solo, STONE_A.x, STONE_A.y, 12000));
+  ok('solo: forest stone answers and the way opens', await solo.waitFor(() => { const r = solo.lastOf('ruin'); return !!r && r.ruin.a && r.ruin.gate; }, 5000));
+  ok('solo: back east along the upper lane', await walkTo(solo, 19*TILE+16, 8*TILE+16, 15000));
+  ok('solo: east to the ruins lane', await walkTo(solo, 33*TILE+16, 8*TILE+16, 15000));
+  ok('solo: through the opened way to the inner stone', await walkTo(solo, STONE_B.x, STONE_B.y, 12000));
+  ok('solo: both stones answered — the ruin opens (no dead end)', await solo.waitFor(() => solo.state.ruinOpen, 6000));
+  solo.close();
 
   // ---------- 8. negative: invalid room codes + room cap ----------
   console.log('negative tests:');
@@ -1224,6 +1248,7 @@ try {
   ok('page orders the lantern relight (LAMP_ORDER)', pageHtml.includes('LAMP_ORDER'));
   ok('page gates lamp light on restoration (lampLit)', pageHtml.includes('function lampLit('));
   ok('page rests the fountain dry until the garden wakes', pageHtml.includes('fountainDryTile'));
+  ok('the Discovery earns its own panel in the ruins', pageHtml.includes('id="discovery"'));
   ok('garden waking earns one soft chime (no fanfare UI)', pageHtml.includes('The Old Garden is coming back to life'));
   const s1 = new C('Restorer'); await s1.connect();
   s1.send({ t: 'create', name: 'Restorer' });

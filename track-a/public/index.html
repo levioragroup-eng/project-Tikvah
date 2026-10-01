@@ -92,7 +92,7 @@
   /* verse panel */
   #verse { position:absolute; inset:0; display:none; align-items:center; justify-content:center; z-index:20;
     background:rgba(10,15,10,.7); padding:20px; }
-  #verse .card, #panel .card, #ending .card {
+  #verse .card, #panel .card, #ending .card, #discovery .card {
     background:linear-gradient(#fffdf4,#fdf3da); color:#3a2a12; border-radius:18px; padding:28px;
     width:min(460px,92vw); max-width:460px; text-align:center;
     border:3px solid #7a4b1f; box-shadow:0 10px 40px rgba(0,0,0,.5), inset 0 0 34px rgba(255,214,110,.22);
@@ -100,6 +100,15 @@
   #verse .ref { font-weight:bold; font-size:20px; margin-bottom:12px; color:#7a4b1f; }
   #verse .text { font-style:italic; font-size:17px; line-height:1.6; }
   #verse button { margin-top:18px; }
+  /* RESTORE THE LIGHT M4: the Discovery panel (found in the opened ruin) */
+  #discovery { position:absolute; inset:0; display:none; align-items:center; justify-content:center; z-index:21;
+    background:rgba(10,15,10,.72); padding:20px; }
+  #discovery h3 { margin:0 0 12px; font-size:22px; letter-spacing:2px; color:#7a4b1f; }
+  #discovery .flavor { font-size:15px; line-height:1.55; color:#5a4020; margin-bottom:14px; }
+  #discovery .text { font-style:italic; font-size:17px; line-height:1.6; }
+  #discovery .ref { font-weight:bold; font-size:18px; margin-top:10px; color:#7a4b1f; }
+  #discovery .foot { margin-top:14px; font-size:14px; line-height:1.5; color:#7a4b1f; }
+  #discovery button { margin-top:18px; }
   /* generic panel (cook menu etc.) */
   #panel { position:absolute; inset:0; display:none; align-items:center; justify-content:center; z-index:20;
     background:rgba(10,15,10,.55); padding:20px; }
@@ -559,6 +568,15 @@
     <button class="big" id="vclose">Amen</button>
   </div></div>
 
+  <div id="discovery"><div class="card">
+    <h3>✦ The Discovery ✦</h3>
+    <div class="flavor">Stone benches in a wide circle, worn smooth — a gathering place built by a community that once met here… and then, somehow, forgot why.</div>
+    <div class="text" id="dtext"></div>
+    <div class="ref" id="dref"></div>
+    <div class="foot">The Light was never theirs to make. It was theirs to gather under.</div>
+    <button class="big" id="dclose">Continue</button>
+  </div></div>
+
   <div id="fade"></div>
 
   <div id="ending"><div class="card">
@@ -745,6 +763,7 @@ document.getElementById('creatorOk').onclick = () => {
 const WS_URL = (location.protocol === 'https:' ? 'wss://' : 'ws://') + location.host;
 let ws = null, myId = null, code = null;
 let players = new Map(), npcs = new Map(), farm = [], ruinOpen = false, fox = {x:0,y:0};
+let ruinA = false, ruinB = false, ruinGate = false;   // RESTORE THE LIGHT M4: synced ruin-puzzle state
 let fishing = null, biteFlash = 0;
 let day = { n: 1, phase: 'morning', label: 'Morning', rhythm: { farm:false, fish:false, cook:false, greet:false, candle:false } };
 let candles = 0, gardenBloomed = false, homeRug = 0;
@@ -820,7 +839,7 @@ function onMsg(m) {
       }
       players = new Map(m.players.map(p => [p.id, p]));
       npcs = new Map(m.npcs.map(n => [n.name, n]));
-      farm = m.farm; ruinOpen = m.ruin.open; fox = m.fox;
+      farm = m.farm; ruinOpen = m.ruin.open; ruinA = !!m.ruin.a; ruinB = !!m.ruin.b; ruinGate = !!m.ruin.gate; fox = m.fox;
       day = m.day; candles = m.candles; gardenBloomed = m.garden.bloomed; homeRug = m.home.rug;
       restore = m.restore || null;
       document.getElementById('menu').style.display = 'none';
@@ -875,8 +894,9 @@ function onMsg(m) {
       break;
     }
     case 'discovery':
-      // the writing in the ruins — the one Scripture moment of the arc
-      showVerse(m.ref, m.text); break;
+      // RESTORE THE LIGHT M4: the writing in the ruins earns its own panel —
+      // the benches, the forgetting, and the one new Scripture of this build
+      showDiscovery(m.text, m.ref); break;
     case 'harvest': {
       toast('🌾 ' + m.by + ' harvested a crop!'); chime();
       const hp = playerByName(m.by);
@@ -907,10 +927,20 @@ function onMsg(m) {
     case 'verse': showVerse(m.ref, m.text); break;
     case 'interact-fail': if (m.reason === 'nothing-nearby') toast('Nothing to do here — walk closer.'); break;
     case 'ruin-open':
-      ruinOpen = true; burst = 120;
+      ruinOpen = true; ruinGate = true; burst = 120;
       toast('✨ ' + m.message);
       ruinPad();
       break;
+    case 'ruin': {
+      // RESTORE THE LIGHT M4: the stones answer as the puzzle wakes — a
+      // held stone glows, the fallen stones at the ruin mouth roll aside
+      const r = m.ruin || {};
+      if (r.open) ruinOpen = true;
+      if (r.a && !ruinA) toast('✨ The forest stone answers — the way into the ruins shifts open');
+      if (r.b && !ruinB) toast('✨ The inner stone remembers. Two stones, answered together…');
+      ruinA = !!r.a; ruinB = !!r.b; ruinGate = !!r.gate;
+      break;
+    }
     case 'ending':
       showEnding(m.message);
       endingMotif();
@@ -918,7 +948,7 @@ function onMsg(m) {
     case 'reset':
       players = new Map(m.players.map(p => [p.id, p]));
       npcs = new Map(m.npcs.map(n => [n.name, n]));
-      farm = m.farm; ruinOpen = m.ruin.open; fox = m.fox;
+      farm = m.farm; ruinOpen = m.ruin.open; ruinA = !!m.ruin.a; ruinB = !!m.ruin.b; ruinGate = !!m.ruin.gate; fox = m.fox;
       day = m.day; candles = m.candles; gardenBloomed = m.garden.bloomed; homeRug = m.home.rug;
       restore = m.restore || null;
       updateDayHud();
@@ -1379,6 +1409,12 @@ function showVerse(ref, text) {
   document.getElementById('verse').style.display = 'flex';
 }
 document.getElementById('vclose').onclick = () => document.getElementById('verse').style.display = 'none';
+function showDiscovery(text, ref) {
+  document.getElementById('dtext').textContent = '“' + text + '”';
+  document.getElementById('dref').textContent = ref + ' (KJV)';
+  document.getElementById('discovery').style.display = 'flex';
+}
+document.getElementById('dclose').onclick = () => document.getElementById('discovery').style.display = 'none';
 let toastTimer = null;
 function toast(msg) {
   const el = document.getElementById('toast');
@@ -3242,6 +3278,38 @@ const pillarTile = px(TILE,TILE,(g)=>{ g.clearRect(0,0,TILE,TILE);
   g.fillStyle = '#ff9ec4'; g.fillRect(8,27,2,2);                    // flowers in cracks
   g.fillStyle = '#fff0f6'; g.fillRect(8,27,1,1);
 });
+// RESTORE THE LIGHT M4: the fallen stones at the ruin mouth — a tumbled pile
+// while the way is shut; rolled aside, mossy and flat, once it opens.
+const GATE_TILES = [ {tx:33,ty:4}, {tx:34,ty:3}, {tx:33,ty:5}, {tx:33,ty:6}, {tx:34,ty:6} ];
+const gateShutTile = px(TILE,TILE,(g)=>{ g.clearRect(0,0,TILE,TILE);
+  const R = srand(0x6a7e);
+  g.fillStyle = '#6e6e78';                        // shadow bed
+  g.beginPath(); g.ellipse(16,24,13,6,0,0,7); g.fill();
+  g.fillStyle = '#9a9aa5'; g.fillRect(4,16,12,9);  // tumbled blocks
+  g.fillStyle = '#b5b5c0'; g.fillRect(4,16,12,2);
+  g.fillStyle = '#7c7c88'; g.fillRect(4,22,12,3);
+  g.fillStyle = '#8a8a92'; g.fillRect(15,12,13,10);
+  g.fillStyle = '#a8a8b2'; g.fillRect(15,12,13,2);
+  g.fillStyle = '#5a5a62'; g.fillRect(22,14,1,7);  // cracks
+  g.fillStyle = '#8a8a92'; g.fillRect(9,7,11,8);
+  g.fillStyle = '#c9c9d4'; g.fillRect(9,7,11,2);
+  g.fillStyle = '#5a5a62'; g.fillRect(13,9,4,1);
+  g.fillStyle = '#4a8f3c'; g.fillRect(2,24,28,3);  // moss claims the pile
+  g.fillStyle = '#6ab04c'; g.fillRect(6,23,4,2); g.fillRect(20,25,5,2); g.fillRect(12,14,3,2);
+});
+const gateOpenTile = px(TILE,TILE,(g)=>{ g.clearRect(0,0,TILE,TILE);
+  const R = srand(0x6a7f);
+  g.fillStyle = '#8a8a92';                        // flattened mossy way
+  g.beginPath(); g.ellipse(16,17,13,11,.3,0,7); g.fill();
+  g.fillStyle = '#a8a8b2'; g.fillRect(6,10,20,3);
+  g.fillStyle = '#7c7c88'; g.fillRect(10,22,16,2);
+  g.fillStyle = '#5a5a62'; g.fillRect(18,13,1,6);  // worn crack lines
+  g.fillStyle = '#4a8f3c'; g.fillRect(3,4,7,5);   // stones rest at the edges
+  g.fillStyle = '#6ab04c'; g.fillRect(4,5,3,2);
+  g.fillStyle = '#4a8f3c'; g.fillRect(23,24,7,5);
+  g.fillStyle = '#6ab04c'; g.fillRect(24,25,3,2);
+  g.fillStyle = '#ff9ec4'; g.fillRect(27,6,2,2);   // a flower finds the crack
+});
 // ---- Batch 2 NEW (defined, not placed — the layout batch places them) ----
 // Waterfall: white-blue cascade with foam over mossy rocks (32x64)
 const waterfallTile = px(32,64,(g)=>{
@@ -4082,12 +4150,18 @@ function drawWorld(g, now) {
     for (const s of ROCKS) if (s[0]===tx && s[1]===ty) g.drawImage(rockTile, x, y);
     // ruin pillars flanking the arch (waterfalls + arch draw after the tile loop)
     if ((tx===30 && ty===4) || (tx===33 && ty===4)) g.drawImage(pillarTile, x, y);
+    // RESTORE THE LIGHT M4: fallen stones bar the ruin mouth (or rest aside)
+    for (const gt of GATE_TILES) if (gt.tx===tx && gt.ty===ty) g.drawImage(ruinGate ? gateOpenTile : gateShutTile, x, y);
     for (const s of STONES) if (s.tx===tx && s.ty===ty) {
       // VISUAL-PASS-RUINS: state-addressable pad — 'dormant' today, 'lit'
       // while the ruin stands open; trigger tiles, prompts, verbs unchanged
       const pad = paintRuinPad(ruinOpen ? 'lit' : 'dormant');
       g.drawImage(pad.stone, x, y);
-      if (!ruinOpen) {
+      // RESTORE THE LIGHT M4: a stone that has answered — stood on now, or
+      // held long enough to wake — glows on its own until the ruin opens
+      const answered = ruinOpen || (s.tx < 20 ? ruinA : ruinB);
+      if (answered && !ruinOpen) { g.drawImage(paintRuinStone('lit'), x, y); }
+      if (!answered) {
         g.fillStyle = `rgba(160,220,255,${0.25+0.2*Math.sin(now/400)})`;
         g.fillRect(x+6, y+4, 20, 26);
       } else {
