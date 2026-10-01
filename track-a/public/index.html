@@ -1825,6 +1825,35 @@ const BOARD_PALETTE = {
   roofRidge:'#d08a4a', roofShadow:'#7a3f1f',
   droplet:'#cfeeff',
 };
+// VISUAL-PASS-BOARDMATCH (2026-10-01): Ariel-endorsed design-board palette —
+// the look she approved from the board + palette spec. New/repainted painters
+// read from PAL; BOARD_PALETTE above stays for the pinned legacy painters.
+const PAL = {
+  meadow:'#79A957', meadowLight:'#8FBC68', meadowDark:'#527D45', meadowDeep:'#3F653B',
+  path:'#D8C39B', pathLight:'#E8D5B0', pathShadow:'#B79D78',
+  water:'#65B9D2', waterLight:'#8DD3E2', waterDeep:'#3F91B0', waterShadow:'#317A98',
+  sand:'#E7D09B', stone:'#AAA28D', stoneLight:'#C8C0A9', stoneDark:'#777360',
+  plaster:'#F3E7CC', plasterShadow:'#D7C5A3', timber:'#76543E',
+  terracotta:'#B96848', terracottaDark:'#884937', roofBlue:'#687F91', roofDark:'#4D6272',
+  leaf:'#4F7F43', leafLight:'#719E56', leafDark:'#385F38', pine:'#365D3C', pineLight:'#507C49',
+  blossom:'#E89BAA', blossomLight:'#F4C0C8',
+  flowerPink:'#E99CAF', flowerCream:'#F2E0B5', flowerLavender:'#B8A6D9', flowerBlue:'#91BBD0',
+  gold:'#D5AD54', goldLight:'#F0D78B', light:'#FFE8A3', lightSoft:'#F7D982',
+  navy:'#202A43', ink:'#302A2A', parchment:'#F5EBD5', parchmentDark:'#DCCBAA', cream:'#FFF8E8',
+};
+// Pixel-cluster speckle: seeded little squares that read as hand-placed
+// clusters, never flat noise. R is an srand() stream; w/h are cluster size.
+function speckle(g, R, n, color, w, h) {
+  g.fillStyle = color;
+  for (let i = 0; i < n; i++) g.fillRect(R(32 - w), R(32 - h), w, h);
+}
+// A little grass tuft: two dark blades with one sunlit tip.
+function tuft(g, x, y, dark, light) {
+  g.fillStyle = dark;
+  g.fillRect(x, y - 3, 1, 3); g.fillRect(x + 2, y - 4, 1, 4); g.fillRect(x + 4, y - 2, 1, 2);
+  g.fillStyle = light;
+  g.fillRect(x + 2, y - 4, 1, 1);
+}
 // VISUAL-PASS-TOWN: plaza + world base tiles toward the design board — 2026-09-30
 // Deterministic per-tile hash (0..1): stable variant picks, no random flicker.
 function hash2(tx, ty) {
@@ -1847,107 +1876,117 @@ function srand(seed) {
 // Seasonal bloom sets: flower/bed painters take a season key so a future
 // seasonal variant only swaps this table (spring is the live season).
 const SEASON_BLOOMS = {
-  spring: { leaf:'#3f7a2e', blooms:['#ff9ec4','#ffe066','#ffffff','#ff6b8a'], center:'#fff8d8' },
+  spring: { leaf:'#4F7F43', blooms:['#E99CAF','#F2E0B5','#B8A6D9','#91BBD0'], center:'#FFF3C4' },
   summer: { leaf:'#2f6b2f', blooms:['#ff6b8a','#ffd166','#ffffff','#e84a6f'], center:'#fff3b0' },
   autumn: { leaf:'#5a6b2a', blooms:['#e8863c','#d4a940','#c96a4a','#f0e0a0'], center:'#7a4a20' },
   winter: { leaf:'#3a5a3a', blooms:['#e8ecf4','#c9d4e8','#ffffff','#a0b4d4'], center:'#f4f8ff' },
 };
 function grassTile(variant) {
   return px(TILE, TILE, (g) => {
-    const P = BOARD_PALETTE;
     const R = srand(0x9e37 + variant*7919);   // deterministic: identical every load
-    // variant 2: deeper, cooler meadow tone (third tonal family)
-    const base  = variant === 2 ? '#418739' : P.grassBase;
-    const dark  = variant === 2 ? '#336b2c' : P.grassDark;
-    const light = variant === 2 ? '#5da244' : P.grassLight;
+    // VISUAL-PASS-BOARDMATCH: lush board meadow — warm yellow-green built from
+    // hand-placed pixel clusters (dark patches, sunlit clumps, blade tufts),
+    // never flat tiles. Variant 2 is the deeper, cooler tonal family.
+    const base  = variant === 2 ? mixHex(PAL.meadow, PAL.meadowDark, .45) : PAL.meadow;
+    const dark  = variant === 2 ? PAL.meadowDeep : PAL.meadowDark;
+    const deep  = variant === 2 ? '#2F4F2B' : PAL.meadowDeep;
+    const light = variant === 2 ? PAL.meadow : PAL.meadowLight;
     g.fillStyle = base; g.fillRect(0,0,TILE,TILE);
-    // darker mottling
-    g.fillStyle = dark;
-    for (let i=0;i<10;i++) g.fillRect(R(TILE), R(TILE), 4, 3);
-    g.fillStyle = variant === 2 ? '#2c5c26' : '#35702c';
-    for (let i=0;i<7;i++) g.fillRect(R(TILE), R(TILE), 3, 3);
-    // light highlights
-    g.fillStyle = light;
-    for (let i=0;i<9;i++) g.fillRect(R(TILE), R(TILE), 2, 2);
-    g.fillStyle = variant === 2 ? '#6fb455' : '#7cc465';
-    for (let i=0;i<4;i++) g.fillRect(R(TILE), R(TILE), 2, 1);
-    // tiny meadow flowers like the board's meadows (season-parameterized set)
-    const S = SEASON_BLOOMS.spring;
-    const n = variant === 1 ? 5 : 2;
-    for (let i=0;i<n;i++) {
-      const x = 3+R(26), y = 3+R(26);
-      g.fillStyle = S.blooms[R(S.blooms.length)]; g.fillRect(x, y, 2, 2);
-      g.fillStyle = S.center; g.fillRect(x, y, 1, 1);
-    }
-    if (variant === 1) { // blooming meadow: extra petals + blades
-      for (let i=0;i<6;i++) { g.fillStyle = dark; g.fillRect(R(TILE), R(TILE), 1, 3); }
-      for (let i=0;i<3;i++) { const x=3+R(26), y=3+R(26);
-        g.fillStyle = '#ff9ec4'; g.fillRect(x,y,2,2); g.fillStyle = '#ffe066'; g.fillRect(x,y,1,1); }
+    // broad darker meadow patches (clustered, irregular)
+    speckle(g, R, 7, dark, 5, 3); speckle(g, R, 5, dark, 3, 4);
+    speckle(g, R, 5, deep, 3, 2);
+    // sunlit clumps
+    speckle(g, R, 8, light, 4, 2); speckle(g, R, 6, light, 2, 3);
+    speckle(g, R, 5, PAL.meadowLight, 2, 1);
+    // blade tufts: dark strokes with one lit tip
+    for (let i = 0; i < 7; i++) tuft(g, 2 + R(26), 6 + R(24), dark, light);
+    // meadow flowers gather in little clusters like the board's meadows
+    const blooms = [PAL.flowerPink, PAL.flowerCream, PAL.flowerLavender, PAL.flowerBlue];
+    if (variant === 1) {           // flowering meadow: two bloom clusters + flecks
+      for (let c = 0; c < 2; c++) {
+        const cx = 4 + R(22), cy = 4 + R(22);
+        g.fillStyle = PAL.leafDark; g.fillRect(cx - 2, cy + 2, 7, 2); g.fillRect(cx, cy + 4, 3, 1);
+        for (let i = 0; i < 4; i++) {
+          const x = cx - 2 + R(6), y = cy - 1 + R(4);
+          g.fillStyle = blooms[R(4)]; g.fillRect(x, y, 2, 2);
+          g.fillStyle = '#FFF3C4'; g.fillRect(x, y, 1, 1);
+        }
+      }
+      speckle(g, R, 4, PAL.flowerPink, 2, 2);
+    } else {                       // quiet meadow: a single bloom or two
+      const nB = variant === 2 ? 1 : 2;
+      for (let i = 0; i < nB; i++) {
+        const x = 3 + R(26), y = 3 + R(26);
+        g.fillStyle = blooms[R(4)]; g.fillRect(x, y, 2, 2);
+        g.fillStyle = '#FFF3C4'; g.fillRect(x, y, 1, 1);
+      }
     }
     if (variant === 2) { // dry golden flecks in the deeper meadow
-      g.fillStyle = '#c9b458';
-      for (let i=0;i<5;i++) g.fillRect(R(TILE), R(TILE), 2, 1);
+      speckle(g, R, 5, '#D8C39B', 2, 1);
     }
   });
 }
 const grassA = grassTile(0), grassB = grassTile(1);
 const grassC = grassTile(2);
 const pathTile = px(TILE,TILE,(g)=>{
-  // winding warm-gray stone pavers with darker grout (tileable, 8px vertical period)
+  // VISUAL-PASS-BOARDMATCH: hand-laid warm sand pavers — irregular stones on
+  // pale dirt mortar, sunlit top edges, grass creeping into the joints
   const R = srand(0x9a7e);
-  g.fillStyle = '#8a7f6e'; g.fillRect(0,0,TILE,TILE);
-  const shades = ['#b8a888','#b2a180','#beae90','#ac9c7c'];
+  g.fillStyle = PAL.pathShadow; g.fillRect(0,0,TILE,TILE);          // worn dirt mortar
+  const shades = [PAL.path, PAL.pathLight, PAL.path, mixHex(PAL.path, PAL.pathLight, .5), mixHex(PAL.path, PAL.pathShadow, .3)];
   for (let row=0; row<4; row++) {
     const y = row*8, off = (row%2)*8;
     for (let x=-1; x<3; x++) {
-      const sx = x*16 + off;
-      g.fillStyle = shades[R(4)]; g.fillRect(sx, y, 14, 6);
-      g.fillStyle = 'rgba(255,255,255,.20)'; g.fillRect(sx, y, 14, 1);
-      g.fillStyle = 'rgba(0,0,0,.14)'; g.fillRect(sx, y+5, 14, 1);
-      // worn stone speckle
-      g.fillStyle = 'rgba(90,78,60,.25)'; g.fillRect(sx+2+R(10), y+2+R(2), 2, 1);
+      const sx = x*16 + off + (R(3)-1);
+      g.fillStyle = shades[R(5)]; g.fillRect(sx, y+1, 13+R(3), 6);
+      g.fillStyle = PAL.pathLight; g.fillRect(sx, y+1, 13, 1);      // sunlit top edge
+      g.fillStyle = 'rgba(120,95,60,.35)'; g.fillRect(sx, y+6, 13, 1); // worn bottom shade
+      g.fillStyle = 'rgba(183,157,120,.5)'; g.fillRect(sx+2+R(9), y+3+R(2), 2, 1); // grit
+      if (R(4) === 0) { g.fillStyle = PAL.meadowDark; g.fillRect(sx+R(12), y+5, 2, 2); } // grass in the joint
     }
   }
 });
 const plazaTile = px(TILE,TILE,(g)=>{
-  // denser circular-paver pattern, warmer tone (tileable)
+  // VISUAL-PASS-BOARDMATCH: town-square flagstones — big warm slabs, lighter
+  // worn centers, pale sand swept into the joints (board's sandy square)
   const R = srand(0xc0da);
-  g.fillStyle = '#a0865f'; g.fillRect(0,0,TILE,TILE);
-  const shades = ['#c9a878','#d0b082','#c2a070','#d8b98c'];
-  for (let cy=4; cy<TILE; cy+=8) for (let cx=4; cx<TILE; cx+=8) {
-    const x = cx + ((cy/8)%2)*4;
-    g.fillStyle = shades[R(4)];
-    g.beginPath(); g.arc(x > TILE ? x-TILE : x, cy, 3, 0, 7); g.fill();
-    g.fillStyle = 'rgba(255,255,255,.22)';
-    g.beginPath(); g.arc(x > TILE ? x-TILE : x, cy-1, 1.5, 0, 7); g.fill();
+  g.fillStyle = mixHex(PAL.pathShadow, PAL.path, .35); g.fillRect(0,0,TILE,TILE); // sandy mortar
+  for (let row=0; row<2; row++) for (let col=0; col<2; col++) {
+    const x = col*16 + (row%2)*3 - 1, y = row*16 + 1, w = 15, h = 14;
+    g.fillStyle = [PAL.path, PAL.pathLight, PAL.path][R(3)]; g.fillRect(x, y, w, h);
+    g.fillStyle = 'rgba(255,248,225,.35)'; g.fillRect(x+2, y+2, w-5, 4);   // worn light center
+    g.fillStyle = PAL.pathLight; g.fillRect(x, y, w, 1);                  // top edge light
+    g.fillStyle = 'rgba(120,95,60,.30)'; g.fillRect(x, y+h-1, w, 1); g.fillRect(x+w-1, y, 1, h);
+    g.fillStyle = 'rgba(183,157,120,.45)';
+    for (let i=0;i<3;i++) g.fillRect(x+2+R(11), y+3+R(9), 2, 1);          // sand grit
+    if (R(5) === 0) { g.fillStyle = PAL.stone; g.fillRect(x+3+R(8), y+4+R(7), 4, 3); } // inset stone
   }
-  // warm mortar speckle between the pavers
-  g.fillStyle = 'rgba(110,95,70,.35)';
-  for (let i=0;i<8;i++) g.fillRect(R(TILE), R(TILE), 2, 1);
+  g.fillStyle = 'rgba(232,213,176,.5)';
+  for (let i=0;i<6;i++) g.fillRect(R(TILE), R(TILE), 2, 1);               // swept sand dust
 });
 // ---- VISUAL-PASS-TOWN: plaza + path edge dressing (all precomputed, drawn as overlays) ----
 // Soft grass fringe for path tiles that border grass: ragged, deterministic, tileable.
 function fringeTile(edge) {
   return px(TILE,TILE,(g)=>{
-    const P = BOARD_PALETTE;
+    const P = PAL;
     const R = srand(0xf21e + edge.charCodeAt(0)*13);
     g.clearRect(0,0,TILE,TILE);
     for (let i=0;i<TILE;i+=2) {                       // ragged grass strip ~4-7px deep
       const d = 4 + R(4);
-      g.fillStyle = P.grassBase;
+      g.fillStyle = P.meadow;
       if (edge==='N') g.fillRect(i, 0, 2, d);
       else if (edge==='S') g.fillRect(i, TILE-d, 2, d);
       else if (edge==='W') g.fillRect(0, i, d, 2);
       else g.fillRect(TILE-d, i, d, 2);
     }
-    g.fillStyle = P.grassDark;                        // darker fringe speckle
+    g.fillStyle = P.meadowDark;                        // darker fringe speckle
     for (let i=0;i<24;i++) {
       if (edge==='N') g.fillRect(R(32), R(8), 2, 2);
       else if (edge==='S') g.fillRect(R(32), 24+R(8), 2, 2);
       else if (edge==='W') g.fillRect(R(8), R(32), 2, 2);
       else g.fillRect(24+R(8), R(32), 2, 2);
     }
-    g.fillStyle = P.grassLight;                       // sunlit tips
+    g.fillStyle = P.meadowLight;                       // sunlit tips
     for (let i=0;i<12;i++) {
       if (edge==='N') g.fillRect(R(32), R(5), 1, 2);
       else if (edge==='S') g.fillRect(R(32), 26+R(5), 1, 2);
@@ -1965,10 +2004,10 @@ function curbTile(edge) {
     const x0 = edge==='W' ? 0 : edge==='E' ? TILE-6 : 0;
     const y0 = edge==='N' ? 0 : edge==='S' ? TILE-6 : 0;
     const w = horiz ? TILE : 6, h = horiz ? 6 : TILE;
-    g.fillStyle = '#8d826c'; g.fillRect(x0, y0, w, h);            // curb body
-    g.fillStyle = '#c9bfa8';                                      // sunlit top
+    g.fillStyle = PAL.stone; g.fillRect(x0, y0, w, h);            // curb body
+    g.fillStyle = PAL.stoneLight;                                      // sunlit top
     if (horiz) g.fillRect(x0, y0, w, 2); else g.fillRect(x0, y0, 2, h);
-    g.fillStyle = '#6e6552';                                      // block joints + base shade
+    g.fillStyle = PAL.stoneDark;                                      // block joints + base shade
     if (horiz) { g.fillRect(x0, y0+h-1, w, 1); for (let x=x0+4;x<x0+w;x+=8) g.fillRect(x, y0, 1, h); }
     else { g.fillRect(x0+w-1, y0, 1, h); for (let y=y0+4;y<y0+h;y+=8) g.fillRect(x0, y, 1, h); }
   });
@@ -1979,11 +2018,11 @@ const plazaCurb = { N: curbTile('N'), S: curbTile('S'), E: curbTile('E'), W: cur
 function medallionTile(cx, cy) {
   return px(TILE,TILE,(g)=>{
     g.clearRect(0,0,TILE,TILE);
-    g.strokeStyle = 'rgba(201,183,151,.95)'; g.lineWidth = 3;
+    g.strokeStyle = PAL.stoneLight; g.lineWidth = 3;
     g.beginPath(); g.ellipse(cx, cy, 24, 17, 0, 0, 7); g.stroke();
-    g.strokeStyle = 'rgba(140,125,100,.85)'; g.lineWidth = 1.5;
+    g.strokeStyle = PAL.stone; g.lineWidth = 1.5;
     g.beginPath(); g.ellipse(cx, cy, 19, 13, 0, 0, 7); g.stroke();
-    g.fillStyle = 'rgba(212,169,64,.9)';                          // gold accents at cardinals
+    g.fillStyle = PAL.gold;                          // gold accents at cardinals
     for (const [dx,dy] of [[-24,0],[24,0],[0,-17],[0,17]]) g.fillRect(cx+dx-1, cy+dy-1, 3, 3);
   });
 }
@@ -1996,10 +2035,10 @@ function flowerBedTile(variant, season) {
     const R = srand(0xbed + variant*131);
     const S = SEASON_BLOOMS[season] || SEASON_BLOOMS.spring;
     g.clearRect(0,0,TILE,TILE);
-    g.fillStyle = '#8d826c'; g.fillRect(2, 6, 28, 22);            // stone border
-    g.fillStyle = '#c9bfa8'; g.fillRect(2, 6, 28, 2);             // border sunlit top
-    g.fillStyle = '#6e6552'; g.fillRect(2, 26, 28, 2);
-    for (let x=2;x<30;x+=7) { g.fillStyle='#6e6552'; g.fillRect(x,6,1,2); g.fillRect(x,26,1,2); }
+    g.fillStyle = PAL.stone; g.fillRect(2, 6, 28, 22);            // stone border
+    g.fillStyle = PAL.stoneLight; g.fillRect(2, 6, 28, 2);             // border sunlit top
+    g.fillStyle = PAL.stoneDark; g.fillRect(2, 26, 28, 2);
+    for (let x=2;x<30;x+=7) { g.fillStyle=PAL.stoneDark; g.fillRect(x,6,1,2); g.fillRect(x,26,1,2); }
     g.fillStyle = '#5d3f24'; g.fillRect(4, 8, 24, 18);            // soil
     g.fillStyle = '#4a3018';
     for (let i=0;i<10;i++) g.fillRect(4+R(24), 8+R(18), 2, 2);
@@ -2022,10 +2061,10 @@ const churchBedA = flowerBedTile(3, 'spring'), churchBedB = flowerBedTile(4, 'sp
 const planterTile = px(TILE,TILE,(g)=>{
   const P = BOARD_PALETTE, S = SEASON_BLOOMS.spring, R = srand(0x9a7);
   g.clearRect(0,0,TILE,TILE);
-  g.fillStyle = '#8a4a24'; g.fillRect(9, 18, 14, 10);            // pot shade
-  g.fillStyle = P.roofTerracotta; g.fillRect(10, 17, 12, 10);    // pot body
-  g.fillStyle = '#c97e4a'; g.fillRect(10, 17, 12, 2);            // rim light
-  g.fillStyle = '#7a3a1c'; g.fillRect(10, 25, 12, 2);            // base shade
+  g.fillStyle = PAL.terracottaDark; g.fillRect(9, 18, 14, 10);            // pot shade
+  g.fillStyle = PAL.terracotta; g.fillRect(10, 17, 12, 10);    // pot body
+  g.fillStyle = '#D08A66'; g.fillRect(10, 17, 12, 2);            // rim light
+  g.fillStyle = PAL.terracottaDark; g.fillRect(10, 25, 12, 2);            // base shade
   g.fillStyle = '#4a3018'; g.fillRect(11, 15, 10, 3);            // soil
   for (let i=0;i<3;i++) {                                       // blooms
     const x = 11 + i*4;
@@ -2034,17 +2073,21 @@ const planterTile = px(TILE,TILE,(g)=>{
     g.fillStyle = S.center; g.fillRect(x+1, 8, 1, 1);
   }
 });
-// Rounded ornamental shrub (palette canopy greens, seeded highlights).
+// Rounded ornamental shrub (board leaf greens, seeded highlights).
 const shrubTile = px(TILE,TILE,(g)=>{
-  const P = BOARD_PALETTE, R = srand(0x5eed);
+  const R = srand(0x5eed);
   g.clearRect(0,0,TILE,TILE);
-  g.fillStyle = P.canopyDeep; g.fillRect(7, 12, 18, 12);
-  g.fillStyle = P.canopyDeep; g.fillRect(10, 8, 12, 6);
-  g.fillStyle = '#3a7230'; g.fillRect(7, 20, 18, 4);             // belly shade
-  g.fillStyle = '#6ab04c';
+  g.fillStyle = 'rgba(40,60,35,.35)'; g.fillRect(8, 26, 16, 3);   // ground shadow
+  g.fillStyle = PAL.leafDark; g.fillRect(7, 12, 18, 12);
+  g.fillStyle = PAL.leafDark; g.fillRect(10, 8, 12, 6);
+  g.fillStyle = PAL.leaf; g.fillRect(8, 13, 16, 8);              // mid body
+  g.fillStyle = PAL.meadowDark; g.fillRect(7, 20, 18, 4);             // belly shade
+  g.fillStyle = PAL.leafLight;
   for (let i=0;i<26;i++) g.fillRect(7+R(18), 8+R(14), 2, 2);     // leaf dither
-  g.fillStyle = '#7cc465';
+  g.fillStyle = PAL.meadowLight;
   for (let i=0;i<10;i++) g.fillRect(9+R(14), 9+R(8), 1, 1);      // sunlit crown
+  g.fillStyle = PAL.flowerPink;                                  // a few blossom dots
+  for (let i=0;i<4;i++) g.fillRect(8+R(15), 10+R(9), 2, 2);
 });
 // Small cluster of garden rocks.
 const rockTile = px(TILE,TILE,(g)=>{
@@ -2052,11 +2095,11 @@ const rockTile = px(TILE,TILE,(g)=>{
   g.clearRect(0,0,TILE,TILE);
   const rocks = [[8,20,9,7],[18,22,7,5],[20,16,5,4]];
   for (const [x,y,w,h] of rocks) {
-    g.fillStyle = '#8a8578'; g.fillRect(x, y, w, h);
-    g.fillStyle = '#a8a294'; g.fillRect(x, y, w, 2);             // top light
-    g.fillStyle = '#6e695c'; g.fillRect(x, y+h-2, w, 2);         // base shade
+    g.fillStyle = PAL.stone; g.fillRect(x, y, w, h);
+    g.fillStyle = PAL.stoneLight; g.fillRect(x, y, w, 2);             // top light
+    g.fillStyle = PAL.stoneDark; g.fillRect(x, y+h-2, w, 2);         // base shade
   }
-  g.fillStyle = '#c9c4b4';
+  g.fillStyle = '#E4DECE';
   for (let i=0;i<6;i++) g.fillRect(8+R(18), 16+R(10), 1, 1);
 });
 // Wooden park bench: iron legs, slatted backrest + seat.
@@ -2070,15 +2113,15 @@ const benchTile = px(TILE,TILE,(g)=>{
   g.fillStyle = '#5f3d1f'; g.fillRect(5, 20, 22, 1); g.fillRect(5, 25, 22, 1);  // slat shade
 });
 const waterTile = px(TILE,TILE,(g)=>{
-  // VISUAL-PASS-CHURCH: board-blue river — deep azure base, darker depth
-  // patches, pale wave bands, white sparkle streaks (tileable, 32px period)
-  const P = BOARD_PALETTE, R = srand(0x21e4);
-  g.fillStyle = P.waterAzure; g.fillRect(0,0,TILE,TILE);
-  g.fillStyle = P.waterDeep;
+  // VISUAL-PASS-BOARDMATCH: board river — bright azure body, deep teal depth
+  // patches, pale shifting wave bands, white sparkle (tileable, 32px period)
+  const R = srand(0x21e4);
+  g.fillStyle = PAL.water; g.fillRect(0,0,TILE,TILE);
+  g.fillStyle = PAL.waterDeep;
   for (let i=0;i<4;i++) g.fillRect(R(24), R(TILE), 9, 4);       // depth patches
-  g.fillStyle = '#2a8fc8';
+  g.fillStyle = PAL.waterShadow;
   for (let i=0;i<3;i++) g.fillRect(R(26), R(TILE), 12, 2);
-  g.fillStyle = '#5fb8e8';                                       // pale wave bands
+  g.fillStyle = PAL.waterLight;                                       // pale wave bands
   for (let i=0;i<4;i++) g.fillRect(R(22), R(TILE), 10, 2);
   g.fillStyle = 'rgba(255,255,255,.55)';
   for (let i=0;i<4;i++) g.fillRect(R(27), R(30), 4, 1);          // sparkle streaks
@@ -2165,41 +2208,42 @@ function riverBankTile(variant) {
 const riverBankA = riverBankTile(0), riverBankB = riverBankTile(1),
       riverBankC = riverBankTile(2), riverBankD = riverBankTile(3);
 const sandTile = px(TILE,TILE,(g)=>{
-  const P = BOARD_PALETTE;
-  g.fillStyle = P.sand; g.fillRect(0,0,TILE,TILE);
-  g.fillStyle = '#cfa86e';
+  g.fillStyle = PAL.sand; g.fillRect(0,0,TILE,TILE);
+  g.fillStyle = '#D9BE82';
   for (let i=0;i<7;i++) g.fillRect(rnd(TILE), rnd(TILE), 3, 3);
-  g.fillStyle = '#f0d8a0';
+  g.fillStyle = '#F2E3B0';
   for (let i=0;i<5;i++) g.fillRect(rnd(TILE), rnd(TILE), 2, 2);
+  g.fillStyle = 'rgba(183,157,120,.4)';
+  for (let i=0;i<4;i++) g.fillRect(rnd(TILE), rnd(TILE), 2, 1);   // shell grit
 });
 const bridgeTile = px(TILE,TILE,(g)=>{
   // VISUAL-PASS-CHURCH: stone arch bridge — deck runs north-south (vertical),
   // warm sandstone, moss in the seams, herringbone walkway, carved parapets
-  const P = BOARD_PALETTE, R = srand(0xb21d);
-  g.fillStyle = '#c9b98f'; g.fillRect(0,0,TILE,TILE);            // stone base
+  const P = PAL, R = srand(0xb21d);
+  g.fillStyle = PAL.path; g.fillRect(0,0,TILE,TILE);            // stone base
   g.fillStyle = P.stone; g.fillRect(6,0,20,TILE);               // deck
-  g.fillStyle = '#a89a80';
+  g.fillStyle = PAL.stoneDark;
   for (let y=4;y<TILE;y+=8) g.fillRect(6,y,20,1);                // deck courses
-  g.fillStyle = '#ded4bc';                                       // herringbone walkway
+  g.fillStyle = PAL.pathLight;                                       // herringbone walkway
   for (let y=0;y<TILE;y+=4) {
     g.fillRect(13,y,6,2);
-    g.fillStyle = '#cfc2a4'; g.fillRect(13+(y%8===0?0:3),y,3,1);
-    g.fillStyle = '#ded4bc';
+    g.fillStyle = PAL.path; g.fillRect(13+(y%8===0?0:3),y,3,1);
+    g.fillStyle = PAL.pathLight;
   }
   g.fillStyle = 'rgba(255,255,255,.25)'; g.fillRect(13,0,1,TILE);
   // arch crown: pale curve swelling across the deck
-  g.strokeStyle = 'rgba(120,105,80,.55)'; g.lineWidth = 2;
+  g.strokeStyle = 'rgba(119,115,96,.55)'; g.lineWidth = 2;
   g.beginPath(); g.arc(16,-8,22,Math.PI*0.18,Math.PI*0.82); g.stroke();
-  g.fillStyle = '#4a8f3c';                                       // moss in the seams
+  g.fillStyle = PAL.leafDark;                                       // moss in the seams
   for (let i=0;i<4;i++) g.fillRect(7+R(18), R(TILE), 2, 1);
   // parapets: raised stone rails left + right with capstones
   for (const px0 of [1,25]) {
-    g.fillStyle = '#9a8f76'; g.fillRect(px0,0,6,TILE);         // parapet wall
-    g.fillStyle = '#c9bfa8'; g.fillRect(px0,0,6,2);            // capstone
-    g.fillStyle = '#7c7260'; g.fillRect(px0,2,6,1);            // cap shadow
-    g.fillStyle = '#b0a58c';
+    g.fillStyle = mixHex(PAL.stone, PAL.stoneDark, .35); g.fillRect(px0,0,6,TILE);         // parapet wall
+    g.fillStyle = PAL.stoneLight; g.fillRect(px0,0,6,2);            // capstone
+    g.fillStyle = PAL.stoneDark; g.fillRect(px0,2,6,1);            // cap shadow
+    g.fillStyle = PAL.stoneLight;
     for (let y=7;y<TILE;y+=10) g.fillRect(px0+1,y,4,1);        // stone courses
-    g.fillStyle = '#6e6552';
+    g.fillStyle = PAL.stoneDark;
     for (let y=4;y<TILE;y+=10) g.fillRect(px0+2,y,2,2);        // posts
     g.fillStyle = 'rgba(255,255,255,.20)'; g.fillRect(px0,0,1,TILE); // edge light
   }
@@ -2213,16 +2257,16 @@ function bridgeEndTile(north) {
   return px(TILE,TILE,(g)=>{
     g.drawImage(bridgeTile, 0, 0);
     const ey = north ? 0 : TILE-9;
-    g.fillStyle = '#8a7f6e'; g.fillRect(0,ey,TILE,9);            // abutment mass
-    g.fillStyle = '#a89a80';
+    g.fillStyle = PAL.stone; g.fillRect(0,ey,TILE,9);            // abutment mass
+    g.fillStyle = PAL.stoneLight;
     for (let x=2;x<TILE;x+=8) g.fillRect(x,ey+1,1,7);           // block joints
-    g.fillStyle = '#c9bfa8'; g.fillRect(0,ey,TILE,2);           // top course light
-    g.fillStyle = '#6e6552'; g.fillRect(0,ey+7,TILE,2);         // base shadow
+    g.fillStyle = PAL.stoneLight; g.fillRect(0,ey,TILE,2);           // top course light
+    g.fillStyle = PAL.stoneDark; g.fillRect(0,ey+7,TILE,2);         // base shadow
     for (const lx of [3, 27]) {                                  // lantern posts
       g.fillStyle = '#5d5a52'; g.fillRect(lx,ey+1,2,6);
       g.fillStyle = '#3a3833'; g.fillRect(lx-1,ey,4,2);          // cap
-      g.fillStyle = '#ffd76e'; g.fillRect(lx,ey+2,2,2);         // lamp head
-      g.fillStyle = '#fff3c4'; g.fillRect(lx,ey+2,1,1);
+      g.fillStyle = PAL.lightSoft; g.fillRect(lx,ey+2,2,2);         // lamp head
+      g.fillStyle = PAL.light; g.fillRect(lx,ey+2,1,1);
     }
   });
 }
@@ -2230,21 +2274,21 @@ const bridgeEndN = bridgeEndTile(true), bridgeEndS = bridgeEndTile(false);
 const dockTile = px(TILE,TILE,(g)=>{
   // VISUAL-PASS-CHURCH: wooden fishing dock — weathered planks, posts, rope
   const R = srand(0xd0c);
-  g.fillStyle='#7a4f28'; g.fillRect(0,0,TILE,TILE);
+  g.fillStyle=PAL.timber; g.fillRect(0,0,TILE,TILE);
   for(let y=0;y<TILE;y+=8){
-    g.fillStyle='#a06a35'; g.fillRect(0,y,TILE,6);              // plank
-    g.fillStyle='#c98d4e'; g.fillRect(0,y,TILE,1);              // plank light
-    g.fillStyle='#5d3a17'; g.fillRect(0,y+6,TILE,2);            // gap shadow
-    g.fillStyle='#8a5a2b';                                     // grain
+    g.fillStyle='#8A6A4C'; g.fillRect(0,y,TILE,6);              // plank
+    g.fillStyle='#A8835F'; g.fillRect(0,y,TILE,1);              // plank light
+    g.fillStyle='#5E4230'; g.fillRect(0,y+6,TILE,2);            // gap shadow
+    g.fillStyle='#77563A';                                     // grain
     for(let i=0;i<3;i++) g.fillRect(R(TILE), y+2+R(3), 3, 1);
   }
   g.fillStyle='#3a3833';                                       // nail heads
   for(let y=3;y<TILE;y+=8) for(let x=3;x<TILE;x+=8) g.fillRect(x,y,1,1);
   g.fillStyle='#4a2c14'; g.fillRect(2,0,4,TILE); g.fillRect(26,0,4,TILE); // posts
   g.fillStyle='#6b4423'; g.fillRect(3,0,2,TILE); g.fillRect(27,0,2,TILE);
-  g.fillStyle='#c9a06a';                                       // coiled rope
+  g.fillStyle=PAL.path;                                       // coiled rope
   g.fillRect(20,22,8,3); g.fillRect(21,21,6,1);
-  g.fillStyle='#a87f4e'; g.fillRect(20,24,8,1);
+  g.fillStyle=PAL.pathShadow; g.fillRect(20,24,8,1);
 });
 // VISUAL-PASS-FARMHOME: rich dark soil — deep furrow shadows, warm ridges,
 // clods and pebbles; the board's farm reads dark and fertile.
