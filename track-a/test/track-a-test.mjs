@@ -533,6 +533,32 @@ const gChecks = [
 ];
 for (const [label, needle] of gChecks) ok('garden contains ' + label, pageHtml.includes(needle));
 
+// ---------- RESTORE THE LIGHT M5: closing card + bigger-world vista (static page) ----------
+console.log('restore-the-light M5 closing card (static page):');
+const m5Checks = [
+  ['closing vista canvas', 'id="vistaCv"'],
+  ['vista painter', 'function drawVistaBack()'],
+  ['vista painted at ending', 'drawVistaBack();   // RESTORE THE LIGHT M5'],
+  ['vista dawn sky', 'dawn sky over the larger world'],
+  ['vista far mountains', 'far mountains, snow still on them'],
+  ['vista distant islands', 'the sea, with distant islands'],
+  ['vista deeper forest', 'deeper forest (left): dark conifer ranks'],
+  ['vista desert dunes', 'desert (right): amber dunes'],
+  ['vista ancient city', 'the ancient city on the far shore'],
+  ['vista coastal kingdom', 'the coastal kingdom: a little castle on the headland'],
+  ['closing eyebrow', 'THE GARDEN OF HOPE'],
+  ['closing line 1 (TIKVAH grows)', 'TIKVAH <span>— A place to grow.</span>'],
+  ['closing line 2 (story)', 'A story to live.'],
+  ['closing line 3 (paths/purpose)', 'Different paths. Same Purpose.'],
+  ['closing line 4 (beginning)', 'This is only the beginning.'],
+  ['closing line 5 (world continues)', 'THE WORLD CONTINUES…'],
+  ['closing card dismiss button', 'id="btnContinue"'],
+  ['closing keep playing', 'Keep Playing'],
+  ['closing play again kept', 'id="btnAgain"'],
+  ['north-gate islands (M5)', 'distant islands on the water beyond the north gate'],
+];
+for (const [label, needle] of m5Checks) ok('closing contains ' + label, pageHtml.includes(needle));
+
 // ---------- client helper ----------
 class C {
   constructor(name) { this.name = name; this.msgs = []; this.state = { players: new Map(), farm: [], ruinOpen: false, you: null, code: null }; }
@@ -895,6 +921,13 @@ try {
   }, 4000), JSON.stringify(a.lastOf('restore')?.restore));
   const endMsg = a.lastOf('ending');
   ok('ending message is hopeful, not preachy', !!endMsg && /hope/i.test(endMsg.message) && !/repent|sin|hell/i.test(endMsg.message), endMsg?.message);
+  // RESTORE THE LIGHT M5: the closing card + bigger-world vista ship in the
+  // served page (the ending itself arrived over the wire just above).
+  ok('closing card ships in the page (TIKVAH — A place to grow.)', pageHtml.includes('TIKVAH <span>— A place to grow.</span>'));
+  ok('closing card ships in the page (story / paths / beginning)', pageHtml.includes('A story to live.') && pageHtml.includes('Different paths. Same Purpose.') && pageHtml.includes('This is only the beginning.'));
+  ok('closing card ships in the page (THE WORLD CONTINUES…)', pageHtml.includes('THE WORLD CONTINUES…'));
+  ok('closing vista ships in the page (canvas + painter)', pageHtml.includes('id="vistaCv"') && pageHtml.includes('function drawVistaBack()'));
+  ok('closing card can be dismissed (no lockout)', pageHtml.includes('id="btnContinue"'));
   a.send({ t: 'play-again' });
   ok('reset received by A', await a.waitFor(() => a.msgs.some(m => m.t === 'reset'), 3000));
   ok('reset received by B', await b.waitFor(() => b.msgs.some(m => m.t === 'reset'), 3000));
