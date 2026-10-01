@@ -1854,6 +1854,28 @@ function tuft(g, x, y, dark, light) {
   g.fillStyle = light;
   g.fillRect(x + 2, y - 4, 1, 1);
 }
+// VISUAL-PASS-BOARDMATCH: layered pixel-cluster canopy. blobs = [cx,cy,r]
+// circles forming the crown: a deep silhouette ring, a lit inner mass, then
+// seeded 2px clusters (deep shadow lower-right, mid, sunlit upper-left,
+// sparse sparkle) confined inside the blobs so the crown reads handcrafted.
+function blobCanopy(g, blobs, R, cols) {
+  for (const b of blobs) { g.fillStyle = cols.deep; g.beginPath(); g.arc(b[0], b[1], b[2], 0, 7); g.fill(); }
+  for (const b of blobs) { g.fillStyle = cols.main; g.beginPath(); g.arc(b[0] - 1, b[1] - 2, Math.max(b[2] - 3, 3), 0, 7); g.fill(); }
+  const inside = (x, y, m) => blobs.some(b => { const dx = x - b[0], dy = y - b[1]; return dx*dx + dy*dy <= (b[2] - m) * (b[2] - m); });
+  const scatter = (n, color, w, h, m) => {
+    g.fillStyle = color; let placed = 0, tries = 0;
+    while (placed < n && tries < n * 16) {
+      tries++;
+      const b = blobs[R(blobs.length)];
+      const x = b[0] - b[2] + R(b[2] * 2), y = b[1] - b[2] + R(b[2] * 2);
+      if (inside(x, y, m)) { g.fillRect(x, y, w, h); placed++; }
+    }
+  };
+  scatter(cols.nDeep, cols.deep2, 3, 2, 1);    // shadow clusters settle low
+  scatter(cols.nMid, cols.mid, 2, 2, 2);
+  scatter(cols.nLite, cols.lite, 2, 2, 3);     // sunlit clusters ride high
+  scatter(cols.nSpark, cols.spark, 1, 1, 3);
+}
 // VISUAL-PASS-TOWN: plaza + world base tiles toward the design board — 2026-09-30
 // Deterministic per-tile hash (0..1): stable variant picks, no random flicker.
 function hash2(tx, ty) {
@@ -1892,11 +1914,11 @@ function grassTile(variant) {
     const deep  = variant === 2 ? '#2F4F2B' : PAL.meadowDeep;
     const light = variant === 2 ? PAL.meadow : PAL.meadowLight;
     g.fillStyle = base; g.fillRect(0,0,TILE,TILE);
-    // broad darker meadow patches (clustered, irregular)
-    speckle(g, R, 7, dark, 5, 3); speckle(g, R, 5, dark, 3, 4);
-    speckle(g, R, 5, deep, 3, 2);
+    // broad darker meadow patches (clustered, irregular — soft, lawn-like)
+    speckle(g, R, 5, dark, 4, 2); speckle(g, R, 4, dark, 3, 3);
+    speckle(g, R, 4, deep, 3, 2);
     // sunlit clumps
-    speckle(g, R, 8, light, 4, 2); speckle(g, R, 6, light, 2, 3);
+    speckle(g, R, 9, light, 4, 2); speckle(g, R, 7, light, 2, 3);
     speckle(g, R, 5, PAL.meadowLight, 2, 1);
     // blade tufts: dark strokes with one lit tip
     for (let i = 0; i < 7; i++) tuft(g, 2 + R(26), 6 + R(24), dark, light);
@@ -1954,7 +1976,7 @@ const plazaTile = px(TILE,TILE,(g)=>{
   for (let row=0; row<2; row++) for (let col=0; col<2; col++) {
     const x = col*16 + (row%2)*3 - 1, y = row*16 + 1, w = 15, h = 14;
     g.fillStyle = [PAL.path, PAL.pathLight, PAL.path][R(3)]; g.fillRect(x, y, w, h);
-    g.fillStyle = 'rgba(255,248,225,.35)'; g.fillRect(x+2, y+2, w-5, 4);   // worn light center
+    g.fillStyle = 'rgba(255,248,225,.22)'; g.fillRect(x+2, y+2, w-5, 4);   // worn light center
     g.fillStyle = PAL.pathLight; g.fillRect(x, y, w, 1);                  // top edge light
     g.fillStyle = 'rgba(120,95,60,.30)'; g.fillRect(x, y+h-1, w, 1); g.fillRect(x+w-1, y, 1, h);
     g.fillStyle = 'rgba(183,157,120,.45)';
@@ -2629,97 +2651,94 @@ const gardenArchB = [gardenArchTile('blooming',0), gardenArchTile('blooming',1)]
 // ---- decor sprites ----
 // v: 0 = dense pine, 1 = dense round canopy, 2 = cherry blossom, 3 = tall pine
 function treeTile(v) {
-  return px(TILE, TILE, (g) => {
-    g.clearRect(0,0,TILE,TILE);
-    const P = BOARD_PALETTE;
-    // dither scatter: n pixels of color inside a rect
-    const dith = (n, color, x0, y0, w, h) => {
-      g.fillStyle = color;
-      for (let i=0;i<n;i++) g.fillRect(x0+rnd(w), y0+rnd(h), 1, 1);
+  // VISUAL-PASS-BOARDMATCH: board trees are big storybook crowns, not 32px
+  // sticks — supersized canvases (blit bottom-anchored in drawWorld), layered
+  // pixel-cluster canopies with a deep silhouette ring, shaded trunks, and a
+  // soft ground shadow. Collision is isTree(); canvas size is render-only.
+  const W = v === 4 ? 80 : (v === 1 || v === 2) ? 64 : v === 5 ? 56 : 48;
+  const H = v === 4 ? 88 : v === 3 ? 80 : (v === 1 || v === 2 || v === 5) ? 72 : 64;
+  return px(W, H, (g) => {
+    g.clearRect(0,0,W,H);
+    const R = srand(0x7ee5 + v*331);   // deterministic crowns, identical every load
+    const cx = W >> 1;
+    const groundShadow = (w) => {
+      g.fillStyle = 'rgba(35,55,30,.38)'; g.fillRect(cx - (w >> 1), H - 6, w, 4);
+      g.fillStyle = 'rgba(35,55,30,.22)'; g.fillRect(cx - (w >> 1) + 3, H - 3, w - 6, 2);
     };
-    if (v === 0 || v === 3) { // pine / tall pine: dense layered conifer
-      const top = v === 3 ? 0 : 3;
-      const layers = v === 3
-        ? [[7,18,18,7],[9,11,14,8],[11,5,10,7],[13,0,6,6]]
-        : [[6,16,20,8],[9,9,14,9],[12,3,8,8],[14,top,4,4]];
-      const ty = v === 3 ? 20 : 22;
-      g.fillStyle = '#5d3a17'; g.fillRect(14,ty,4,32-ty);
-      g.fillStyle = '#7a4f28'; g.fillRect(14,ty,1,32-ty);
-      for (const [lx,ly,lw,lh] of layers) {
-        g.fillStyle = P.canopyDeep; g.fillRect(lx,ly,lw,lh);
-        g.fillStyle = '#3a7230'; g.fillRect(lx,ly+lh-2,lw,2);       // layer shadow band
-        g.fillStyle = '#4a8f3c'; g.fillRect(lx,ly,3,lh);            // left light edge
-        dith(14, '#6ab04c', lx, ly, Math.max(lw-4,2), lh);          // highlight dither
-        dith(18, '#1f4d1f', lx+lw-6, ly, 6, lh);                    // shadow dither right
-        dith(10, '#244d24', lx+2, ly+lh-3, lw-4, 3);               // deep under-layer
+    const trunk = (w, h, dark, base, lite) => {
+      const x = cx - (w >> 1), y = H - h;
+      g.fillStyle = base; g.fillRect(x, y, w, h);
+      g.fillStyle = lite; g.fillRect(x, y, 2, h);                    // sunlit left
+      g.fillStyle = dark; g.fillRect(x + w - 2, y, 2, h);            // shaded right
+      g.fillStyle = dark; g.fillRect(x - 3, H - 4, w + 6, 3);        // root flare
+      g.fillStyle = base; g.fillRect(x - 2, H - 6, 3, 3); g.fillRect(x + w - 1, H - 6, 3, 3);
+    };
+    if (v === 0 || v === 3) { // pine / tall pine: stacked chevron tiers
+      groundShadow(30);
+      trunk(5, 14, '#4A3220', '#5E4230', '#77563A');
+      const tiers = v === 3 ? 6 : 5, top = 2, bot = H - 10, th = (bot - top) / tiers;
+      for (let i = 0; i < tiers; i++) {                              // silhouette pass
+        const tw = 10 + (i / (tiers - 1)) * (W - 14), ty = top + i * th;
+        for (let y = 0; y < th + 2; y += 2) {
+          const t = y / (th + 2), wdt = Math.round(tw * (0.42 + 0.58 * t));
+          g.fillStyle = '#2C4F30'; g.fillRect(cx - (wdt >> 1), ty + y, wdt, 2);
+        }
       }
-      dith(8, '#7cc465', 12, 2, 8, 4);                             // sunlit tip
+      for (let i = 0; i < tiers; i++) {                              // lit pass, upper-left
+        const tw = 10 + (i / (tiers - 1)) * (W - 14), ty = top + i * th;
+        for (let y = 0; y < th; y += 2) {
+          const t = y / th, wdt = Math.round(tw * (0.42 + 0.58 * t)) - 3;
+          g.fillStyle = PAL.pine; g.fillRect(cx - (wdt >> 1) - 1, ty + y, Math.round(wdt * 0.62), 2);
+          g.fillStyle = 'rgba(54,93,60,.85)'; g.fillRect(cx - (wdt >> 1) - 1, ty + y + (th > 12 ? 4 : 3), wdt, 1); // tier shadow line
+        }
+        g.fillStyle = PAL.pineLight;                                 // sunlit left tips
+        for (let k = 0; k < 5; k++) g.fillRect(cx - (tw >> 1) + R(6), ty + R(Math.max(Math.round(th) - 2, 2)), 2, 2);
+        g.fillStyle = PAL.meadowLight;
+        g.fillRect(cx - (tw >> 1) + R(4), ty + R(Math.max(Math.round(th) - 2, 2)), 1, 1);
+      }
+      g.fillStyle = PAL.pineLight; g.fillRect(cx - 1, 0, 2, 3);      // bright crown tip
     } else if (v === 4) { // VISUAL-PASS-FOREST: ancient broadleaf — tall straight
       // trunk, high dense canopy, sunlight filtering through (board EXPLORE)
-      const R = srand(0xa401);
-      const ad = (n, color, x0, y0, w, h) => { g.fillStyle = color;
-        for (let i=0;i<n;i++) g.fillRect(x0+R(w), y0+R(h), 1, 1); };
-      g.fillStyle = '#3a2412'; g.fillRect(8,22,5,3); g.fillRect(19,24,5,3);  // roots
-      g.fillStyle = '#4a2f16'; g.fillRect(13,14,6,18);                       // trunk
-      g.fillStyle = '#6b4423'; g.fillRect(13,14,2,18);                       // trunk light
-      g.fillStyle = '#33200f'; g.fillRect(17,16,2,16);                       // trunk shade
-      ad(14, '#5d3a17', 13, 15, 6, 16);                                      // bark texture
-      g.fillStyle = P.canopyDeep;                                           // canopy mass
-      g.fillRect(5,2,22,12); g.fillRect(8,0,16,4); g.fillRect(3,8,26,8);
-      g.fillStyle = '#3a7230'; g.fillRect(5,2,22,3); g.fillRect(8,0,16,2);   // sunlit crown
-      g.fillStyle = '#244d24'; g.fillRect(3,13,26,3); g.fillRect(6,16,20,3); // deep underlayer
-      ad(40, '#4a8f3c', 5, 3, 22, 10);                                      // midtone texture
-      ad(24, '#1f4d1f', 6, 12, 20, 6);                                      // shadow dither
-      // light filtering through: two bright shaft columns + sun flecks
-      ad(30, '#c8ec9a', 9, 3, 5, 12); ad(30, '#c8ec9a', 18, 2, 5, 13);
-      ad(10, '#fff8d8', 8, 2, 16, 14);
-      g.fillStyle = '#a8e08a'; g.fillRect(10,4,3,2); g.fillRect(19,3,3,2);
-      g.fillStyle = '#2f6b2f'; g.fillRect(6,15,20,2);                        // foliage skirt
-      ad(16, '#6ab04c', 6, 15, 20, 2);
+      groundShadow(44);
+      trunk(10, 30, '#33200f', '#4a2f16', '#6b4423');
+      g.fillStyle = '#4a2f16'; g.fillRect(cx - 12, H - 38, 4, 14); g.fillRect(cx + 8, H - 38, 4, 14); // branch arms
+      const blobs = [[40,34,24],[22,44,16],[58,44,16],[28,22,15],[52,22,15],[40,52,17],[16,34,11],[64,34,11]];
+      blobCanopy(g, blobs, R, { deep:'#2F4F2B', main:PAL.leafDark, mid:PAL.leaf, lite:PAL.leafLight,
+        deep2:'#24401F', spark:'#D9EDB4', nDeep:90, nMid:110, nLite:80, nSpark:26 });
+      // light filtering through: pale sun flecks deep in the crown + hanging vines
+      g.fillStyle = '#EAF3C8';
+      for (let i = 0; i < 12; i++) g.fillRect(22 + R(36), 16 + R(30), 2, 1);
+      g.fillStyle = PAL.leafDark;
+      for (const vx of [18, 30, 50, 62]) { const len = 6 + R(6); g.fillRect(vx, 52, 1, len); g.fillStyle = PAL.leaf; g.fillRect(vx - 1, 52 + R(len), 2, 2); g.fillStyle = PAL.leafDark; }
     } else if (v === 5) { // VISUAL-PASS-FOREST: slim birch — pale trunk, airy
       // leaf tufts with gaps so light passes through (board EXPLORE depth)
-      const R = srand(0xb125);
-      const ad = (n, color, x0, y0, w, h) => { g.fillStyle = color;
-        for (let i=0;i<n;i++) g.fillRect(x0+R(w), y0+R(h), 1, 1); };
-      g.fillStyle = 'rgba(0,0,0,.15)'; g.fillRect(12,29,8,3);               // ground shadow
-      g.fillStyle = '#e6dcc8'; g.fillRect(14,14,4,16);                      // pale trunk
-      g.fillStyle = '#f7f2e4'; g.fillRect(14,14,1,16);                      // trunk light
-      g.fillStyle = '#3a3428';                                              // birch marks
-      for (const my of [18, 22, 26]) g.fillRect(14,my,4,1);
-      ad(8, '#c9bda6', 14, 15, 4, 14);
-      const tuft = (x0,y0,w,h) => {
-        g.fillStyle = '#5da244'; g.fillRect(x0,y0,w,h);
-        g.fillStyle = '#7cc465'; g.fillRect(x0,y0,w,2);
-        g.fillStyle = '#2f6b2f'; g.fillRect(x0,y0+h-2,w,2);
-        ad(16, '#8ac96a', x0, y0, w, h); ad(10, '#3a7230', x0, y0+h-3, w, 3);
-      };
-      tuft(5,5,10,6); tuft(17,2,10,7); tuft(10,10,13,6);                     // airy tufts
-      ad(8, '#fff8d8', 5, 2, 22, 14);                                       // sparkle
+      groundShadow(24);
+      g.fillStyle = '#EDE4D0'; g.fillRect(cx - 2, 34, 5, H - 36);    // pale trunk
+      g.fillStyle = '#F9F4E6'; g.fillRect(cx - 2, 34, 2, H - 36);    // trunk light
+      g.fillStyle = '#C9BDA6'; g.fillRect(cx + 2, 34, 1, H - 36);
+      g.fillStyle = '#3a3428';                                       // birch marks
+      for (const my of [42, 50, 58, 64]) g.fillRect(cx - 2, my, 5, 1);
+      const blobs = [[28,16,13],[15,27,10],[41,27,10],[28,31,12]];
+      blobCanopy(g, blobs, R, { deep:PAL.leafDark, main:PAL.leaf, mid:PAL.leafLight, lite:PAL.meadowLight,
+        deep2:PAL.leafDark, spark:'#FFF6D8', nDeep:36, nMid:60, nLite:56, nSpark:18 });
     } else { // round canopy: dense blob (v=1 green) or cherry blossom (v=2)
       const bl = v === 2;
-      g.fillStyle = bl ? '#4a2c14' : '#5d3a17'; g.fillRect(14,22,4,10);
-      g.fillStyle = bl ? '#6b4423' : '#7a4f28'; g.fillRect(14,22,1,10);
-      const base = bl ? P.blossom : P.canopyDeep;
-      const dark = bl ? P.blossomDeep : '#244d24';
-      const deep = bl ? '#d45a8a' : '#1f4d1f';
-      const mid  = bl ? '#f7b8d0' : '#3a7230';
-      const lite = bl ? '#ffd4e4' : '#6ab04c';
-      g.fillStyle = base; g.fillRect(6,10,20,12);                  // canopy body
-      g.fillStyle = base; g.fillRect(9,5,14,7);
-      g.fillStyle = base; g.fillRect(11,2,10,5);
-      g.fillStyle = dark; g.fillRect(6,18,20,4);                   // shadow belly
-      g.fillStyle = dark; g.fillRect(22,10,4,12);                  // right shadow
-      g.fillStyle = mid;  g.fillRect(6,10,20,3);                   // top mid band
-      dith(60, lite, 6, 2, 20, 20);                                // highlight dither
-      dith(50, deep, 12, 12, 14, 10);                              // shadow dither
-      dith(24, mid, 8, 6, 16, 12);                                 // midtone texture
-      g.fillStyle = lite; g.fillRect(10,4,5,3);                    // sunlit crown
+      groundShadow(36);
+      trunk(6, 20, '#4A3220', bl ? '#5E4230' : PAL.timber, '#77563A');
+      g.fillStyle = bl ? '#5E4230' : PAL.timber;                     // branch forks
+      g.fillRect(cx - 8, H - 30, 3, 12); g.fillRect(cx + 5, H - 30, 3, 12);
+      // wide side puffs anchor the crown's broad storybook silhouette
+      const blobs = [[32,30,19],[17,38,13],[47,38,13],[22,18,12],[42,18,12],[32,44,14],[13,27,9],[51,27,9]];
       if (bl) {
-        dith(20, '#fff0f6', 8, 4, 16, 12);                   // blossom sparkle
-        dith(16, '#e87aa0', 10, 8, 12, 10);                  // deep pink heart
-        g.fillStyle = base; g.fillRect(3,11,5,7); g.fillRect(24,11,5,7);   // wide side puffs
-        g.fillStyle = lite; g.fillRect(3,11,5,2); g.fillRect(24,11,5,2);   // puff light
-        g.fillStyle = dark; g.fillRect(3,16,5,2); g.fillRect(24,16,5,2);   // puff shade
+        blobCanopy(g, blobs, R, { deep:'#B45A74', main:PAL.blossom, mid:PAL.blossomLight, lite:'#F9D9DE',
+          deep2:'#CE7191', spark:'#FFF0F5', nDeep:80, nMid:120, nLite:90, nSpark:34 });
+        g.fillStyle = PAL.blossom;                                   // fallen petals at the base
+        for (let i = 0; i < 8; i++) g.fillRect(cx - 16 + R(32), H - 5 + R(3), 2, 1);
+        g.fillStyle = PAL.blossomLight;
+        for (let i = 0; i < 5; i++) g.fillRect(cx - 14 + R(28), H - 4 + R(3), 1, 1);
+      } else {
+        blobCanopy(g, blobs, R, { deep:PAL.leafDark, main:PAL.leaf, mid:PAL.leafLight, lite:PAL.meadowLight,
+          deep2:'#2F4F2B', spark:'#CFE8A8', nDeep:80, nMid:110, nLite:80, nSpark:20 });
       }
     }
   });
@@ -2745,9 +2764,9 @@ const forestLightB = px(TILE,TILE,(g)=>{ g.clearRect(0,0,TILE,TILE);
 });
 const forestLitter = px(TILE,TILE,(g)=>{ g.clearRect(0,0,TILE,TILE);
   const R = srand(0x11fe), S = SEASON_BLOOMS.spring;
-  g.fillStyle = '#2c5c26';
+  g.fillStyle = PAL.meadowDeep;
   for (let i=0;i<12;i++) g.fillRect(R(30), R(30), 3, 2);        // fallen leaves
-  g.fillStyle = '#3f6b2a';
+  g.fillStyle = PAL.leaf;
   for (let i=0;i<8;i++) g.fillRect(R(30), R(30), 2, 2);
   for (let i=0;i<3;i++) {                                       // tiny petals
     const x=3+R(26), y=3+R(26);
@@ -2757,19 +2776,19 @@ const forestLitter = px(TILE,TILE,(g)=>{ g.clearRect(0,0,TILE,TILE);
 });
 const forestRock = px(TILE,TILE,(g)=>{ g.clearRect(0,0,TILE,TILE);
   g.fillStyle = 'rgba(0,0,0,.15)'; g.fillRect(6,24,22,4);       // ground shadow
-  g.fillStyle = '#9a9aa5'; g.fillRect(7,16,10,9);              // stone one
-  g.fillStyle = '#b5b5c0'; g.fillRect(7,16,10,2);
-  g.fillStyle = '#7c7c88'; g.fillRect(7,22,10,3);
-  g.fillStyle = '#8a8a92'; g.fillRect(19,19,8,7);              // stone two
-  g.fillStyle = '#a8a8b2'; g.fillRect(19,19,8,2);
-  g.fillStyle = '#6e6e78'; g.fillRect(19,24,8,2);
-  g.fillStyle = '#4a8f3c'; g.fillRect(7,24,10,2); g.fillRect(19,25,8,2);  // moss
-  g.fillStyle = '#6ab04c'; g.fillRect(9,24,3,1); g.fillRect(21,25,3,1);
+  g.fillStyle = PAL.stone; g.fillRect(7,16,10,9);              // stone one
+  g.fillStyle = PAL.stoneLight; g.fillRect(7,16,10,2);
+  g.fillStyle = PAL.stoneDark; g.fillRect(7,22,10,3);
+  g.fillStyle = mixHex(PAL.stone, PAL.stoneDark, .3); g.fillRect(19,19,8,7);              // stone two
+  g.fillStyle = PAL.stoneLight; g.fillRect(19,19,8,2);
+  g.fillStyle = PAL.stoneDark; g.fillRect(19,24,8,2);
+  g.fillStyle = PAL.leaf; g.fillRect(7,24,10,2); g.fillRect(19,25,8,2);  // moss
+  g.fillStyle = PAL.leafLight; g.fillRect(9,24,3,1); g.fillRect(21,25,3,1);
 });
 const forestShroom = px(TILE,TILE,(g)=>{ g.clearRect(0,0,TILE,TILE);
   const R = srand(0x5b00);
-  g.fillStyle = '#3a7230'; g.fillRect(4,22,24,7);               // mossy patch
-  g.fillStyle = '#4a8f3c';
+  g.fillStyle = PAL.leafDark; g.fillRect(4,22,24,7);               // mossy patch
+  g.fillStyle = PAL.leaf;
   for (let i=0;i<10;i++) g.fillRect(4+R(24), 22+R(7), 2, 1);
   g.fillStyle = '#e8dcc0'; g.fillRect(10,16,4,8);               // mushroom one
   g.fillStyle = '#c94a4a'; g.fillRect(7,11,10,6);               // red cap
@@ -2779,7 +2798,7 @@ const forestShroom = px(TILE,TILE,(g)=>{ g.clearRect(0,0,TILE,TILE);
   g.fillStyle = '#c94a4a'; g.fillRect(19,15,7,5);
   g.fillStyle = '#e87a7a'; g.fillRect(19,15,7,1);
   g.fillStyle = '#ffffff'; g.fillRect(21,16,2,2);
-  g.fillStyle = '#5da244';                                      // grass blades
+  g.fillStyle = PAL.leafLight;                                      // grass blades
   for (let i=0;i<6;i++) g.fillRect(4+R(24), 20+R(4), 1, 3);
 });
 const flowerTile = px(TILE,TILE,(g)=>{ g.clearRect(0,0,TILE,TILE);
@@ -2805,8 +2824,8 @@ const fenceTile = px(TILE,TILE,(g)=>{ g.clearRect(0,0,TILE,TILE);
   g.fillStyle=P.fenceWood; g.fillRect(4,2,4,4); g.fillRect(TILE-8,2,4,4);         // pointed caps
   g.fillStyle=P.fenceLight; g.fillRect(4,2,4,1); g.fillRect(TILE-8,2,4,1);
   g.fillRect(5,0,2,2); g.fillRect(TILE-7,0,2,2);
-  g.fillStyle='#8a7f6e'; g.fillRect(3,27,6,3); g.fillRect(TILE-9,27,6,3);         // stone feet
-  g.fillStyle='#b8a888'; g.fillRect(3,27,6,1); g.fillRect(TILE-9,27,6,1);
+  g.fillStyle=PAL.stoneDark; g.fillRect(3,27,6,3); g.fillRect(TILE-9,27,6,3);         // stone feet
+  g.fillStyle=PAL.stoneLight; g.fillRect(3,27,6,1); g.fillRect(TILE-9,27,6,1);
 });
 // VISUAL-PASS-FARMHOME: flower clusters along the farm's inner borders
 // (transparent overlay on walkable grass — never on plots, fence, or the gate).
@@ -2884,8 +2903,8 @@ const lampTile = px(TILE,TILE,(g)=>{ g.clearRect(0,0,TILE,TILE);
   g.fillStyle='#17140f'; g.fillRect(13,12,1,16);                 // post shade
   g.fillStyle='#4a443a'; g.fillRect(17,12,1,16);                 // post light
   g.fillStyle='#26221e'; g.fillRect(12,16,8,2); g.fillRect(12,22,8,1); // collar rings
-  g.fillStyle='#ffd76e'; g.fillRect(11,5,10,7);                  // warm lantern glass
-  g.fillStyle='#fff3c4'; g.fillRect(13,6,3,5);                  // glass highlight
+  g.fillStyle=PAL.light; g.fillRect(11,5,10,7);                  // warm lantern glass
+  g.fillStyle='#FFF6D8'; g.fillRect(13,6,3,5);                  // glass highlight
   g.fillStyle='#26221e';
   g.fillRect(11,5,10,1); g.fillRect(11,11,10,1);                 // frame top/bottom
   g.fillRect(11,5,1,7); g.fillRect(20,5,1,7);                    // frame sides
@@ -2921,31 +2940,31 @@ const fountainTile = px(TILE,TILE,(g)=>{
   g.lineWidth = 5;
   for (let i=0;i<12;i++){
     const a0=(i/12)*Math.PI*2, a1=((i+0.82)/12)*Math.PI*2;
-    g.strokeStyle = i%2 ? '#9a8f76' : '#8d826c';
+    g.strokeStyle = i%2 ? PAL.stone : mixHex(PAL.stone, PAL.stoneDark, .35);
     g.beginPath(); g.ellipse(cx,cy,rx,ry,0,a0,a1); g.stroke();
   }
   g.lineWidth = 1.5;                                            // rim light + shade
-  g.strokeStyle = '#c4b797';
+  g.strokeStyle = PAL.stoneLight;
   g.beginPath(); g.ellipse(cx,cy,rx,ry,0,Math.PI*1.15,Math.PI*1.85); g.stroke();
-  g.strokeStyle = '#6e6455';
+  g.strokeStyle = PAL.stoneDark;
   g.beginPath(); g.ellipse(cx,cy,rx,ry,0,Math.PI*0.15,Math.PI*0.85); g.stroke();
   // calm basin water (deep blue, thin ripple arcs — not neon)
-  g.fillStyle = P.waterDeep; g.beginPath(); g.ellipse(cx,cy,rx-3.4,ry-3.2,0,0,7); g.fill();
-  g.fillStyle = '#2b8bc4'; g.beginPath(); g.ellipse(cx-1,cy-1,rx-5.5,ry-4.6,0,0,7); g.fill();
-  g.fillStyle = '#4aa8d8'; g.beginPath(); g.ellipse(cx-2,cy-2,rx-8,ry-6.4,0,0,7); g.fill(); // sunlit sheen
+  g.fillStyle = PAL.waterDeep; g.beginPath(); g.ellipse(cx,cy,rx-3.4,ry-3.2,0,0,7); g.fill();
+  g.fillStyle = PAL.water; g.beginPath(); g.ellipse(cx-1,cy-1,rx-5.5,ry-4.6,0,0,7); g.fill();
+  g.fillStyle = PAL.waterLight; g.beginPath(); g.ellipse(cx-2,cy-2,rx-8,ry-6.4,0,0,7); g.fill(); // sunlit sheen
   g.fillStyle = 'rgba(255,255,255,.35)'; g.beginPath(); g.ellipse(cx-3,cy-3,4,2,0,0,7); g.fill();
   g.strokeStyle = 'rgba(255,255,255,.55)'; g.lineWidth = 1;
   g.beginPath(); g.ellipse(cx,cy,rx-4.6,ry-4,0,Math.PI*0.1,Math.PI*0.7); g.stroke();
   g.beginPath(); g.ellipse(cx+1,cy,rx-6.4,ry-5.2,0,Math.PI*1.1,Math.PI*1.7); g.stroke();
   // central stone pedestal (masonry courses)
-  g.fillStyle = '#a89e88'; g.fillRect(13,11,6,11);
-  g.fillStyle = '#7c7260'; g.fillRect(13,11,1,11);
-  g.fillStyle = '#c4b797'; g.fillRect(18,11,1,11);
-  g.fillStyle = '#6e6455'; g.fillRect(13,14,6,1); g.fillRect(13,18,6,1);
+  g.fillStyle = PAL.stone; g.fillRect(13,11,6,11);
+  g.fillStyle = PAL.stoneDark; g.fillRect(13,11,1,11);
+  g.fillStyle = PAL.stoneLight; g.fillRect(18,11,1,11);
+  g.fillStyle = mixHex(PAL.stone, PAL.stoneDark, .5); g.fillRect(13,14,6,1); g.fillRect(13,18,6,1);
   // lower tier: stone disc, water sheet spilling over the front rim
-  g.fillStyle = '#8d826c'; g.beginPath(); g.ellipse(16,11,8,3.6,0,0,7); g.fill();
-  g.fillStyle = '#b3a78d'; g.beginPath(); g.ellipse(16,10.4,8,3.2,0,0,7); g.fill();
-  g.fillStyle = '#2e9fd8'; g.beginPath(); g.ellipse(16,10.2,5.4,2,0,0,7); g.fill();
+  g.fillStyle = mixHex(PAL.stone, PAL.stoneDark, .35); g.beginPath(); g.ellipse(16,11,8,3.6,0,0,7); g.fill();
+  g.fillStyle = PAL.stoneLight; g.beginPath(); g.ellipse(16,10.4,8,3.2,0,0,7); g.fill();
+  g.fillStyle = PAL.water; g.beginPath(); g.ellipse(16,10.2,5.4,2,0,0,7); g.fill();
   g.fillStyle = 'rgba(215,240,255,.92)';
   for (const sx of [9.5,12.5,16,19.5,22.5]) g.fillRect(sx,12.5,2.2,5);   // falling sheets
   g.fillStyle = 'rgba(255,255,255,.9)';
@@ -2953,14 +2972,14 @@ const fountainTile = px(TILE,TILE,(g)=>{
   g.fillStyle = 'rgba(255,255,255,.7)';
   for (const sx of [10,13.5,17.5,21]) g.fillRect(sx,17,2,1.4);            // foam where sheets land
   // upper tier: smaller stone disc, smaller spill
-  g.fillStyle = '#8d826c'; g.beginPath(); g.ellipse(16,6.4,5,2.4,0,0,7); g.fill();
-  g.fillStyle = '#b3a78d'; g.beginPath(); g.ellipse(16,5.9,5,2.1,0,0,7); g.fill();
-  g.fillStyle = '#2e9fd8'; g.beginPath(); g.ellipse(16,5.7,3.2,1.3,0,0,7); g.fill();
+  g.fillStyle = mixHex(PAL.stone, PAL.stoneDark, .35); g.beginPath(); g.ellipse(16,6.4,5,2.4,0,0,7); g.fill();
+  g.fillStyle = PAL.stoneLight; g.beginPath(); g.ellipse(16,5.9,5,2.1,0,0,7); g.fill();
+  g.fillStyle = PAL.water; g.beginPath(); g.ellipse(16,5.7,3.2,1.3,0,0,7); g.fill();
   g.fillStyle = 'rgba(215,240,255,.92)';
   for (const sx of [12,16,20]) g.fillRect(sx,7.4,2,3.6);
   // stone finial + modest upward jet (thin dashed stream, side droplets)
-  g.fillStyle = '#a89e88'; g.fillRect(15,2.4,2,2.4);
-  g.fillStyle = '#c4b797'; g.fillRect(15,2.4,2,1);
+  g.fillStyle = PAL.stone; g.fillRect(15,2.4,2,2.4);
+  g.fillStyle = PAL.stoneLight; g.fillRect(15,2.4,2,1);
   g.fillStyle = 'rgba(230,245,255,.95)'; g.fillRect(15.4,0,1.2,2.4);
   g.fillStyle = 'rgba(255,255,255,.9)';
   g.fillRect(12,1,1.4,1.4); g.fillRect(19,1.6,1.4,1.4);
@@ -2968,28 +2987,28 @@ const fountainTile = px(TILE,TILE,(g)=>{
 const fountainDryTile = px(TILE,TILE,(g)=>{ g.clearRect(0,0,TILE,TILE);
   // RESTORE THE LIGHT: the fountain runs dry until the Old Garden wakes —
   // dusty stone where the water should be, one crack across the basin.
-  g.fillStyle = '#a99e86';
+  g.fillStyle = mixHex(PAL.stone, PAL.path, .3);
   g.beginPath(); g.ellipse(16,21,10.1,6.3,0,0,7); g.fill();        // dry basin bed
   g.fillRect(9,12.2,14.5,5.6);                                     // sheet zone: bare stone
   g.beginPath(); g.ellipse(16,10.2,5.4,2,0,0,7); g.fill();          // lower tier pool, dry
   g.beginPath(); g.ellipse(16,5.7,3.2,1.3,0,0,7); g.fill();         // upper tier pool, dry
-  g.fillStyle = '#978b71';
+  g.fillStyle = mixHex(PAL.stone, PAL.stoneDark, .3);
   g.beginPath(); g.ellipse(15,20,7.5,4.4,0,0,7); g.fill();
-  g.fillStyle = '#b3a78d';
+  g.fillStyle = PAL.stoneLight;
   g.beginPath(); g.ellipse(14,19,4.5,2.4,0,0,7); g.fill();          // dusty sheen
   g.strokeStyle = 'rgba(90,80,64,.8)'; g.lineWidth = 1;              // the basin crack
   g.beginPath(); g.moveTo(10,24); g.lineTo(14,22); g.lineTo(17,24.5); g.lineTo(22,23); g.stroke();
   g.fillStyle = 'rgba(120,108,84,.55)';                             // settled dust
   for (const s of [[11,22],[19,25],[15,19],[21,20]]) g.fillRect(s[0],s[1],1.4,1);
-  g.fillStyle = '#a89e88'; g.fillRect(15,0,2.5,2.6);                 // no jet: stone finial only
-  g.fillStyle = '#b8a888'; g.fillRect(11.5,0.5,2.5,2.5); g.fillRect(18.5,1,2.5,2.5); // stilled spray
+  g.fillStyle = PAL.stone; g.fillRect(15,0,2.5,2.6);                 // no jet: stone finial only
+  g.fillStyle = PAL.stone; g.fillRect(11.5,0.5,2.5,2.5); g.fillRect(18.5,1,2.5,2.5); // stilled spray
 });
 // Market stall (Batch 2): timber posts, peaked striped canopy, bunting, goods
 function stallTile(awning) {
   return px(TILE,TILE,(g)=>{
     g.clearRect(0,0,TILE,TILE);
-    g.fillStyle = '#6b4423'; g.fillRect(4,10,3,20); g.fillRect(25,10,3,20);
-    g.fillStyle = '#8a5a2b'; g.fillRect(4,10,1,20); g.fillRect(25,10,1,20);
+    g.fillStyle = PAL.timber; g.fillRect(4,10,3,20); g.fillRect(25,10,3,20);
+    g.fillStyle = '#8F6B4F'; g.fillRect(4,10,1,20); g.fillRect(25,10,1,20);
     for (let i=0;i<8;i++){ const x0=i*4, xc=x0+2;               // peaked canopy
       const yt = xc<=16 ? 12-(xc-2)*(10/14) : 2+(xc-16)*(10/14);
       const y0=Math.ceil(yt);
@@ -2997,22 +3016,22 @@ function stallTile(awning) {
       g.fillRect(x0,y0,4,12-y0);
       g.fillStyle = 'rgba(0,0,0,.08)'; g.fillRect(x0,y0,4,1);
     }
-    g.fillStyle = '#6b4423'; g.fillRect(2,11,28,3);             // front beam
+    g.fillStyle = PAL.timber; g.fillRect(2,11,28,3);             // front beam
     for (let i=0;i<7;i++){ const x=4+i*4;                       // scalloped valance
       g.fillStyle = i%2 ? '#fffbe8' : awning;
       g.beginPath(); g.arc(x,14,2,0,7); g.fill(); }
-    g.fillStyle = '#8a5a2b'; g.fillRect(6,22,20,8);             // counter
-    g.fillStyle = '#c9a878'; g.fillRect(6,22,20,2);
-    g.fillStyle = '#6b4423';
+    g.fillStyle = '#8F6B4F'; g.fillRect(6,22,20,8);             // counter
+    g.fillStyle = PAL.path; g.fillRect(6,22,20,2);
+    g.fillStyle = PAL.timber;
     for (let x=11;x<26;x+=5) g.fillRect(x,24,1,6);
     g.fillStyle = '#e05a4e'; g.fillRect(8,19,3,3); g.fillRect(12,19,3,3);   // apples
-    g.fillStyle = '#3f7a2e'; g.fillRect(9,18,1,1); g.fillRect(13,18,1,1);
-    g.fillStyle = '#b06030'; g.fillRect(16,19,4,3);             // potted flower
-    g.fillStyle = '#f0a0c0'; g.fillRect(16,16,4,3);
-    g.fillStyle = '#e8b93c'; g.fillRect(17,17,2,1);
+    g.fillStyle = PAL.leafDark; g.fillRect(9,18,1,1); g.fillRect(13,18,1,1);
+    g.fillStyle = PAL.terracotta; g.fillRect(16,19,4,3);             // potted flower
+    g.fillStyle = PAL.flowerPink; g.fillRect(16,16,4,3);
+    g.fillStyle = PAL.gold; g.fillRect(17,17,2,1);
     g.fillStyle = '#e0a860'; g.fillRect(22,19,4,3); g.fillRect(23,18,2,1);  // bread
-    g.fillStyle = '#8a6a4a'; g.fillRect(4,17,24,1);             // bunting string
-    const bunt=['#e87aa0','#e8b93c','#5a8ac9','#fffbe8'];
+    g.fillStyle = '#8F6B4F'; g.fillRect(4,17,24,1);             // bunting string
+    const bunt=[PAL.flowerPink, PAL.gold, PAL.flowerBlue, PAL.cream];
     for (let i=0;i<6;i++){ g.fillStyle=bunt[i%4]; g.fillRect(5+i*4,18,3,3); }
   });
 }
@@ -3022,45 +3041,45 @@ const stallA = stallTile('#e87aa0'), stallB = stallTile('#5a8ac9'), stallC = sta
 // deeper flower box, timber corner posts.
 const houseWall = px(TILE,TILE,(g)=>{
   const P = BOARD_PALETTE, R = srand(0x40e5);
-  g.fillStyle = P.plaster; g.fillRect(0,0,TILE,TILE);          // warm plaster
-  g.fillStyle = P.plasterDark;
+  g.fillStyle = PAL.plaster; g.fillRect(0,0,TILE,TILE);          // warm plaster
+  g.fillStyle = PAL.plasterShadow;
   for (let i=0;i<7;i++){ const x=(i*11+3)%26+2, y=(i*7+5)%24+4; g.fillRect(x,y,2,2); }  // mottling
   g.fillStyle = 'rgba(255,250,235,.35)'; g.fillRect(0,0,TILE,2);   // top light
-  g.fillStyle = '#9a9aa5'; g.fillRect(0,28,TILE,4);            // stone foundation
-  g.fillStyle = '#c9c9d4'; g.fillRect(0,28,TILE,1);
-  g.fillStyle = '#7c7c88'; for (let x=2;x<TILE;x+=8) g.fillRect(x,29,1,3); // foundation joints
-  g.fillStyle = '#6b4423';                                     // timber frame
+  g.fillStyle = PAL.stone; g.fillRect(0,28,TILE,4);            // stone foundation
+  g.fillStyle = PAL.stoneLight; g.fillRect(0,28,TILE,1);
+  g.fillStyle = PAL.stoneDark; for (let x=2;x<TILE;x+=8) g.fillRect(x,29,1,3); // foundation joints
+  g.fillStyle = PAL.timber;                                     // timber frame
   g.fillRect(0,0,TILE,4); g.fillRect(0,24,TILE,4);
   g.fillRect(0,0,4,TILE); g.fillRect(28,0,4,TILE);
-  g.fillStyle = '#a06a35';
+  g.fillStyle = '#8F6B4F';
   g.fillRect(0,0,TILE,1); g.fillRect(0,0,1,TILE);
-  g.fillStyle = '#5d3a17'; g.fillRect(9,8,14,13);               // window frame
+  g.fillStyle = '#5E4230'; g.fillRect(9,8,14,13);               // window frame
   g.fillStyle = '#ffe9a8'; g.fillRect(11,10,10,9);             // warm panes
   g.fillStyle = '#fff6d8'; g.fillRect(11,10,4,4);
-  g.fillStyle = '#5d3a17'; g.fillRect(15,10,2,9); g.fillRect(11,13,10,2);
-  g.fillStyle = '#7a4f28'; g.fillRect(5,9,3,12); g.fillRect(24,9,3,12);  // shutters
-  g.fillStyle = '#5d3a17'; g.fillRect(5,13,3,1); g.fillRect(5,17,3,1); g.fillRect(24,13,3,1); g.fillRect(24,17,3,1);
-  g.fillStyle = '#8a5a2b'; g.fillRect(8,21,16,2);               // sill
-  g.fillStyle = '#3f7a2e';                                     // flower-box leaves
+  g.fillStyle = '#5E4230'; g.fillRect(15,10,2,9); g.fillRect(11,13,10,2);
+  g.fillStyle = PAL.leafDark; g.fillRect(5,9,3,12); g.fillRect(24,9,3,12);  // shutters
+  g.fillStyle = PAL.leaf; g.fillRect(5,13,3,1); g.fillRect(5,17,3,1); g.fillRect(24,13,3,1); g.fillRect(24,17,3,1);
+  g.fillStyle = '#8F6B4F'; g.fillRect(8,21,16,2);               // sill
+  g.fillStyle = PAL.leaf;                                     // flower-box leaves
   for (let x=8;x<24;x+=4) g.fillRect(x,22,3,2);
   const blooms=['#f0a0c0','#e05a4e','#ffffff','#e8b93c'];
   for (let i=0;i<4;i++){ const x=9+i*4;
     g.fillStyle=blooms[i]; g.fillRect(x,19,3,3);
     g.fillStyle='rgba(255,255,255,.6)'; g.fillRect(x,19,1,1); }
-  g.fillStyle = '#8a5a2b'; g.fillRect(8,24,16,4);               // box
-  g.fillStyle = '#a06a35'; g.fillRect(8,24,16,1);
-  g.fillStyle = '#5d3a17';
+  g.fillStyle = PAL.timber; g.fillRect(8,24,16,4);               // box
+  g.fillStyle = '#8F6B4F'; g.fillRect(8,24,16,1);
+  g.fillStyle = '#5E4230';
   for (let x=12;x<24;x+=6) g.fillRect(x,24,1,4);
 });
 // VISUAL-PASS-FARMHOME: chimney puff drawn over the roof tile's east end
 // (transparent overlay; the roof footprint is untouched).
 const houseChimney = px(TILE,TILE,(g)=>{ g.clearRect(0,0,TILE,TILE);
   g.fillStyle='rgba(0,0,0,.18)'; g.fillRect(12,26,10,3);
-  g.fillStyle='#a85548'; g.fillRect(13,8,8,18);                // brick stack
-  g.fillStyle='#8a4239'; for (let y=11;y<26;y+=4) g.fillRect(13,y,8,1);
-  g.fillStyle='#c9755f'; g.fillRect(13,8,8,2);
-  g.fillStyle='#6b4423'; g.fillRect(11,5,12,4);                // cap
-  g.fillStyle='#8a5a2b'; g.fillRect(11,5,12,1);
+  g.fillStyle=PAL.terracotta; g.fillRect(13,8,8,18);                // brick stack
+  g.fillStyle=PAL.terracottaDark; for (let y=11;y<26;y+=4) g.fillRect(13,y,8,1);
+  g.fillStyle='#D08A66'; g.fillRect(13,8,8,2);
+  g.fillStyle=PAL.timber; g.fillRect(11,5,12,4);                // cap
+  g.fillStyle='#8F6B4F'; g.fillRect(11,5,12,1);
   g.fillStyle='#4a2c14'; g.fillRect(15,6,4,3);                 // flue mouth
   g.fillStyle='rgba(220,220,225,.55)';                         // still smoke wisps
   g.fillRect(16,2,3,3); g.fillRect(18,0,2,2);
@@ -3071,84 +3090,97 @@ const houseChimney = px(TILE,TILE,(g)=>{ g.clearRect(0,0,TILE,TILE);
 const houseRoof = px(TILE,TILE,(g)=>{
   const P = BOARD_PALETTE, R = srand(0x40ff);
   g.fillStyle = P.roofTerracotta; g.fillRect(0,0,TILE,TILE);
+  g.globalAlpha = .55; g.fillStyle = PAL.terracotta; g.fillRect(0,0,TILE,TILE); g.globalAlpha = 1; // board hue wash
   for (let r=0;r<6;r++){ const y=r*6;
     g.fillStyle = 'rgba(255,235,210,.20)'; g.fillRect(0,y,TILE,1);  // course light
-    g.fillStyle = P.roofShadow; g.fillRect(0,y+5,TILE,1);           // course shadow
+    g.fillStyle = PAL.terracottaDark; g.fillRect(0,y+5,TILE,1);           // course shadow
     const off=(r%2)*8;
-    for (let x=off;x<TILE;x+=16){ g.fillStyle = P.roofShadow; g.fillRect(x,y+1,1,4); }  // shingle gaps
-    g.fillStyle = 'rgba(255,255,255,.10)';                          // per-shingle tone
+    for (let x=off;x<TILE;x+=16){ g.fillStyle = PAL.terracottaDark; g.fillRect(x,y+1,1,4); }  // shingle gaps
+    g.fillStyle = 'rgba(240,215,139,.16)';                          // per-shingle tone
     for (let x=off;x<TILE;x+=16) if (R(3)===0) g.fillRect(x+2,y+1,12,4);
   }
-  g.fillStyle = P.roofRidge; g.fillRect(0,0,TILE,4);              // ridge cap
-  g.fillStyle = '#e8a860'; g.fillRect(0,0,TILE,1);
-  g.fillStyle = P.roofShadow; g.fillRect(0,4,TILE,1);
+  g.fillStyle = mixHex(PAL.terracotta, PAL.goldLight, .25); g.fillRect(0,0,TILE,4);              // ridge cap
+  g.fillStyle = PAL.goldLight; g.fillRect(0,0,TILE,1);
+  g.fillStyle = PAL.terracottaDark; g.fillRect(0,4,TILE,1);
   g.fillStyle = 'rgba(255,255,255,.25)'; g.fillRect(0,0,TILE,1);
-  g.fillStyle = '#7a3f1f'; g.fillRect(0,28,TILE,4);             // eave shadow
-  g.fillStyle = '#e8a860'; g.fillRect(0,28,TILE,1);             // eave trim
+  g.fillStyle = PAL.terracottaDark; g.fillRect(0,28,TILE,4);             // eave shadow
+  g.fillStyle = PAL.pathLight; g.fillRect(0,28,TILE,1);             // eave trim
 });
 // Cafe walls (Batch 2): cream + timber, shop window with goods on shelves
 const cafeWall = px(TILE,TILE,(g)=>{
-  g.fillStyle = '#f7ead0'; g.fillRect(0,0,TILE,TILE);
-  g.fillStyle = '#efe0c2';
+  g.fillStyle = PAL.plaster; g.fillRect(0,0,TILE,TILE);
+  g.fillStyle = PAL.plasterShadow;
   for (let i=0;i<5;i++){ const x=(i*13+5)%26+2, y=(i*9+3)%24+4; g.fillRect(x,y,2,2); }
-  g.fillStyle = '#7a4f28';
+  g.fillStyle = PAL.timber;
   g.fillRect(0,0,TILE,4); g.fillRect(0,28,TILE,4);
   g.fillRect(0,0,4,TILE); g.fillRect(28,0,4,TILE);
-  g.fillStyle = '#a06a35'; g.fillRect(0,0,TILE,1); g.fillRect(0,0,1,TILE);
-  g.fillStyle = '#5d3a17'; g.fillRect(6,7,20,15);               // shop window
+  g.fillStyle = '#8F6B4F'; g.fillRect(0,0,TILE,1); g.fillRect(0,0,1,TILE);
+  g.fillStyle = '#5E4230'; g.fillRect(6,7,20,15);               // shop window
   g.fillStyle = '#ffe9a8'; g.fillRect(8,9,16,11);
   g.fillStyle = '#fff6d8'; g.fillRect(8,9,6,5);
-  g.fillStyle = '#c9a878'; g.fillRect(8,15,16,1);               // shelf
-  g.fillStyle = '#e05a4e'; g.fillRect(9,11,3,4);                // jars
-  g.fillStyle = '#e8b93c'; g.fillRect(14,11,3,4);
-  g.fillStyle = '#6aa84f'; g.fillRect(19,11,3,4);
+  g.fillStyle = PAL.path; g.fillRect(8,15,16,1);               // shelf
+  g.fillStyle = PAL.terracotta; g.fillRect(9,11,3,4);                // jars
+  g.fillStyle = PAL.gold; g.fillRect(14,11,3,4);
+  g.fillStyle = PAL.leaf; g.fillRect(19,11,3,4);
   g.fillStyle = 'rgba(255,255,255,.5)';
   g.fillRect(9,11,1,4); g.fillRect(14,11,1,4); g.fillRect(19,11,1,4);
-  g.fillStyle = '#c9a878'; g.fillRect(8,18,16,1);
+  g.fillStyle = PAL.path; g.fillRect(8,18,16,1);
   g.fillStyle = '#e0a860'; g.fillRect(10,16,5,2); g.fillRect(17,16,5,2);  // bread
-  g.fillStyle = '#5d3a17'; g.fillRect(15,9,2,11); g.fillRect(8,13,16,2);  // mullions
-  g.fillStyle = '#8a5a2b'; g.fillRect(6,22,20,2);               // sill
+  g.fillStyle = '#5E4230'; g.fillRect(15,9,2,11); g.fillRect(8,13,16,2);  // mullions
+  g.fillStyle = '#8F6B4F'; g.fillRect(6,22,20,2);               // sill
+  // flower box under the window + a little gold hanging-sign disc (board café)
+  g.fillStyle = PAL.leaf;
+  for (let x=8;x<24;x+=4) g.fillRect(x,24,3,2);
+  const cbl = [PAL.flowerPink, PAL.flowerCream, PAL.flowerLavender];
+  for (let i=0;i<3;i++){ const x=9+i*5;
+    g.fillStyle = cbl[i]; g.fillRect(x,22,3,3);
+    g.fillStyle = '#FFF3C4'; g.fillRect(x,22,1,1); }
+  g.fillStyle = PAL.timber; g.fillRect(8,27,16,3);              // box
 });
-// Cafe roof (Batch 2): warm brown shingle courses
+// Cafe roof (Batch 2): warm terracotta shingle courses (board café roof)
 const cafeRoof = px(TILE,TILE,(g)=>{
-  g.fillStyle = '#a86a42'; g.fillRect(0,0,TILE,TILE);
+  const R = srand(0xcafe);
+  g.fillStyle = PAL.terracotta; g.fillRect(0,0,TILE,TILE);
   for (let r=0;r<6;r++){ const y=r*6;
-    g.fillStyle = 'rgba(255,255,255,.14)'; g.fillRect(0,y,TILE,1);
-    g.fillStyle = '#7c4a28'; g.fillRect(0,y+5,TILE,1);
+    g.fillStyle = 'rgba(255,235,210,.18)'; g.fillRect(0,y,TILE,1);
+    g.fillStyle = PAL.terracottaDark; g.fillRect(0,y+5,TILE,1);
     const off=((r+1)%2)*8;
+    g.fillStyle = PAL.terracottaDark;
     for (let x=off;x<TILE;x+=16) g.fillRect(x,y+1,1,4);
+    g.fillStyle = 'rgba(240,215,139,.14)';
+    if (R(3)===0) g.fillRect(off+2,y+1,12,4);
   }
-  g.fillStyle = '#c98a52'; g.fillRect(0,0,TILE,4);
-  g.fillStyle = '#7c4a28'; g.fillRect(0,4,TILE,1);
-  g.fillStyle = '#6e3f22'; g.fillRect(0,28,TILE,4);
-  g.fillStyle = '#e0a868'; g.fillRect(0,28,TILE,1);
+  g.fillStyle = mixHex(PAL.terracotta, PAL.goldLight, .25); g.fillRect(0,0,TILE,4);
+  g.fillStyle = PAL.terracottaDark; g.fillRect(0,4,TILE,1);
+  g.fillStyle = PAL.terracottaDark; g.fillRect(0,28,TILE,4);
+  g.fillStyle = PAL.pathLight; g.fillRect(0,28,TILE,1);
 });
 // Home door (Batch 2): planked wood, iron hinges, brass knob, lintel, step
 const doorTileH = px(TILE,TILE,(g)=>{
   g.drawImage(pathTile,0,0);
-  g.fillStyle = '#b8a888'; g.fillRect(8,28,16,4);
-  g.fillStyle = '#d8d0c0'; g.fillRect(8,28,16,1);
+  g.fillStyle = PAL.stone; g.fillRect(8,28,16,4);
+  g.fillStyle = PAL.stoneLight; g.fillRect(8,28,16,1);
   g.fillStyle = '#4a2c14'; g.fillRect(9,3,14,26);
-  g.fillStyle = '#7a4f28'; g.fillRect(11,5,10,23);
-  g.fillStyle = '#5d3a17';
+  g.fillStyle = PAL.timber; g.fillRect(11,5,10,23);
+  g.fillStyle = '#5E4230';
   for (const x of [13,16,19]) g.fillRect(x,5,1,23);
-  g.fillStyle = '#8a5a2b';
+  g.fillStyle = '#8F6B4F';
   for (const x of [12,15,18]) g.fillRect(x,5,1,23);
   g.fillStyle = '#3a3a40'; g.fillRect(11,8,4,2); g.fillRect(11,20,4,2);
-  g.fillStyle = '#d4a940'; g.fillRect(18,15,3,3);
-  g.fillStyle = '#ffe9a8'; g.fillRect(18,15,1,1);
-  g.fillStyle = '#6b4423'; g.fillRect(8,1,16,3);
-  g.fillStyle = '#a06a35'; g.fillRect(8,1,16,1);
+  g.fillStyle = PAL.gold; g.fillRect(18,15,3,3);
+  g.fillStyle = PAL.goldLight; g.fillRect(18,15,1,1);
+  g.fillStyle = PAL.timber; g.fillRect(8,1,16,3);
+  g.fillStyle = '#8F6B4F'; g.fillRect(8,1,16,1);
 });
 // Night overlay for the home window (Batch 2): halo + relit panes over houseWall
 const windowTile = px(TILE,TILE,(g)=>{
   g.clearRect(0,0,TILE,TILE);
   g.fillStyle = 'rgba(255,205,110,.25)'; g.fillRect(5,4,22,22);
   g.fillStyle = 'rgba(255,205,110,.30)'; g.fillRect(7,6,18,18);
-  g.fillStyle = '#5d3a17'; g.fillRect(9,8,14,13);
-  g.fillStyle = '#ffd76e'; g.fillRect(11,10,10,9);
-  g.fillStyle = '#fff3c4'; g.fillRect(12,11,5,6);
-  g.fillStyle = '#5d3a17'; g.fillRect(15,10,2,9); g.fillRect(11,13,10,2);
+  g.fillStyle = '#5E4230'; g.fillRect(9,8,14,13);
+  g.fillStyle = PAL.lightSoft; g.fillRect(11,10,10,9);
+  g.fillStyle = PAL.light; g.fillRect(12,11,5,6);
+  g.fillStyle = '#5E4230'; g.fillRect(15,10,2,9); g.fillRect(11,13,10,2);
   g.fillStyle = 'rgba(255,255,255,.55)';
   for (let i=0;i<4;i++) g.fillRect(9+i*4,19,3,1);
 });
@@ -3157,8 +3189,8 @@ const counterTile = px(TILE,TILE,(g)=>{
   g.drawImage(pathTile,0,0);
   g.fillStyle = '#6b4423'; g.fillRect(2,8,3,18); g.fillRect(27,8,3,18);
   g.fillStyle = '#8a5a2b'; g.fillRect(2,8,1,18); g.fillRect(27,8,1,18);
-  for (let i=0;i<8;i++){ g.fillStyle = i%2 ? '#fffbe8' : '#c95a5a'; g.fillRect(i*4,0,4,8); }
-  for (let i=0;i<8;i++){ g.fillStyle = i%2 ? '#fffbe8' : '#c95a5a';
+  for (let i=0;i<8;i++){ g.fillStyle = i%2 ? PAL.cream : PAL.terracotta; g.fillRect(i*4,0,4,8); }
+  for (let i=0;i<8;i++){ g.fillStyle = i%2 ? PAL.cream : PAL.terracotta;
     g.beginPath(); g.arc(i*4+2,8,2,0,7); g.fill(); }
   g.fillStyle = '#6b4423'; g.fillRect(0,10,32,2);
   g.fillStyle = '#3a3a40'; g.fillRect(11,12,1,2); g.fillRect(20,12,1,2);  // chains
@@ -3179,8 +3211,8 @@ const counterTile = px(TILE,TILE,(g)=>{
 });
 // Cafe table (Batch 2): striped parasol, round table with cups
 const tableTile = px(TILE,TILE,(g)=>{ g.clearRect(0,0,TILE,TILE);
-  for (let i=0;i<5;i++){ g.fillStyle = i%2 ? '#fffbe8' : '#e05a4e'; g.fillRect(6+i*4,4,4,6); }
-  for (let i=0;i<5;i++){ g.fillStyle = i%2 ? '#fffbe8' : '#e05a4e';
+  for (let i=0;i<5;i++){ g.fillStyle = i%2 ? PAL.cream : PAL.terracotta; g.fillRect(6+i*4,4,4,6); }
+  for (let i=0;i<5;i++){ g.fillStyle = i%2 ? PAL.cream : PAL.terracotta;
     g.beginPath(); g.arc(8+i*4,10,2,0,7); g.fill(); }
   g.fillStyle = '#6b4423'; g.fillRect(15,10,2,10);
   g.fillStyle = '#8a5a2b'; g.beginPath(); g.arc(16,22,7,0,7); g.fill();
@@ -3234,61 +3266,62 @@ const churchWall = px(TILE,TILE,(g)=>{
 // VISUAL-PASS-CHURCH: exterior wall — warmer sandstone with timber trim band,
 // tall stained-glass lancet, stone base shadow (world-map church only)
 const churchWallEx = px(TILE,TILE,(g)=>{
-  g.fillStyle = '#e2d3b4'; g.fillRect(0,0,TILE,TILE);          // warm sandstone
-  g.fillStyle = '#c4ae87';                                     // ashlar courses
+  g.fillStyle = '#E7DCC0'; g.fillRect(0,0,TILE,TILE);          // warm sandstone
+  g.fillStyle = PAL.plasterShadow;                                     // ashlar courses
   for (let y=10;y<TILE;y+=7) g.fillRect(0,y,TILE,1);
+  g.fillStyle = 'rgba(119,115,96,.45)';
   for (let r=0;r<5;r++){ const y0=4+r*7, off=(r%2)*8;
     for (let x=off;x<TILE;x+=16) g.fillRect(x,y0,1,7); }
   g.fillStyle = 'rgba(255,255,255,.20)'; g.fillRect(0,4,TILE,1);
-  g.fillStyle = '#6b4423'; g.fillRect(0,0,TILE,4);              // timber trim band
-  g.fillStyle = '#8a5a2b'; g.fillRect(0,0,TILE,1);
-  g.fillStyle = '#4a2c14';
+  g.fillStyle = PAL.timber; g.fillRect(0,0,TILE,4);              // timber trim band
+  g.fillStyle = '#8F6B4F'; g.fillRect(0,0,TILE,1);
+  g.fillStyle = '#5E4230';
   for (let x=3;x<32;x+=8) g.fillRect(x,0,2,4);                 // beam pegs
-  g.fillStyle = '#b3a488';                                     // window surround
+  g.fillStyle = PAL.stoneLight;                                     // window surround
   g.fillRect(8,8,16,18);
   g.beginPath(); g.arc(16,8,8,Math.PI,0); g.fill();
-  g.fillStyle = '#a89e88'; g.fillRect(8,8,2,18);               // surround shade
-  g.fillStyle = '#232a44';                                     // dark recess (gothic arch)
+  g.fillStyle = PAL.stone; g.fillRect(8,8,2,18);               // surround shade
+  g.fillStyle = PAL.navy;                                     // dark recess (gothic arch)
   g.fillRect(10,10,12,16);
   g.beginPath(); g.arc(16,10,6,Math.PI,0); g.fill();
   g.fillStyle = '#4a8ad9'; g.fillRect(10,10,4,16);            // blue pane
   g.fillStyle = '#e8b93c'; g.fillRect(14,10,4,16);            // gold pane
   g.fillStyle = '#e87aa0'; g.fillRect(18,10,4,16);            // pink pane
-  g.fillStyle = '#7ab5e8'; g.beginPath(); g.arc(16,10,6,Math.PI,0); g.fill();  // arch panes
-  g.fillStyle = '#ffd76e'; g.beginPath(); g.arc(16,10,4,Math.PI,0); g.fill();
-  g.fillStyle = '#f0a0c0'; g.beginPath(); g.arc(16,10,2.5,Math.PI,0); g.fill();
-  g.fillStyle = '#1a2340';                                     // leading
+  g.fillStyle = PAL.flowerBlue; g.beginPath(); g.arc(16,10,6,Math.PI,0); g.fill();  // arch panes
+  g.fillStyle = PAL.lightSoft; g.beginPath(); g.arc(16,10,4,Math.PI,0); g.fill();
+  g.fillStyle = PAL.flowerPink; g.beginPath(); g.arc(16,10,2.5,Math.PI,0); g.fill();
+  g.fillStyle = PAL.navy;                                     // leading
   g.fillRect(13,10,1,16); g.fillRect(18,10,1,16);
   g.fillRect(10,16,12,1); g.fillRect(10,21,12,1);
   const gl = g.createRadialGradient(16,16,1,16,16,13);        // glowing glass
   gl.addColorStop(0,'rgba(255,236,170,.55)'); gl.addColorStop(1,'rgba(255,236,170,0)');
   g.fillStyle = gl; g.fillRect(6,4,20,26);
   g.fillStyle = 'rgba(255,255,255,.40)'; g.fillRect(11,11,2,13); // shine
-  g.fillStyle = '#9a8d74'; g.fillRect(7,26,18,2);               // sill
-  g.fillStyle = '#e2d3b4'; g.fillRect(7,26,18,1);
+  g.fillStyle = PAL.stoneDark; g.fillRect(7,26,18,2);               // sill
+  g.fillStyle = '#E7DCC0'; g.fillRect(7,26,18,1);
   g.fillStyle = 'rgba(60,40,20,.20)'; g.fillRect(0,28,TILE,4);  // stone base shadow
 });
 // Church roof (Batch 2): crown of tall blue-gray spires, each cross-topped
 const churchRoof = px(TILE,TILE,(g)=>{
   const P = BOARD_PALETTE;
-  g.fillStyle = '#4a6a86'; g.fillRect(0,0,TILE,TILE);          // roof plane behind the spires
-  g.fillStyle = '#42566e';
+  g.fillStyle = PAL.roofDark; g.fillRect(0,0,TILE,TILE);          // roof plane behind the spires
+  g.fillStyle = '#3E5265';
   for (let y=6;y<TILE;y+=6) g.fillRect(0,y,TILE,1);            // plane seams
   g.fillStyle = 'rgba(255,255,255,.10)';
   for (let y=0;y<TILE;y+=6) g.fillRect(0,y,TILE,1);
   g.fillStyle = P.spireBlue;                                   // steep spire body
   for (let y=1;y<32;y++){ const hw=1+((y-1)/31)*10; g.fillRect(Math.round(16-hw), y, Math.round(hw*2), 1); }
-  g.fillStyle = '#42566e';                                     // right shade face
+  g.fillStyle = PAL.roofDark;                                     // right shade face
   for (let y=1;y<32;y++){ const hw=1+((y-1)/31)*10; g.fillRect(16, y, Math.round(hw), 1); }
-  g.fillStyle = '#8aa5bd';                                     // left light ticks
+  g.fillStyle = '#95A5B2';                                     // left light ticks
   for (let y=3;y<30;y+=3){ const hw=1+((y-1)/31)*10; g.fillRect(Math.round(16-hw), y, 2, 1); }
-  g.fillStyle = '#a8c0d8'; g.fillRect(15,2,2,28);               // ridge highlight
+  g.fillStyle = '#B9C9D6'; g.fillRect(15,2,2,28);               // ridge highlight
   g.fillStyle = 'rgba(0,0,0,.18)';                              // spire shingle courses
   for (const y of [8,14,20,26]){ const hw=1+((y-1)/31)*10; g.fillRect(Math.round(16-hw), y, Math.round(hw*2), 1); }
   g.fillStyle = P.gold; g.fillRect(15,0,2,7); g.fillRect(12,2,8,2);   // cross on top
-  g.fillStyle = '#ffe9a8'; g.fillRect(15,0,1,7);
-  g.fillStyle = '#3a4a5e'; g.fillRect(0,29,TILE,3);             // eave shadow
-  g.fillStyle = '#9ab5cc'; g.fillRect(0,29,TILE,1);             // eave trim
+  g.fillStyle = PAL.goldLight; g.fillRect(15,0,1,7);
+  g.fillStyle = '#3E5265'; g.fillRect(0,29,TILE,3);             // eave shadow
+  g.fillStyle = '#95A5B2'; g.fillRect(0,29,TILE,1);             // eave trim
 });
 // BATCH7: tall landmark steeple — stone tower + lamplit belfry + tall spire,
 // gold cross on top (64x96, drawn over the church roof so the church reads tall)
@@ -3296,38 +3329,40 @@ const churchSteeple = px(64,96,(g)=>{
   const P = BOARD_PALETTE;
   g.clearRect(0,0,64,96);
   // tower base (stone, matches churchWall)
-  g.fillStyle = '#d8d0bd'; g.fillRect(14,64,36,32);
-  g.fillStyle = '#bcae93';
+  g.fillStyle = '#E7DCC0'; g.fillRect(14,64,36,32);
+  g.fillStyle = PAL.plasterShadow;
   for (let y=70;y<96;y+=7) g.fillRect(14,y,36,1);
+  g.fillStyle = PAL.stoneLight; g.fillRect(14,64,3,32); g.fillRect(47,64,3,32);   // corner quoins
+  g.fillStyle = PAL.stone; g.fillRect(14,64,36,2);
   g.fillStyle = 'rgba(0,0,0,.12)'; g.fillRect(14,93,36,3);
   // small stained-glass lancet on the tower
-  g.fillStyle = '#b3a488'; g.fillRect(27,72,10,18);
+  g.fillStyle = PAL.stoneLight; g.fillRect(27,72,10,18);
   g.beginPath(); g.arc(32,72,5,Math.PI,0); g.fill();
   g.fillStyle = '#4a8ad9'; g.fillRect(28,73,3,16);
   g.fillStyle = '#e8b93c'; g.fillRect(31,73,3,16);
-  g.fillStyle = '#7ab5e8'; g.beginPath(); g.arc(32,73,4,Math.PI,0); g.fill();
-  g.fillStyle = '#1a2340'; g.fillRect(30,73,1,16);
+  g.fillStyle = PAL.flowerBlue; g.beginPath(); g.arc(32,73,4,Math.PI,0); g.fill();
+  g.fillStyle = PAL.navy; g.fillRect(30,73,1,16);
   // belfry: arched openings glowing warm
-  g.fillStyle = '#c4b69c'; g.fillRect(16,40,32,26);
-  g.fillStyle = '#8f8268'; g.fillRect(16,40,32,2); g.fillRect(16,64,32,2);
+  g.fillStyle = PAL.stoneLight; g.fillRect(16,40,32,26);
+  g.fillStyle = PAL.stoneDark; g.fillRect(16,40,32,2); g.fillRect(16,64,32,2);
   for (const bx of [20,36]) {
-    g.fillStyle = '#232a44'; g.fillRect(bx,46,8,16);
+    g.fillStyle = PAL.navy; g.fillRect(bx,46,8,16);
     g.beginPath(); g.arc(bx+4,46,4,Math.PI,0); g.fill();
-    g.fillStyle = '#ffd76e'; g.fillRect(bx+2,50,4,10);   // lamplit belfry
-    g.fillStyle = '#b57e45'; g.fillRect(bx+1,48,6,2); g.fillRect(bx+1,60,6,2);
+    g.fillStyle = PAL.lightSoft; g.fillRect(bx+2,50,4,10);   // lamplit belfry
+    g.fillStyle = '#A8823F'; g.fillRect(bx+1,48,6,2); g.fillRect(bx+1,60,6,2);
   }
-  g.fillStyle = '#6e5a3e'; g.fillRect(30,52,4,8);        // bell
-  g.fillStyle = '#8a6f4a'; g.fillRect(30,52,4,2);
+  g.fillStyle = '#5E4230'; g.fillRect(30,52,4,8);        // bell
+  g.fillStyle = PAL.timber; g.fillRect(30,52,4,2);
   // tall spire
   for (let y=0;y<40;y++){ const hw=2+(y/40)*13;
     g.fillStyle = P.spireBlue; g.fillRect(Math.round(32-hw), y, Math.round(hw*2), 1); }
-  g.fillStyle = '#42566e';
+  g.fillStyle = PAL.roofDark;
   for (let y=0;y<40;y++){ const hw=2+(y/40)*13; g.fillRect(32, y, Math.round(hw), 1); }
-  g.fillStyle = '#8aa5bd';
+  g.fillStyle = '#95A5B2';
   for (let y=4;y<36;y+=4){ const hw=2+(y/40)*13; g.fillRect(Math.round(32-hw), y, 2, 1); }
   // gold cross on top
   g.fillStyle = P.gold; g.fillRect(31,0,2,10); g.fillRect(27,3,10,2);
-  g.fillStyle = '#ffe9a8'; g.fillRect(31,0,1,10);
+  g.fillStyle = PAL.goldLight; g.fillRect(31,0,1,10);
 });
 // BATCH4: board-style interiors — stone slabs, pews with kneelers, cloth-draped altar,
 // lectern (verse stand); tall glowing lancets live in churchWall above
@@ -4241,7 +4276,8 @@ function drawWorld(g, now) {
         tv = fh < 0.50 ? treeTallPine : fh < 0.72 ? treeAncient
            : fh < 0.84 ? treeBirch : fh < 0.93 ? treeBlossom : treeB;
       }
-      g.drawImage(tv, x, y-8);
+      // VISUAL-PASS-BOARDMATCH: big crowns draw bottom-anchored on their tile
+      g.drawImage(tv, x + 16 - (tv.width >> 1), y + 40 - tv.height);
     }
     // church building — VISUAL-PASS-CHURCH: warm sandstone + timber exterior
     if (tx>=CHURCH.x0 && tx<=CHURCH.x1 && ty>=CHURCH.y0-1 && ty<=CHURCH.y1) {
