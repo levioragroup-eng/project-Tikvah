@@ -1316,10 +1316,20 @@ function drawVistaBack() {
   const g = cv.getContext('2d');
   const horizon = Math.round(h * 0.62);
   // dawn sky over the larger world
-  const sky = g.createLinearGradient(0, 0, 0, horizon);
-  sky.addColorStop(0, '#141c38'); sky.addColorStop(0.45, '#33507a');
-  sky.addColorStop(0.78, '#c98a4a'); sky.addColorStop(1, '#f2cf8e');
-  g.fillStyle = sky; g.fillRect(0, 0, w, horizon);
+  // VISUAL-PASS-BOARDMATCH: hard pixel bands (navy -> gold), no smooth wash
+  const bands = ['#202A43', '#2A3A63', '#33507A', '#5E6E96', '#A8765A', '#D9A45B', '#F0D78B'];
+  const bh = Math.ceil(horizon / bands.length);
+  bands.forEach((c, i) => { g.fillStyle = c; g.fillRect(0, i * bh, w, bh + 1); });
+  // stepped pixel clouds catching the dawn
+  g.fillStyle = 'rgba(245,235,213,0.45)';
+  const cloud = (cx, cy, cw) => {
+    g.fillRect(cx, cy, cw, 3);
+    g.fillRect(cx + 6, cy - 3, cw - 14, 3);
+    g.fillRect(cx + 12, cy + 3, cw - 20, 2);
+  };
+  cloud(Math.round(w*0.12), Math.round(h*0.16), 90);
+  cloud(Math.round(w*0.58), Math.round(h*0.10), 120);
+  cloud(Math.round(w*0.78), Math.round(h*0.22), 70);
   // last stars in the high sky
   g.fillStyle = 'rgba(255,250,220,0.75)';
   const starSeed = [[.06,.08],[.16,.16],[.28,.05],[.42,.12],[.57,.06],[.71,.15],[.83,.07],[.93,.18],[.5,.2],[.09,.26]];
@@ -1327,63 +1337,72 @@ function drawVistaBack() {
   // the rising sun and its glow
   const sunX = Math.round(w*0.5), sunY = horizon - Math.round(h*0.02);
   const glow = g.createRadialGradient(sunX, sunY, 4, sunX, sunY, Math.round(h*0.34));
-  glow.addColorStop(0, 'rgba(255,224,150,0.85)'); glow.addColorStop(1, 'rgba(255,224,150,0)');
+  glow.addColorStop(0, 'rgba(255,232,163,0.85)'); glow.addColorStop(1, 'rgba(255,232,163,0)');
   g.fillStyle = glow; g.fillRect(0, 0, w, horizon);
-  g.fillStyle = '#ffe9a8';
+  g.fillStyle = '#FFE8A3';
   g.beginPath(); g.arc(sunX, sunY, Math.max(10, Math.round(h*0.028)), 0, Math.PI*2); g.fill();
   // one jagged ridge of mountains across the world
   const ridge = (baseY, amp, color, seed) => {
     g.fillStyle = color; g.beginPath(); g.moveTo(0, baseY);
     let x = 0, i = 0;
     while (x < w) {
-      const step = 26 + ((seed * (i+3) * 37) % 40);
-      x += step; g.lineTo(x, baseY - ((seed * (i+5) * 53) % amp)); i++; g.lineTo(x, baseY);
+      const step = (26 + ((seed * (i+3) * 37) % 40)) & ~3;   // blocky steps
+      x += step; g.lineTo(x, baseY - (((seed * (i+5) * 53) % amp) & ~3)); i++; g.lineTo(x, baseY);
     }
     g.lineTo(w, horizon); g.lineTo(0, horizon); g.closePath(); g.fill();
   };
   // far mountains, snow still on them
-  ridge(horizon, Math.round(h*0.20), 'rgba(168,176,214,0.85)', 7);
-  g.fillStyle = 'rgba(244,246,252,0.8)';
-  for (let i = 0; i < 9; i++) g.fillRect(Math.round(w*(0.08 + i*0.105)), horizon - Math.round(h*(0.13 + (i%3)*0.02)), 7, 3);
+  ridge(horizon, Math.round(h*0.20), 'rgba(141,156,196,0.9)', 7);
+  g.fillStyle = 'rgba(244,246,252,0.85)';
+  for (let i = 0; i < 9; i++) {
+    const sx = Math.round(w*(0.08 + i*0.105)), sy2 = horizon - Math.round(h*(0.13 + (i%3)*0.02));
+    g.fillRect(sx, sy2, 7, 3); g.fillRect(sx + 2, sy2 - 2, 4, 2);   // stepped snow caps
+  }
   // nearer mountains, forested foothills
   ridge(horizon + 2, Math.round(h*0.13), 'rgba(104,116,164,0.9)', 11);
   // the sea, with distant islands
-  g.fillStyle = '#3d6a94'; g.fillRect(0, horizon, w, Math.round(h*0.10));
-  g.fillStyle = 'rgba(255,233,168,0.35)'; g.fillRect(0, horizon, w, 2);
+  g.fillStyle = '#3A6F8E'; g.fillRect(0, horizon, w, Math.round(h*0.10));
+  g.fillStyle = 'rgba(141,211,226,0.35)';
+  for (let i = 0; i < 7; i++) g.fillRect(Math.round(w*(0.05 + i*0.13)), horizon + 6 + (i%3)*5, 14, 2);  // glint bands
+  g.fillStyle = 'rgba(240,215,139,0.4)'; g.fillRect(0, horizon, w, 2);
   const island = (ix, iw, ih) => {
-    g.fillStyle = '#2c4a63'; g.beginPath(); g.moveTo(ix, horizon + 4);
-    g.quadraticCurveTo(ix + iw/2, horizon - ih, ix + iw, horizon + 4); g.closePath(); g.fill();
+    g.fillStyle = '#2c4a63';                                     // stepped island humps
+    g.fillRect(ix, horizon + 4, iw, 3);
+    g.fillRect(ix + 4, horizon + 4 - Math.round(ih*0.6), iw - 8, Math.round(ih*0.6));
+    g.fillRect(ix + Math.round(iw*0.3), horizon + 4 - ih, Math.round(iw*0.4), Math.round(ih*0.4));
+    g.fillStyle = 'rgba(240,215,139,0.8)';
+    g.fillRect(ix + Math.round(iw*0.3), horizon + 4 - ih, Math.round(iw*0.4), 1);   // dawn rim
   };
   island(Math.round(w*0.16), Math.round(w*0.075), Math.round(h*0.035));
   island(Math.round(w*0.62), Math.round(w*0.055), Math.round(h*0.028));
   island(Math.round(w*0.80), Math.round(w*0.090), Math.round(h*0.042));
   // sunpath on the water
-  g.fillStyle = 'rgba(255,233,168,0.5)';
+  g.fillStyle = 'rgba(240,215,139,0.55)';
   for (let i = 0; i < 5; i++) g.fillRect(sunX - 14 + (i%3)*9, horizon + 4 + i*4, 18 - i*2, 2);
   const landY = horizon + Math.round(h*0.10);
   // deeper forest (left): dark conifer ranks walking to the shore
-  g.fillStyle = '#1d3423';
+  g.fillStyle = mixHex(PAL.pine, PAL.navy, .55);
   g.beginPath(); g.moveTo(0, h); g.lineTo(0, landY + 6);
   g.quadraticCurveTo(w*0.22, landY - Math.round(h*0.05), w*0.42, landY + Math.round(h*0.03));
   g.lineTo(w*0.42, h); g.closePath(); g.fill();
-  g.fillStyle = '#14251a';
+  g.fillStyle = mixHex(PAL.pine, PAL.navy, .72);
   for (let i = 0; i < 14; i++) {
     const tx = Math.round(w*(0.02 + i*0.028)), th = 14 + (i*29)%16;
     g.beginPath(); g.moveTo(tx, landY + 16); g.lineTo(tx + 6, landY + 16 - th); g.lineTo(tx + 12, landY + 16); g.closePath(); g.fill();
   }
   // desert (right): amber dunes under the same dawn
-  g.fillStyle = '#c98d4e';
+  g.fillStyle = '#CD9550';
   g.beginPath(); g.moveTo(w, h); g.lineTo(w, landY + 2);
   g.quadraticCurveTo(w*0.78, landY - Math.round(h*0.045), w*0.60, landY + Math.round(h*0.02));
   g.lineTo(w*0.60, h); g.closePath(); g.fill();
-  g.fillStyle = 'rgba(242,207,142,0.7)';
+  g.fillStyle = 'rgba(240,215,139,0.7)';
   g.beginPath(); g.moveTo(w, landY + Math.round(h*0.05));
   g.quadraticCurveTo(w*0.82, landY + 2, w*0.66, landY + Math.round(h*0.045));
   g.lineTo(w*0.66, landY + Math.round(h*0.07));
   g.quadraticCurveTo(w*0.84, landY + Math.round(h*0.03), w, landY + Math.round(h*0.08));
   g.closePath(); g.fill();
   // the ancient city on the far shore: domes and towers in silhouette
-  g.fillStyle = '#243447';
+  g.fillStyle = PAL.navy;
   const cityX = Math.round(w*0.56), cityY = landY + 2;
   g.fillRect(cityX, cityY - 16, 10, 16);
   g.fillRect(cityX + 14, cityY - 22, 8, 22);
@@ -1392,15 +1411,15 @@ function drawVistaBack() {
   g.fillRect(cityX + 44, cityY - 19, 6, 19);
   // the coastal kingdom: a little castle on the headland, lamps lit
   const kx = Math.round(w*0.30), ky = landY + 2;
-  g.fillStyle = '#2b3a55';
+  g.fillStyle = mixHex(PAL.navy, '#3A4C74', .45);
   g.fillRect(kx, ky - 20, 26, 20); g.fillRect(kx - 4, ky - 30, 9, 30); g.fillRect(kx + 21, ky - 30, 9, 30);
-  g.fillStyle = '#caa145';
+  g.fillStyle = PAL.gold;
   g.fillRect(kx - 2, ky - 36, 5, 6); g.fillRect(kx + 23, ky - 36, 5, 6);
-  g.fillStyle = 'rgba(255,233,168,0.95)';
+  g.fillStyle = 'rgba(255,232,163,0.95)';
   g.fillRect(kx + 10, ky - 12, 3, 4); g.fillRect(kx + 2, ky - 20, 3, 4);
   g.fillRect(cityX + 16, cityY - 16, 3, 4); g.fillRect(cityX + 30, cityY - 10, 3, 4);
   // home hill in front: the village rests below the vista
-  g.fillStyle = '#16281c';
+  g.fillStyle = mixHex(PAL.pine, PAL.navy, .68);
   g.beginPath(); g.moveTo(0, h); g.lineTo(0, h - Math.round(h*0.10));
   g.quadraticCurveTo(w*0.5, h - Math.round(h*0.17), w, h - Math.round(h*0.10));
   g.lineTo(w, h); g.closePath(); g.fill();
@@ -2392,25 +2411,25 @@ const cropTiles = {
 // Ancient ruin stone (Batch 2): mossy stonework, cracks, carved golden grooves
 const stoneTile = px(TILE,TILE,(g)=>{
   g.clearRect(0,0,TILE,TILE);
-  g.fillStyle = '#9a9aa5'; g.fillRect(8,6,16,24);
-  g.fillStyle = '#7c7c88'; g.fillRect(8,6,4,24);
-  g.fillStyle = '#b5b5c0'; g.fillRect(20,6,4,24);
-  g.fillStyle = '#c9c9d4'; g.fillRect(8,6,16,3);
-  g.fillStyle = '#8a8a92';
+  g.fillStyle = PAL.stone; g.fillRect(8,6,16,24);
+  g.fillStyle = PAL.stoneDark; g.fillRect(8,6,4,24);
+  g.fillStyle = PAL.stoneLight; g.fillRect(20,6,4,24);
+  g.fillStyle = '#E4DCC8'; g.fillRect(8,6,16,3);
+  g.fillStyle = mixHex(PAL.stone, PAL.stoneDark, .45);
   g.fillRect(9,10,3,2); g.fillRect(19,22,4,3); g.fillRect(14,26,5,2);
-  g.fillStyle = '#5a5a62';
+  g.fillStyle = PAL.stoneDark;
   g.fillRect(13,8,1,7); g.fillRect(13,14,4,1); g.fillRect(18,20,1,8);
-  g.fillStyle = '#6e6e78'; g.fillRect(10,16,12,3);              // carved grooves
-  g.fillStyle = '#ffd76e'; g.fillRect(10,16,12,1);              // sleeping gold light
-  g.fillStyle = '#6e6e78'; g.fillRect(15,9,2,17);
-  g.fillStyle = '#ffca55'; g.fillRect(15,9,1,17);
+  g.fillStyle = PAL.stoneDark; g.fillRect(10,16,12,3);              // carved grooves
+  g.fillStyle = PAL.light; g.fillRect(10,16,12,1);              // sleeping gold light
+  g.fillStyle = PAL.stoneDark; g.fillRect(15,9,2,17);
+  g.fillStyle = PAL.gold; g.fillRect(15,9,1,17);
   g.fillStyle = 'rgba(255,240,180,.9)';
   g.fillRect(11,16,2,1); g.fillRect(20,16,2,1); g.fillRect(15,10,1,2);
-  g.fillStyle = '#4a8f3c';                                      // moss claims the stone
+  g.fillStyle = PAL.leaf;                                      // moss claims the stone
   g.fillRect(8,26,16,4); g.fillRect(8,6,5,4); g.fillRect(20,8,4,6);
-  g.fillStyle = '#6ab04c';
+  g.fillStyle = PAL.leafLight;
   for (let i=0;i<8;i++){ const x=8+((i*5+1)%15), y=6+((i*11+2)%22); g.fillRect(x,y,2,1); }
-  g.fillStyle = '#3a7230';
+  g.fillStyle = PAL.leafDark;
   for (let i=0;i<5;i++){ const x=9+((i*7)%13), y=24+((i*3)%5); g.fillRect(x,y,2,2); }
 });
 const stoneGlow = px(TILE,TILE,(g)=>{ g.drawImage(stoneTile,0,0);
@@ -2426,8 +2445,8 @@ const stoneRestored = px(TILE,TILE,(g)=>{ g.drawImage(stoneGlow,0,0);
   g.fillStyle='rgba(255,236,170,0.30)'; g.fillRect(6,4,20,28);
   g.drawImage(stoneTile,0,0);
   g.fillStyle='rgba(255,240,190,0.85)'; g.fillRect(10,16,12,2); g.fillRect(15,9,2,17);
-  g.fillStyle='#ffd76e'; g.fillRect(11,16,10,1);
-  g.fillStyle='#ff9ec4'; g.fillRect(9,24,3,3); g.fillRect(21,25,3,3);
+  g.fillStyle=PAL.light; g.fillRect(11,16,10,1);
+  g.fillStyle=PAL.blossomLight; g.fillRect(9,24,3,3); g.fillRect(21,25,3,3);
   g.fillStyle='#fff0f6'; g.fillRect(10,25,1,1); g.fillRect(22,26,1,1);
 });
 function paintRuinStone(state) {
@@ -2482,6 +2501,17 @@ function gardenBed(state, variant, sway) {
       for (let i=0;i<22;i++) g.fillRect(R(31), R(31), 1, 2);
     }
     // ---- planting ----
+    if (!blooming && !waking) {
+      // VISUAL-PASS-BOARDMATCH: dormant must read withered at a glance —
+      // dry straw wash + bare soil patches over the ground before planting
+      speckle(g, R, 8, '#8f8a58', 4, 2); speckle(g, R, 5, '#6b5636', 3, 2);
+      speckle(g, R, 4, '#a89a6a', 2, 1);
+      if (variant === 1) {                                        // cracked bed soil
+        g.strokeStyle = 'rgba(40,28,14,.55)'; g.lineWidth = 1;
+        g.beginPath(); g.moveTo(6,14); g.lineTo(11,17); g.lineTo(9,21); g.lineTo(14,24);
+        g.moveTo(22,10); g.lineTo(19,15); g.lineTo(24,19); g.stroke();
+      }
+    }
     const spireCols = ['#8a7ae0','#c49aff','#e87aa0','#7ab8e0'];   // lupine/delphinium spires
     if (blooming) {
       const sh = sway ? 1 : 0;                                    // back row sways one way…
@@ -2510,17 +2540,18 @@ function gardenBed(state, variant, sway) {
       }
       g.fillStyle = 'rgba(255,255,255,.8)';
       for (let i=0;i<6;i++) g.fillRect(R(30), R(30), 1, 1);        // drifting petal specks
+      speckle(g, R, 5, PAL.goldLight, 1, 1);                      // golden pollen glints
     } else if (waking) {
       g.fillStyle = 'rgba(31,19,10,.35)';                          // moist soil patches
       for (let i=0;i<6;i++) g.fillRect(3+R(24), 6+R(20), 3, 2);
       for (let i=0;i<12;i++) {                                    // fresh shoots
         const x = 3+R(26), y = 6+R(22);
-        g.fillStyle = '#7cc465'; g.fillRect(x, y, 1, 4); g.fillRect(x-1, y+2, 3, 1);
+        g.fillStyle = '#A8D88A'; g.fillRect(x, y, 1, 4); g.fillRect(x-1, y+2, 3, 1);
       }
-      for (let i=0;i<4;i++) {                                     // opening buds
+      for (let i=0;i<6;i++) {                                     // opening buds
         const x = 4+R(24), y = 8+R(16);
         g.fillStyle = '#5a8f3c'; g.fillRect(x, y, 3, 4);
-        g.fillStyle = '#f0a0c0'; g.fillRect(x+1, y, 1, 1);         // pink tip
+        g.fillStyle = PAL.flowerPink; g.fillRect(x+1, y, 1, 1);         // pink tip
       }
     } else {
       // dormant: tight buds, dry sprigs, pebbles, faint dew — beautiful but waiting
@@ -2562,14 +2593,14 @@ const wakeTileCS  = gardenBed('waking', 2, 1);
 function gardenPathTile(state) {   // warm cream path slabs, moss seams
   return px(TILE,TILE,(g)=>{ g.clearRect(0,0,TILE,TILE);
     const R = srand(0x9a7e);
-    g.fillStyle = state==='blooming' ? '#dcc79c' : '#d3bd92'; g.fillRect(0,0,TILE,TILE);
-    g.fillStyle = state==='blooming' ? '#b99f72' : '#ac9268';
+    g.fillStyle = state==='blooming' ? PAL.path : PAL.pathShadow; g.fillRect(0,0,TILE,TILE);
+    g.fillStyle = state==='blooming' ? PAL.pathShadow : mixHex(PAL.path, PAL.stoneDark, .45);
     for (let y=0;y<32;y+=8) g.fillRect(0,y,32,1);
     for (let y=0;y<32;y+=8) for (let x=((y/8)%2)*8;x<32;x+=16) g.fillRect(x,y,1,8);
-    g.fillStyle = state==='blooming' ? '#7aa04e' : '#5f7f42';
+    g.fillStyle = state==='blooming' ? PAL.leaf : PAL.leafDark;
     for (let i=0;i<14;i++) g.fillRect(R(32), R(32), 1, 2);
     if (state==='blooming') {                                     // fallen petals
-      g.fillStyle = '#f0a0c0';
+      g.fillStyle = PAL.flowerPink;
       for (let i=0;i<5;i++) g.fillRect(R(30), R(30), 2, 1);
       g.fillStyle = '#ffffff';
       for (let i=0;i<3;i++) g.fillRect(R(30), R(30), 1, 1);
@@ -2584,9 +2615,9 @@ function gardenEdgeTile(state) {   // low clipped hedge edging the garden
     g.fillRect(4,12,24,14); g.fillRect(8,7,16,7);
     g.fillStyle = state==='blooming' ? '#3a7230' : '#244e24';
     g.fillRect(4,22,24,4);                                        // belly shade
-    g.fillStyle = state==='blooming' ? '#6ab04c' : '#527a3a';
+    g.fillStyle = state==='blooming' ? '#6ab04c' : '#6a7a42';
     for (let i=0;i<30;i++) g.fillRect(4+R(24), 7+R(16), 2, 2);     // leaf dither
-    g.fillStyle = state==='blooming' ? '#7cc465' : '#6a9a4a';
+    g.fillStyle = state==='blooming' ? PAL.meadowLight : '#6a9a4a';
     for (let i=0;i<12;i++) g.fillRect(6+R(20), 8+R(8), 1, 1);     // sunlit crown
     if (state==='blooming') for (let i=0;i<5;i++) {               // tiny blooms on the hedge
       const x = 6+R(20), y = 9+R(10);
@@ -2600,11 +2631,11 @@ const gardenEdgeD = gardenEdgeTile('dormant'), gardenEdgeB = gardenEdgeTile('blo
 function gardenSeatTile(state) {   // round resting stone, mossy
   return px(TILE,TILE,(g)=>{ g.clearRect(0,0,TILE,TILE);
     const R = srand(0x5ea7);
-    g.fillStyle = '#7a6e58'; g.fillRect(6,14,20,12);               // stone shade
-    g.fillStyle = state==='blooming' ? '#b3a488' : '#a89a80'; g.fillRect(6,12,20,12);
-    g.fillStyle = state==='blooming' ? '#d4c8ac' : '#c9bfa8'; g.fillRect(6,12,20,3); // sunlit top
-    g.fillStyle = '#5d5240'; g.fillRect(6,23,20,2);
-    g.fillStyle = '#6a8f4a';
+    g.fillStyle = PAL.stoneDark; g.fillRect(6,14,20,12);               // stone shade
+    g.fillStyle = PAL.stone; g.fillRect(6,12,20,12);
+    g.fillStyle = PAL.stoneLight; g.fillRect(6,12,20,3); // sunlit top
+    g.fillStyle = PAL.stoneDark; g.fillRect(6,23,20,2);
+    g.fillStyle = PAL.leaf;
     for (let i=0;i<8;i++) g.fillRect(7+R(18), 14+R(8), 2, 1);      // moss patches
     if (state==='blooming') {
       g.fillStyle = '#f0a0c0'; g.fillRect(10,13,2,1); g.fillRect(20,16,2,1);
@@ -2617,12 +2648,12 @@ function gardenArchTile(state, side) {   // rose trellis pillar flanking the nor
   return px(TILE,TILE,(g)=>{ g.clearRect(0,0,TILE,TILE);
     const S = SEASON_BLOOMS.spring, R = srand(0xa2c4 + side*31);
     const cx = side === 0 ? 9 : 23, dir = side === 0 ? 1 : -1;
-    g.fillStyle = '#5d5240'; g.fillRect(cx-7, 26, 14, 4);          // footing
-    g.fillStyle = '#8d826c'; g.fillRect(cx-6, 8, 12, 18);         // stone pillar
-    g.fillStyle = '#c9bfa8'; g.fillRect(cx-6, 8, 12, 2);           // cap light
-    g.fillStyle = '#6e6552';
+    g.fillStyle = PAL.stoneDark; g.fillRect(cx-7, 26, 14, 4);          // footing
+    g.fillStyle = PAL.stone; g.fillRect(cx-6, 8, 12, 18);         // stone pillar
+    g.fillStyle = PAL.stoneLight; g.fillRect(cx-6, 8, 12, 2);           // cap light
+    g.fillStyle = PAL.stoneDark;
     for (let y=10;y<26;y+=5) g.fillRect(cx-6, y, 12, 1);           // ashlar courses
-    g.fillStyle = '#7a5a34';
+    g.fillStyle = PAL.timber;
     g.fillRect(dir===1 ? cx+6 : cx-18, 4, 12, 2);                  // trellis arm toward the path
     g.fillRect(dir===1 ? cx+16 : cx-16, 4, 2, 6);                  // arm drop
     if (state === 'blooming') {
@@ -4230,6 +4261,8 @@ function drawWorld(g, now) {
           g.fillRect(x+20, y+7, 9, 3); g.fillRect(x+22, y+5, 4, 2);
           g.fillStyle = 'rgba(128,138,186,' + na + ')';
           g.fillRect(x+8, y+8, 10, 4); g.fillRect(x+11, y+6, 4, 2);
+          g.fillStyle = 'rgba(32,42,67,' + na + ')';               // navy foothill (PAL.navy)
+          g.fillRect(x+14, y+10, 12, 3); g.fillRect(x+17, y+8, 5, 2);
           g.fillStyle = 'rgba(240,242,252,' + (gs==='blooming' ? '0.7' : '0.4') + ')';
           g.fillRect(x+12, y+6, 2, 1); g.fillRect(x+5, y+4, 1, 1);   // snow glints
           // distant islands on the water beyond the north gate (M5: the
@@ -4860,7 +4893,7 @@ function loop(now) {
   }
   // lamp + window glow at night (world space), flickering in with the night
   if (nightF > 0.02 && !inside) {
-    LAMPS.forEach((l, li) => { if (lampLit(li)) drawGlow(ctx, l.tx*TILE+16, l.ty*TILE+8, 46, 'rgba(255,205,100,A)', now, l.tx*2, nightF); });
+    LAMPS.forEach((l, li) => { if (lampLit(li)) drawGlow(ctx, l.tx*TILE+16, l.ty*TILE+8, 46, 'rgba(255,232,163,A)', now, l.tx*2, nightF); });
     for (const wg of WINDOW_GLOWS) drawGlow(ctx, wg.tx*TILE+16, wg.ty*TILE+16, 34, 'rgba(255,205,120,A)', now, wg.tx, nightF);
   }
   // RESTORE THE LIGHT: the central light over the fountain comes on because
