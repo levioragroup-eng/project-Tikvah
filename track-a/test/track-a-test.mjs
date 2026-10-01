@@ -1223,6 +1223,8 @@ try {
   ok('page paints dark lanterns for the dimmed town', pageHtml.includes('lampTileDark'));
   ok('page orders the lantern relight (LAMP_ORDER)', pageHtml.includes('LAMP_ORDER'));
   ok('page gates lamp light on restoration (lampLit)', pageHtml.includes('function lampLit('));
+  ok('page rests the fountain dry until the garden wakes', pageHtml.includes('fountainDryTile'));
+  ok('garden waking earns one soft chime (no fanfare UI)', pageHtml.includes('The Old Garden is coming back to life'));
   const s1 = new C('Restorer'); await s1.connect();
   s1.send({ t: 'create', name: 'Restorer' });
   ok('restore room created', await s1.waitFor(() => !!s1.state.code, 3000));

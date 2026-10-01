@@ -865,10 +865,15 @@ function onMsg(m) {
     case 'garden-bloom':
       gardenBloomed = true; burst = 200;
       toast('🌸 ' + m.message); bloomChime(); break;
-    case 'restore':
+    case 'restore': {
       // RESTORE THE LIGHT: the town itself changing is the only "progress
-      // UI" there is — no bars, no checklists, just the world.
-      restore = m.restore; break;
+      // UI" there is — no bars, no checklists, just the world. The first
+      // restoration earns one soft chime, the way the bloom always has.
+      const woke = restore && restore.stage !== 'awake' && m.restore && m.restore.stage === 'awake';
+      restore = m.restore;
+      if (woke) { bloomChime(); toast('🌿 The Old Garden is coming back to life'); }
+      break;
+    }
     case 'discovery':
       // the writing in the ruins — the one Scripture moment of the arc
       showVerse(m.ref, m.text); break;
@@ -2750,6 +2755,25 @@ const fountainTile = px(TILE,TILE,(g)=>{
   g.fillStyle = 'rgba(255,255,255,.9)';
   g.fillRect(12,1,1.4,1.4); g.fillRect(19,1.6,1.4,1.4);
 });
+const fountainDryTile = px(TILE,TILE,(g)=>{ g.clearRect(0,0,TILE,TILE);
+  // RESTORE THE LIGHT: the fountain runs dry until the Old Garden wakes —
+  // dusty stone where the water should be, one crack across the basin.
+  g.fillStyle = '#a99e86';
+  g.beginPath(); g.ellipse(16,21,10.1,6.3,0,0,7); g.fill();        // dry basin bed
+  g.fillRect(9,12.2,14.5,5.6);                                     // sheet zone: bare stone
+  g.beginPath(); g.ellipse(16,10.2,5.4,2,0,0,7); g.fill();          // lower tier pool, dry
+  g.beginPath(); g.ellipse(16,5.7,3.2,1.3,0,0,7); g.fill();         // upper tier pool, dry
+  g.fillStyle = '#978b71';
+  g.beginPath(); g.ellipse(15,20,7.5,4.4,0,0,7); g.fill();
+  g.fillStyle = '#b3a78d';
+  g.beginPath(); g.ellipse(14,19,4.5,2.4,0,0,7); g.fill();          // dusty sheen
+  g.strokeStyle = 'rgba(90,80,64,.8)'; g.lineWidth = 1;              // the basin crack
+  g.beginPath(); g.moveTo(10,24); g.lineTo(14,22); g.lineTo(17,24.5); g.lineTo(22,23); g.stroke();
+  g.fillStyle = 'rgba(120,108,84,.55)';                             // settled dust
+  for (const s of [[11,22],[19,25],[15,19],[21,20]]) g.fillRect(s[0],s[1],1.4,1);
+  g.fillStyle = '#a89e88'; g.fillRect(15,0,2.5,2.6);                 // no jet: stone finial only
+  g.fillStyle = '#b8a888'; g.fillRect(11.5,0.5,2.5,2.5); g.fillRect(18.5,1,2.5,2.5); // stilled spray
+});
 // Market stall (Batch 2): timber posts, peaked striped canopy, bunting, goods
 function stallTile(awning) {
   return px(TILE,TILE,(g)=>{
@@ -3894,11 +3918,11 @@ function drawWorld(g, now) {
     if (tx>=17 && tx<=22 && ty>=13 && ty<=17 && !(tx===FOUNTAIN.tx&&ty===FOUNTAIN.ty)) {
       const gv = hash2(tx, ty);
       // RESTORE THE LIGHT: the Old Garden reads its state from the town —
-      // blooming (full glory) > waking (first green) > dormant (quiet and
-      // waiting, revealed once the ruin opens, as before).
+      // blooming (full glory) > waking (first green) > dormant (abandoned
+      // and waiting, visible from arrival on).
       const bedState = gardenBloomed ? 'blooming'
         : (restore && restore.garden === 'waking') ? 'waking'
-        : (ruinOpen ? 'dormant' : null);
+        : 'dormant';
       if (bedState === 'blooming') {
         const sw = ((now/650)|0) % 2 === 1;
         const bt = gv < 0.34 ? (sw ? bloomTileS : bloomTile)
@@ -4014,6 +4038,11 @@ function drawWorld(g, now) {
     // spill sheets + expanding basin ripples + twinkling spray, all clocked by `now`
     if (tx===FOUNTAIN.tx && ty===FOUNTAIN.ty) {
       g.drawImage(fountainTile, x, y);
+      // RESTORE THE LIGHT: dry stone until the Old Garden wakes; then the
+      // water returns — spill sheets, basin ripple, twinkling spray.
+      const flowing = !restore || restore.garden !== 'dormant';
+      if (!flowing) g.drawImage(fountainDryTile, x, y);
+      else {
       for (let i=0;i<3;i++) {                                   // falling spill sheets
         const oy = (now/38 + i*11) % 5;
         g.fillStyle = 'rgba(220,242,255,.85)';
@@ -4029,6 +4058,7 @@ function drawWorld(g, now) {
         const tw = (Math.sin(now/260 + i*2.1) + 1) / 2;
         g.fillStyle = 'rgba(255,255,255,' + (0.25 + 0.55*tw).toFixed(2) + ')';
         g.fillRect(x+13+i*3, y+19+((i*5)%3), 1.5, 1.5);
+      }
       }
     }
     // lamps — RESTORE THE LIGHT: dark until the town is restored. The three
