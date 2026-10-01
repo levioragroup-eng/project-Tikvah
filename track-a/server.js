@@ -283,16 +283,19 @@ export const NPC_DEFS = [
     'If you ever need a quiet moment, the church candles are always lit for you.',
     'I dreamt the garden bloomed again last night. Maybe today is the day.',
     'You have a kind way about you. This village is lucky to have you.',
+    'The Old Garden by the fountain was our gathering place once. Nobody tends it anymore.',
   ]},
   { name: 'Elias', hx: 16, hy: 11, r: 2, lines: [
     "Fresh bread, friend! Well — the bread is imaginary, but the welcome is real.",
     'A village is just people who keep showing up for each other.',
     "Take your time browsing. Nobody's in a hurry in Tikvah.",
+    'The town lamps have been dark a long while now. We used to gather by their light.',
   ]},
   { name: 'Miriam', hx: 23, hy: 17, r: 2, lines: [
     "I saved you a seat by the window. The light is lovely at this hour.",
     'Cooking for someone is my favorite way to say I care.',
     'Evening settles soft here. Stay a while.',
+    'When the lamps went out, we all drifted home early. I miss the evenings together.',
   ]},
 ];
 

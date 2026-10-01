@@ -2677,6 +2677,24 @@ const lampTile = px(TILE,TILE,(g)=>{ g.clearRect(0,0,TILE,TILE);
   g.fillRect(10,2,12,3);                                        // lantern cap
   g.fillRect(14,0,4,2);                                         // finial
 });
+const lampTileDark = px(TILE,TILE,(g)=>{ g.clearRect(0,0,TILE,TILE);
+  // RESTORE THE LIGHT: the same lamppost, unlit — cool glass, no flame.
+  // The town lanterns have been dark a long while; it is the first quiet
+  // wrongness a traveler notices on arrival.
+  g.fillStyle='#26221e'; g.fillRect(11,26,10,4);                 // flared base
+  g.fillStyle='#17140f'; g.fillRect(11,29,10,1);
+  g.fillStyle='#3a352e'; g.fillRect(13,12,6,16);                 // iron post
+  g.fillStyle='#17140f'; g.fillRect(13,12,1,16);                 // post shade
+  g.fillStyle='#4a443a'; g.fillRect(17,12,1,16);                 // post light
+  g.fillStyle='#26221e'; g.fillRect(12,16,8,2); g.fillRect(12,22,8,1); // collar rings
+  g.fillStyle='#5d6a72'; g.fillRect(11,5,10,7);                  // cold, dark glass
+  g.fillStyle='#8fa0a8'; g.fillRect(13,6,3,5);                   // dull sheen
+  g.fillStyle='#26221e';
+  g.fillRect(11,5,10,1); g.fillRect(11,11,10,1);                 // frame top/bottom
+  g.fillRect(11,5,1,7); g.fillRect(20,5,1,7);                    // frame sides
+  g.fillRect(10,2,12,3);                                        // lantern cap
+  g.fillRect(14,0,4,2);                                         // finial
+});
 // FINAL-FIX: tiered STONE water fountain redrawn from scratch — masonry basin
 // ring of individual blocks, calm deep-blue water, stacked stone tiers with
 // spilling sheets, stone finial + modest jet. No crystal, no flame, no glow.
@@ -3607,6 +3625,17 @@ const CAFE = {x0:23, y0:13, x1:25, y1:15, counter:{tx:24,ty:16}};
 const FOUNTAIN = {tx:20, ty:15};
 const STONES = [{tx:6,ty:5},{tx:34,ty:5}];
 const LAMPS = [{tx:17,ty:12},{tx:22,ty:12},{tx:19,ty:17},{tx:27,ty:14},{tx:13,ty:16},{tx:20,ty:19}];
+// RESTORE THE LIGHT: which lamps burn, and in what order they return. The
+// relight walks in from the town's edges toward the plaza, so the last lamp
+// lights beside the garden before the central light comes on.
+const LAMP_ORDER = LAMPS.map((l, i) => ({ i, d: Math.hypot(l.tx - 20.5, l.ty - 15.5) })).sort((a, b) => b.d - a.d).map(o => o.i);
+function lampLit(idx) {
+  if (!restore) return true;                                 // nothing known yet: shipped look
+  if (restore.central) return true;                          // the Return is complete
+  if (LAMP_ORDER.indexOf(idx) < restore.lit) return true;    // relit on the Return, edges first
+  if (restore.garden !== 'dormant' && idx <= 2) return true; // garden lamps wake with the Old Garden
+  return false;                                              // dark — the first wrongness you notice
+}
 const STALLS = [{tx:14,ty:10,s:stallA},{tx:16,ty:10,s:stallB},{tx:18,ty:10,s:stallC}];
 const WATERFALLS = [{tx:3,ty:0},{tx:36,ty:0}];   // 1 wide x 2 tall
 const RUIN_ARCH = {tx:31, ty:3};                  // 2 wide x 2 tall
@@ -4002,11 +4031,14 @@ function drawWorld(g, now) {
         g.fillRect(x+13+i*3, y+19+((i*5)%3), 1.5, 1.5);
       }
     }
-    // lamps — VISUAL-PASS-TOWN: warm halo at night from the shared glow helper
-    for (const l of LAMPS) if (l.tx===tx && l.ty===ty) {
-      g.drawImage(lampTile, x, y-8);
-      if (night) drawGlow(g, x+16, y+2, 26, 'rgba(255,205,110,A)', now, l.tx*3+l.ty);
-    }
+    // lamps — RESTORE THE LIGHT: dark until the town is restored. The three
+    // lamps ringing the Old Garden wake with the garden; the rest return
+    // one by one on the Return (edges of town first, plaza last).
+    for (let li = 0; li < LAMPS.length; li++) { const l = LAMPS[li]; if (l.tx===tx && l.ty===ty) {
+      const lit = lampLit(li);
+      g.drawImage(lit ? lampTile : lampTileDark, x, y-8);
+      if (lit && night) drawGlow(g, x+16, y+2, 26, 'rgba(255,205,110,A)', now, l.tx*3+l.ty);
+    } }
     // dock
     if (tx===17 && ty===20) g.drawImage(dockTile, x, y);
     // flowers
@@ -4503,8 +4535,14 @@ function loop(now) {
   }
   // lamp + window glow at night (world space), flickering in with the night
   if (nightF > 0.02 && !inside) {
-    for (const l of LAMPS) drawGlow(ctx, l.tx*TILE+16, l.ty*TILE+8, 46, 'rgba(255,205,100,A)', now, l.tx*2, nightF);
+    LAMPS.forEach((l, li) => { if (lampLit(li)) drawGlow(ctx, l.tx*TILE+16, l.ty*TILE+8, 46, 'rgba(255,205,100,A)', now, l.tx*2, nightF); });
     for (const wg of WINDOW_GLOWS) drawGlow(ctx, wg.tx*TILE+16, wg.ty*TILE+16, 34, 'rgba(255,205,120,A)', now, wg.tx, nightF);
+  }
+  // RESTORE THE LIGHT: the central light over the fountain comes on because
+  // the community is restored enough to gather under it — never as a
+  // player's trophy. Soft in daylight, radiant at night.
+  if (restore && restore.central && !inside) {
+    drawGlow(ctx, 20*TILE+16, 15*TILE+8, 100, 'rgba(255,216,120,A)', now, 21, 0.30 + 0.70*nightF);
   }
   ctx.restore();
   updateTint(); // ease the day/night tint toward its phase target

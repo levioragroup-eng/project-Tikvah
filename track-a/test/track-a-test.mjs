@@ -1220,6 +1220,9 @@ try {
   ok('page renders the waking garden beds', pageHtml.includes("gardenBed('waking'"));
   ok('page takes restoration state from the server', pageHtml.includes("case 'restore':"));
   ok('page shows the discovery writing', pageHtml.includes("case 'discovery':"));
+  ok('page paints dark lanterns for the dimmed town', pageHtml.includes('lampTileDark'));
+  ok('page orders the lantern relight (LAMP_ORDER)', pageHtml.includes('LAMP_ORDER'));
+  ok('page gates lamp light on restoration (lampLit)', pageHtml.includes('function lampLit('));
   const s1 = new C('Restorer'); await s1.connect();
   s1.send({ t: 'create', name: 'Restorer' });
   ok('restore room created', await s1.waitFor(() => !!s1.state.code, 3000));
