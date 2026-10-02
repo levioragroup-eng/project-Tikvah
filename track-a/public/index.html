@@ -1873,6 +1873,14 @@ function tuft(g, x, y, dark, light) {
   g.fillStyle = light;
   g.fillRect(x + 2, y - 4, 1, 1);
 }
+// VISUAL-PASS-2: fan tuft — five blades fanned wide (meadow variety).
+function tuft2(g, x, y, dark, light) {
+  g.fillStyle = dark;
+  g.fillRect(x - 2, y - 2, 1, 2); g.fillRect(x, y - 5, 1, 5); g.fillRect(x + 2, y - 3, 1, 3);
+  g.fillRect(x + 4, y - 2, 1, 2); g.fillRect(x - 3, y - 1, 1, 1);
+  g.fillStyle = light;
+  g.fillRect(x, y - 5, 1, 1); g.fillRect(x + 2, y - 3, 1, 1);
+}
 // VISUAL-PASS-BOARDMATCH: layered pixel-cluster canopy. blobs = [cx,cy,r]
 // circles forming the crown: a deep silhouette ring, a lit inner mass, then
 // seeded 2px clusters (deep shadow lower-right, mid, sunlit upper-left,
@@ -1965,45 +1973,65 @@ function grassTile(variant) {
     if (variant === 2) { // dry golden flecks in the deeper meadow
       speckle(g, R, 5, '#D8C39B', 2, 1);
     }
+    // VISUAL-PASS-2: scattered 1-2px flower dots at board density so no
+    // stretch of meadow reads bare (colors cycle the endorsed set).
+    const dotCols = [PAL.flowerPink, PAL.flowerCream, PAL.flowerLavender, PAL.flowerBlue];
+    const nDots = variant === 1 ? 9 : variant === 2 ? 4 : 6;
+    for (let i = 0; i < nDots; i++) {
+      const x = 2 + R(28), y = 2 + R(28), big = variant === 1 && i % 3 === 0;
+      g.fillStyle = dotCols[R(4)]; g.fillRect(x, y, big ? 2 : 1, big ? 2 : 1);
+      if (i % 3 === 0) { g.fillStyle = '#FFF3C4'; g.fillRect(x, y, 1, 1); }
+    }
+    if (variant === 1) for (let i = 0; i < 3; i++) tuft2(g, 4 + R(24), 8 + R(20), dark, light);
   });
 }
 const grassA = grassTile(0), grassB = grassTile(1);
 const grassC = grassTile(2);
 const pathTile = px(TILE,TILE,(g)=>{
-  // VISUAL-PASS-BOARDMATCH: hand-laid warm sand pavers — irregular stones on
-  // pale dirt mortar, sunlit top edges, grass creeping into the joints
+  // VISUAL-PASS-2: hand-laid flagstone ellipses — dark rim, sunlit top face,
+  // worn bottom shade — never a checkerboard.
   const R = srand(0x9a7e);
   g.fillStyle = PAL.pathShadow; g.fillRect(0,0,TILE,TILE);          // worn dirt mortar
   const shades = [PAL.path, PAL.pathLight, PAL.path, mixHex(PAL.path, PAL.pathLight, .5), mixHex(PAL.path, PAL.pathShadow, .3)];
+  const stone = (cx, cy, rx, ry, base) => {
+    g.fillStyle = mixHex(PAL.pathShadow, '#5A4632', .35);         // dark rim drops 1px
+    g.beginPath(); g.ellipse(cx, cy + 1.2, rx, ry, 0, 0, 7); g.fill();
+    g.fillStyle = base;
+    g.beginPath(); g.ellipse(cx, cy, rx, ry, 0, 0, 7); g.fill();
+    g.fillStyle = 'rgba(255,248,225,.35)';                         // sunlit top face
+    g.beginPath(); g.ellipse(cx - rx * .18, cy - ry * .32, rx * .58, ry * .42, 0, 0, 7); g.fill();
+    g.fillStyle = 'rgba(120,95,60,.30)'; g.fillRect(cx - 2, cy + ry - 2, 4, 1);
+  };
   for (let row=0; row<4; row++) {
-    const y = row*8, off = (row%2)*8;
-    for (let x=-1; x<3; x++) {
-      const sx = x*16 + off + (R(3)-1);
-      g.fillStyle = shades[R(5)]; g.fillRect(sx, y+1, 13+R(3), 6);
-      g.fillStyle = PAL.pathLight; g.fillRect(sx, y+1, 13, 1);      // sunlit top edge
-      g.fillStyle = 'rgba(120,95,60,.35)'; g.fillRect(sx, y+6, 13, 1); // worn bottom shade
-      g.fillStyle = 'rgba(183,157,120,.5)'; g.fillRect(sx+2+R(9), y+3+R(2), 2, 1); // grit
-      if (R(4) === 0) { g.fillStyle = PAL.meadowDark; g.fillRect(sx+R(12), y+5, 2, 2); } // grass in the joint
+    const cy = 4 + row*8, off = (row%2)*8;
+    for (let cx0=-1; cx0<3; cx0++) {
+      stone(cx0*16 + off + 8 + (R(3)-1), cy, 6.4 + R(2), 3.4, shades[R(5)]);
+      if (R(4) === 0) { g.fillStyle = PAL.meadowDark; g.fillRect(cx0*16 + off + 2 + R(12), cy + 3, 2, 2); } // grass in the joint
     }
   }
 });
 const plazaTile = px(TILE,TILE,(g)=>{
-  // VISUAL-PASS-BOARDMATCH: town-square flagstones — big warm slabs, lighter
-  // worn centers, pale sand swept into the joints (board's sandy square)
+  // VISUAL-PASS-2: town-square flagstone ellipses — big warm slabs with
+  // dark rims and worn light centers (the board's sandy paved square)
   const R = srand(0xc0da);
   g.fillStyle = mixHex(PAL.pathShadow, PAL.path, .35); g.fillRect(0,0,TILE,TILE); // sandy mortar
-  for (let row=0; row<2; row++) for (let col=0; col<2; col++) {
-    const x = col*16 + (row%2)*3 - 1, y = row*16 + 1, w = 15, h = 14;
-    g.fillStyle = [PAL.path, PAL.pathLight, PAL.path][R(3)]; g.fillRect(x, y, w, h);
-    g.fillStyle = 'rgba(255,248,225,.22)'; g.fillRect(x+2, y+2, w-5, 4);   // worn light center
-    g.fillStyle = PAL.pathLight; g.fillRect(x, y, w, 1);                  // top edge light
-    g.fillStyle = 'rgba(120,95,60,.30)'; g.fillRect(x, y+h-1, w, 1); g.fillRect(x+w-1, y, 1, h);
-    g.fillStyle = 'rgba(183,157,120,.45)';
-    for (let i=0;i<3;i++) g.fillRect(x+2+R(11), y+3+R(9), 2, 1);          // sand grit
-    if (R(5) === 0) { g.fillStyle = PAL.stone; g.fillRect(x+3+R(8), y+4+R(7), 4, 3); } // inset stone
-  }
+  const stone = (cx, cy, rx, ry, base) => {
+    g.fillStyle = mixHex(PAL.pathShadow, '#5A4632', .4);
+    g.beginPath(); g.ellipse(cx, cy + 1.4, rx, ry, 0, 0, 7); g.fill();
+    g.fillStyle = base;
+    g.beginPath(); g.ellipse(cx, cy, rx, ry, 0, 0, 7); g.fill();
+    g.fillStyle = 'rgba(255,248,225,.30)';
+    g.beginPath(); g.ellipse(cx - rx * .16, cy - ry * .3, rx * .6, ry * .44, 0, 0, 7); g.fill();
+    g.fillStyle = 'rgba(183,157,120,.5)';
+    for (let i=0;i<2;i++) g.fillRect(cx - 4 + R(9), cy + R(5), 2, 1);  // sand grit
+  };
+  stone(8 + (R(3)-1), 8, 7.8, 7.2, PAL.path);
+  stone(24 + (R(3)-1), 9, 7.8, 7.2, PAL.pathLight);
+  stone(9 + (R(3)-1), 24, 7.8, 7.2, PAL.pathLight);
+  stone(25 + (R(3)-1), 25, 7.8, 7.2, PAL.path);
+  stone(16, 17, 6.6, 6.2, mixHex(PAL.path, PAL.pathLight, .5));    // fuller center stone
   g.fillStyle = 'rgba(232,213,176,.5)';
-  for (let i=0;i<6;i++) g.fillRect(R(TILE), R(TILE), 2, 1);               // swept sand dust
+  for (let i=0;i<6;i++) g.fillRect(R(TILE), R(TILE), 2, 1);         // swept sand dust
 });
 // ---- VISUAL-PASS-TOWN: plaza + path edge dressing (all precomputed, drawn as overlays) ----
 // Soft grass fringe for path tiles that border grass: ragged, deterministic, tileable.
@@ -2686,8 +2714,8 @@ function treeTile(v) {
   // sticks — supersized canvases (blit bottom-anchored in drawWorld), layered
   // pixel-cluster canopies with a deep silhouette ring, shaded trunks, and a
   // soft ground shadow. Collision is isTree(); canvas size is render-only.
-  const W = v === 4 ? 80 : (v === 1 || v === 2) ? 64 : v === 5 ? 56 : 48;
-  const H = v === 4 ? 88 : v === 3 ? 80 : (v === 1 || v === 2 || v === 5) ? 72 : 64;
+  const W = v === 4 ? 80 : (v === 1 || v === 2 || v === 6) ? 64 : v === 5 ? 56 : 48;
+  const H = v === 4 ? 88 : v === 3 ? 80 : (v === 1 || v === 2 || v === 5 || v === 6) ? 72 : 64;
   return px(W, H, (g) => {
     g.clearRect(0,0,W,H);
     const R = srand(0x7ee5 + v*331);   // deterministic crowns, identical every load
@@ -2741,6 +2769,12 @@ function treeTile(v) {
       for (let i = 0; i < 12; i++) g.fillRect(22 + R(36), 16 + R(30), 2, 1);
       g.fillStyle = PAL.leafDark;
       for (const vx of [18, 30, 50, 62]) { const len = 6 + R(6); g.fillRect(vx, 52, 1, len); g.fillStyle = PAL.leaf; g.fillRect(vx - 1, 52 + R(len), 2, 2); g.fillStyle = PAL.leafDark; }
+      // VISUAL-PASS-2: dangling leaf bunches under the high crown
+      for (const dx2 of [22, 40, 58]) {
+        g.fillStyle = '#24401F'; g.beginPath(); g.arc(dx2, 66, 4, 0, 7); g.fill();
+        g.fillStyle = PAL.leaf; g.fillRect(dx2 - 1, 63, 3, 3);
+        g.fillStyle = PAL.leafLight; g.fillRect(dx2 - 1, 63, 1, 1);
+      }
     } else if (v === 5) { // VISUAL-PASS-FOREST: slim birch — pale trunk, airy
       // leaf tufts with gaps so light passes through (board EXPLORE depth)
       groundShadow(24);
@@ -2752,6 +2786,19 @@ function treeTile(v) {
       const blobs = [[28,16,13],[15,27,10],[41,27,10],[28,31,12]];
       blobCanopy(g, blobs, R, { deep:PAL.leafDark, main:PAL.leaf, mid:PAL.leafLight, lite:PAL.meadowLight,
         deep2:PAL.leafDark, spark:'#FFF6D8', nDeep:36, nMid:60, nLite:56, nSpark:18 });
+    } else if (v === 6) { // VISUAL-PASS-2: alt round crown — offset silhouette
+      groundShadow(34);
+      trunk(6, 18, '#4A3220', PAL.timber, '#77563A');
+      g.fillStyle = PAL.timber;
+      g.fillRect(cx - 9, H - 28, 3, 10); g.fillRect(cx + 6, H - 30, 3, 12);
+      const blobs = [[30,34,17],[16,26,12],[46,28,13],[24,16,11],[40,44,13],[14,42,10],[50,44,10]];
+      blobCanopy(g, blobs, R, { deep:PAL.leafDark, main:PAL.leaf, mid:PAL.leafLight, lite:PAL.meadowLight,
+        deep2:'#2F4F2B', spark:'#CFE8A8', nDeep:74, nMid:104, nLite:76, nSpark:22 });
+      for (const [dx2, dy2] of [[12,48],[26,56],[44,54],[54,46],[34,58]]) {
+        g.fillStyle = PAL.leafDark; g.beginPath(); g.arc(dx2, dy2, 3.4, 0, 7); g.fill();
+        g.fillStyle = PAL.leaf; g.fillRect(dx2 - 1, dy2 - 2, 3, 3);
+        g.fillStyle = PAL.leafLight; g.fillRect(dx2 - 1, dy2 - 2, 1, 1);
+      }
     } else { // round canopy: dense blob (v=1 green) or cherry blossom (v=2)
       const bl = v === 2;
       groundShadow(36);
@@ -2771,12 +2818,63 @@ function treeTile(v) {
         blobCanopy(g, blobs, R, { deep:PAL.leafDark, main:PAL.leaf, mid:PAL.leafLight, lite:PAL.meadowLight,
           deep2:'#2F4F2B', spark:'#CFE8A8', nDeep:80, nMid:110, nLite:80, nSpark:20 });
       }
+      // VISUAL-PASS-2: dangle clusters hang off the crown's lower edge so
+      // neighbouring canopies interlock into groves like the board.
+      const dcol = bl ? ['#B45A74', PAL.blossom, '#F9D9DE'] : [PAL.leafDark, PAL.leaf, PAL.leafLight];
+      for (const [dx2, dy2] of [[10,50],[22,58],[42,58],[54,48],[32,60]]) {
+        g.fillStyle = dcol[0]; g.beginPath(); g.arc(dx2, dy2, 3.4, 0, 7); g.fill();
+        g.fillStyle = dcol[1]; g.fillRect(dx2 - 1, dy2 - 2, 3, 3);
+        g.fillStyle = dcol[2]; g.fillRect(dx2 - 1, dy2 - 2, 1, 1);
+      }
     }
   });
 }
 const treeA = treeTile(0), treeB = treeTile(1);
 const treeBlossom = treeTile(2), treeTallPine = treeTile(3);
 const treeAncient = treeTile(4), treeBirch = treeTile(5);   // VISUAL-PASS-FOREST
+const treeRoundAlt = treeTile(6);                            // VISUAL-PASS-2
+// VISUAL-PASS-2: east-forest pine variety — kind 0 taller/thinner, kind 1
+// shorter/wider, each with its own tint, so stands never read as a tree line.
+function pineVariant(kind) {
+  const W = kind === 0 ? 52 : 44, H = kind === 0 ? 88 : 70;
+  return px(W, H, (g) => {
+    g.clearRect(0,0,W,H);
+    const R = srand(0x91e0 + kind*104729);
+    const cx = W >> 1;
+    g.fillStyle = 'rgba(35,55,30,.38)'; g.fillRect(cx - 15, H - 6, 30, 4);
+    g.fillStyle = 'rgba(35,55,30,.22)'; g.fillRect(cx - 12, H - 3, 24, 2);
+    // trunk
+    const tw0 = 5, th0 = 14, tx0 = cx - (tw0 >> 1);
+    g.fillStyle = '#5E4230'; g.fillRect(tx0, H - th0, tw0, th0);
+    g.fillStyle = '#77563A'; g.fillRect(tx0, H - th0, 2, th0);
+    g.fillStyle = '#4A3220'; g.fillRect(tx0 + tw0 - 2, H - th0, 2, th0);
+    g.fillStyle = '#4A3220'; g.fillRect(tx0 - 3, H - 4, tw0 + 6, 3);
+    const tiers = kind === 0 ? 7 : 5, top = 2, bot = H - 10, th = (bot - top) / tiers;
+    const sil = kind === 0 ? '#26452A' : '#2F5233';
+    const lit = kind === 0 ? PAL.pine : mixHex(PAL.pine, '#719E56', .18);
+    for (let i = 0; i < tiers; i++) {
+      const twd = 10 + (i / (tiers - 1)) * (W - 14), ty = top + i * th;
+      for (let y = 0; y < th + 2; y += 2) {
+        const t = y / (th + 2), wdt = Math.round(twd * (0.42 + 0.58 * t));
+        g.fillStyle = sil; g.fillRect(cx - (wdt >> 1), ty + y, wdt, 2);
+      }
+    }
+    for (let i = 0; i < tiers; i++) {
+      const twd = 10 + (i / (tiers - 1)) * (W - 14), ty = top + i * th;
+      for (let y = 0; y < th; y += 2) {
+        const t = y / th, wdt = Math.round(twd * (0.42 + 0.58 * t)) - 3;
+        g.fillStyle = lit; g.fillRect(cx - (wdt >> 1) - 1, ty + y, Math.round(wdt * 0.62), 2);
+        g.fillStyle = 'rgba(54,93,60,.85)'; g.fillRect(cx - (wdt >> 1) - 1, ty + y + (th > 12 ? 4 : 3), wdt, 1);
+      }
+      g.fillStyle = PAL.pineLight;
+      for (let k = 0; k < 5; k++) g.fillRect(cx - (twd >> 1) + R(6), ty + R(Math.max(Math.round(th) - 2, 2)), 2, 2);
+      g.fillStyle = PAL.meadowLight;
+      g.fillRect(cx - (twd >> 1) + R(4), ty + R(Math.max(Math.round(th) - 2, 2)), 1, 1);
+    }
+    g.fillStyle = PAL.pineLight; g.fillRect(cx - 1, 0, 2, 3);
+  });
+}
+const pineTallB = pineVariant(0), pineTallC = pineVariant(1);
 // VISUAL-PASS-FOREST: forest-floor overlays — all transparent, drawn on
 // walkable grass tiles only (decor; collision constants untouched).
 const forestLightA = px(TILE,TILE,(g)=>{ g.clearRect(0,0,TILE,TILE);
@@ -4530,14 +4628,18 @@ function drawWorld(g, now) {
     if (FARM_EDGE.get(tx + ',' + ty)) g.drawImage(farmEdgeTuft, x, y);
     if (isTree(tx,ty)) {
       // BATCH7: tall pines in the forest bands, pink blossoms at the lane clusters
-      let tv = ((tx+ty)%2===0) ? treeA : treeB;
+      let tv = ((tx+ty)%2===0) ? treeA : (hash2(tx*11+3, ty*7+1) < 0.5 ? treeB : treeRoundAlt);
       if (isBlossomSpot(tx,ty)) tv = treeBlossom;
       else if (tx <= 4 || tx >= 35 || (ty <= 2 && tx >= 5 && tx <= 34)) {
         // VISUAL-PASS-FOREST: board EXPLORE forest — tall pines, ancient
         // broadleaf, slim birch, scattered pink blossoms (deterministic mix,
         // isTree()/collision untouched)
         const fh = hash2(tx, ty);
-        tv = fh < 0.50 ? treeTallPine : fh < 0.72 ? treeAncient
+        if (fh < 0.50) {          // VISUAL-PASS-2: pine height/tint variety
+          const ph = hash2(tx*7+1, ty*5+3);
+          tv = ph < 0.42 ? treeTallPine : ph < 0.72 ? pineTallB : pineTallC;
+        }
+        else tv = fh < 0.72 ? treeAncient
            : fh < 0.84 ? treeBirch : fh < 0.93 ? treeBlossom : treeB;
       }
       // VISUAL-PASS-BOARDMATCH: big crowns draw bottom-anchored on their tile
