@@ -3137,6 +3137,69 @@ const houseRoof = px(TILE,TILE,(g)=>{
   g.fillStyle = PAL.terracottaDark; g.fillRect(0,28,TILE,4);             // eave shadow
   g.fillStyle = PAL.pathLight; g.fillRect(0,28,TILE,1);             // eave trim
 });
+// VISUAL-PASS-2: cottage upper rows — plain plaster, attic round window, ivy
+// corner (ground floor keeps the shuttered houseWall windows), + roof dormer.
+const houseWallBase = (g, R) => {
+  g.fillStyle = PAL.plaster; g.fillRect(0,0,TILE,TILE);
+  g.fillStyle = PAL.plasterShadow;
+  for (let i=0;i<7;i++){ const x=(i*11+3)%26+2, y=(i*7+5)%24+4; g.fillRect(x,y,2,2); }
+  g.fillStyle = 'rgba(255,250,235,.35)'; g.fillRect(0,0,TILE,2);
+  g.fillStyle = PAL.stone; g.fillRect(0,28,TILE,4);
+  g.fillStyle = PAL.stoneLight; g.fillRect(0,28,TILE,1);
+  g.fillStyle = PAL.stoneDark; for (let x=2;x<TILE;x+=8) g.fillRect(x,29,1,3);
+  g.fillStyle = PAL.timber;
+  g.fillRect(0,0,TILE,4); g.fillRect(0,24,TILE,4);
+  g.fillRect(0,0,4,TILE); g.fillRect(28,0,4,TILE);
+  g.fillStyle = '#8F6B4F'; g.fillRect(0,0,TILE,1); g.fillRect(0,0,1,TILE);
+};
+const houseWallPlain = px(TILE,TILE,(g)=>{
+  houseWallBase(g, srand(0x40e6));
+  // hanging flower basket by the beam (board cottage dressing)
+  g.fillStyle = '#5E4230'; g.fillRect(22,4,1,4);
+  g.fillStyle = PAL.leafDark; g.fillRect(19,8,7,3);
+  g.fillStyle = PAL.leaf; g.fillRect(20,7,5,2);
+  g.fillStyle = PAL.flowerPink; g.fillRect(20,8,2,2); g.fillRect(24,9,2,2);
+  g.fillStyle = PAL.flowerCream; g.fillRect(23,7,2,2);
+  g.fillStyle = PAL.terracotta; g.fillRect(20,11,5,3);
+  // small shuttered vent slit under the eaves line
+  g.fillStyle = '#5E4230'; g.fillRect(8,10,6,8);
+  g.fillStyle = PAL.leafDark; g.fillRect(9,11,4,6);
+  g.fillStyle = PAL.leaf; g.fillRect(9,13,4,1); g.fillRect(9,15,4,1);
+});
+const houseWallAttic = px(TILE,TILE,(g)=>{
+  houseWallBase(g, srand(0x40e7));
+  g.fillStyle = PAL.stoneDark; g.beginPath(); g.arc(16,14,7,0,7); g.fill();   // round attic window
+  g.fillStyle = PAL.stoneLight; g.beginPath(); g.arc(16,14,6,0,7); g.fill();
+  g.fillStyle = '#ffe9a8'; g.beginPath(); g.arc(16,14,4.6,0,7); g.fill();
+  g.fillStyle = '#fff6d8'; g.fillRect(13,11,3,3);
+  g.fillStyle = '#5E4230'; g.fillRect(15,10,2,8); g.fillRect(12,13,8,2);
+});
+const houseWallIvy = px(TILE,TILE,(g)=>{
+  houseWallBase(g, srand(0x40e9));
+  const R = srand(0x1eaf);
+  g.fillStyle = PAL.leafDark;                                   // ivy mass at the corner base
+  for (let i=0;i<26;i++) g.fillRect(24+R(8), 12+R(16), 2, 2);
+  g.fillStyle = PAL.leaf;
+  for (let i=0;i<18;i++) g.fillRect(24+R(8), 10+R(16), 2, 2);
+  g.fillStyle = PAL.leafLight;
+  for (let i=0;i<8;i++) g.fillRect(25+R(6), 11+R(12), 1, 1);
+  g.fillStyle = PAL.flowerCream;
+  for (let i=0;i<3;i++) g.fillRect(25+R(6), 14+R(10), 2, 2);
+});
+const houseDormer = px(TILE,TILE,(g)=>{ g.clearRect(0,0,TILE,TILE);
+  // little pitched dormer poking from the roof row
+  g.fillStyle = PAL.terracottaDark;
+  g.beginPath(); g.moveTo(9,16); g.lineTo(16,4); g.lineTo(23,16); g.closePath(); g.fill();
+  g.fillStyle = PAL.terracotta;
+  g.beginPath(); g.moveTo(11,15); g.lineTo(16,7); g.lineTo(21,15); g.closePath(); g.fill();
+  g.fillStyle = PAL.goldLight; g.fillRect(15,4,2,2);
+  g.fillStyle = PAL.plaster; g.fillRect(12,15,8,10);
+  g.fillStyle = '#5E4230'; g.fillRect(13,17,6,7);
+  g.fillStyle = '#ffe9a8'; g.fillRect(14,18,4,5);
+  g.fillStyle = '#fff6d8'; g.fillRect(14,18,2,2);
+  g.fillStyle = '#5E4230'; g.fillRect(15,18,1,5);
+  g.fillStyle = PAL.timber; g.fillRect(11,24,10,2);
+});
 // Cafe walls (Batch 2): cream + timber, shop window with goods on shelves
 const cafeWall = px(TILE,TILE,(g)=>{
   g.fillStyle = PAL.plaster; g.fillRect(0,0,TILE,TILE);
@@ -3185,6 +3248,67 @@ const cafeRoof = px(TILE,TILE,(g)=>{
   g.fillStyle = PAL.terracottaDark; g.fillRect(0,4,TILE,1);
   g.fillStyle = PAL.terracottaDark; g.fillRect(0,28,TILE,4);
   g.fillStyle = PAL.pathLight; g.fillRect(0,28,TILE,1);
+});
+// VISUAL-PASS-2: cafe wall variety (the 3x3 wall must never read as a
+// repeated grid) + a continuous scalloped valance over the ground floor.
+const cafeWallB = px(TILE,TILE,(g)=>{          // twin windows, flower boxes, cup sign
+  g.fillStyle = PAL.plaster; g.fillRect(0,0,TILE,TILE);
+  g.fillStyle = PAL.plasterShadow;
+  for (let i=0;i<5;i++){ const x=(i*13+5)%26+2, y=(i*9+3)%24+4; g.fillRect(x,y,2,2); }
+  g.fillStyle = PAL.timber;
+  g.fillRect(0,0,TILE,4); g.fillRect(0,28,TILE,4);
+  g.fillRect(0,0,4,TILE); g.fillRect(28,0,4,TILE);
+  g.fillStyle = '#8F6B4F'; g.fillRect(0,0,TILE,1); g.fillRect(0,0,1,TILE);
+  for (const wx of [5,19]) {                                     // twin windows
+    g.fillStyle = '#5E4230'; g.fillRect(wx,8,9,11);
+    g.fillStyle = '#ffe9a8'; g.fillRect(wx+1,9,7,9);
+    g.fillStyle = '#fff6d8'; g.fillRect(wx+1,9,3,4);
+    g.fillStyle = '#5E4230'; g.fillRect(wx+4,9,1,9); g.fillRect(wx+1,13,7,1);
+    g.fillStyle = '#8F6B4F'; g.fillRect(wx-1,19,11,2);         // sills
+    g.fillStyle = PAL.leaf; for (let x=wx;x<wx+8;x+=3) g.fillRect(x,20,2,2);
+    g.fillStyle = ['#E99CAF','#F2E0B5','#B8A6D9'][wx % 3];
+    g.fillRect(wx+1,18,2,2); g.fillRect(wx+5,18,2,2);
+  }
+  g.fillStyle = PAL.timber; g.fillRect(10,27,12,3);              // hanging sign board
+  g.fillStyle = '#e8b93c'; g.fillRect(14,21,4,4);                // gold cup sign disc
+  g.fillStyle = '#fff3c4'; g.fillRect(14,21,4,1);
+  g.fillRect(18,22,2,2);
+});
+const cafeWallC = px(TILE,TILE,(g)=>{          // shuttered window, plain glass
+  g.fillStyle = PAL.plaster; g.fillRect(0,0,TILE,TILE);
+  g.fillStyle = PAL.plasterShadow;
+  for (let i=0;i<6;i++){ const x=(i*11+2)%26+2, y=(i*7+6)%22+5; g.fillRect(x,y,2,2); }
+  g.fillStyle = PAL.timber;
+  g.fillRect(0,0,TILE,4); g.fillRect(0,28,TILE,4);
+  g.fillRect(0,0,4,TILE); g.fillRect(28,0,4,TILE);
+  g.fillStyle = '#8F6B4F'; g.fillRect(0,0,TILE,1); g.fillRect(0,0,1,TILE);
+  g.fillStyle = PAL.leafDark; g.fillRect(6,8,4,14); g.fillRect(22,8,4,14);   // shutters
+  g.fillStyle = PAL.leaf; g.fillRect(6,12,4,1); g.fillRect(6,16,4,1); g.fillRect(22,12,4,1); g.fillRect(22,16,4,1);
+  g.fillStyle = '#5E4230'; g.fillRect(10,7,12,15);              // window
+  g.fillStyle = '#cfe4ea'; g.fillRect(11,8,10,13);              // cool day glass
+  g.fillStyle = 'rgba(255,255,255,.6)'; g.fillRect(11,8,4,5);
+  g.fillStyle = '#5E4230'; g.fillRect(15,8,2,13); g.fillRect(11,13,10,2);
+  g.fillStyle = '#8F6B4F'; g.fillRect(9,22,14,2);               // sill
+  g.fillStyle = PAL.leaf; for (let x=10;x<22;x+=4) g.fillRect(x,23,3,2);
+  const cbl2 = [PAL.flowerCream, PAL.flowerPink, PAL.flowerLavender];
+  for (let i=0;i<3;i++){ const x=11+i*4;
+    g.fillStyle = cbl2[i]; g.fillRect(x,21,3,3);
+    g.fillStyle = '#FFF3C4'; g.fillRect(x,21,1,1); }
+  g.fillStyle = PAL.timber; g.fillRect(9,25,14,3);              // box
+});
+// continuous scalloped valance: stripes repeat every 32px so adjacent tiles
+// line up into one awning across the cafe front (market-stall idiom).
+const cafeAwning = px(TILE,TILE,(g)=>{ g.clearRect(0,0,TILE,TILE);
+  g.fillStyle = PAL.terracottaDark; g.fillRect(0,0,TILE,3);    // top roll
+  for (let i=0;i<4;i++){ const x=i*8;
+    g.fillStyle = i % 2 ? PAL.cream : PAL.terracotta; g.fillRect(x,3,8,6);
+    g.fillStyle = 'rgba(255,255,255,.35)'; g.fillRect(x,3,8,1);
+  }
+  for (let i=0;i<4;i++){ const x=i*8;                          // scalloped edge
+    g.fillStyle = i % 2 ? PAL.cream : PAL.terracotta;
+    g.beginPath(); g.arc(x+4,9,4,0,Math.PI); g.fill(); }
+  g.fillStyle = 'rgba(40,25,10,.28)'; g.fillRect(0,13,TILE,2); // drop shadow
+  g.fillStyle = '#5E4230'; g.fillRect(1,0,2,9); g.fillRect(29,0,2,9); // cords
 });
 // Home door (Batch 2): planked wood, iron hinges, brass knob, lintel, step
 const doorTileH = px(TILE,TILE,(g)=>{
@@ -3331,6 +3455,113 @@ const churchWallEx = px(TILE,TILE,(g)=>{
   g.fillStyle = PAL.stoneDark; g.fillRect(7,26,18,2);               // sill
   g.fillStyle = '#E7DCC0'; g.fillRect(7,26,18,1);
   g.fillStyle = 'rgba(60,40,20,.20)'; g.fillRect(0,28,TILE,4);  // stone base shadow
+});
+// VISUAL-PASS-2: church facade depth — plain ashlar, rose window, recessed
+// niche, corner buttresses, plinth and ivy, so the 5-wide wall stops reading
+// as a flat icon grid (render only; footprint + collision untouched).
+const churchWallAshlar = px(TILE,TILE,(g)=>{
+  g.fillStyle = '#E7DCC0'; g.fillRect(0,0,TILE,TILE);          // warm sandstone
+  g.fillStyle = PAL.plasterShadow;
+  for (let y=9;y<TILE;y+=6) g.fillRect(0,y,TILE,1);
+  g.fillStyle = 'rgba(119,115,96,.55)';
+  for (let r=0;r<5;r++){ const y0=4+r*6, off=(r%2)*8;
+    for (let x=off;x<TILE;x+=16) g.fillRect(x,y0,1,6); }
+  g.fillStyle = 'rgba(255,255,255,.22)'; g.fillRect(0,4,TILE,1);
+  const R = srand(0x51e);
+  g.fillStyle = 'rgba(160,148,120,.5)';
+  for (let i=0;i<7;i++) g.fillRect(2+R(26), 6+R(22), 3, 2);    // weathered stones
+  g.fillStyle = PAL.timber; g.fillRect(0,0,TILE,4);
+  g.fillStyle = '#8F6B4F'; g.fillRect(0,0,TILE,1);
+  g.fillStyle = '#5E4230';
+  for (let x=3;x<32;x+=8) g.fillRect(x,0,2,4);
+  g.fillStyle = 'rgba(60,40,20,.25)'; g.fillRect(0,28,TILE,4);
+});
+const churchWallRose = px(TILE,TILE,(g)=>{
+  g.drawImage(churchWallAshlar,0,0);
+  // stone ring + tracery
+  g.fillStyle = PAL.stoneDark; g.beginPath(); g.arc(16,18,13,0,7); g.fill();
+  g.fillStyle = PAL.stoneLight; g.beginPath(); g.arc(16,18,11.5,0,7); g.fill();
+  g.fillStyle = PAL.navy; g.beginPath(); g.arc(16,18,10,0,7); g.fill();
+  // petal quadrants: eight small panes around the ring
+  const petals = ['#e8b93c','#4a8ad9','#e87aa0','#91BBD0','#e8b93c','#4a8ad9','#e87aa0','#91BBD0'];
+  for (let i=0;i<8;i++){
+    const a = i*Math.PI/4 + Math.PI/8, px0 = 16 + Math.cos(a)*6.6, py0 = 18 + Math.sin(a)*6.6;
+    g.fillStyle = petals[i]; g.fillRect(Math.round(px0)-2, Math.round(py0)-2, 4, 4);
+  }
+  g.fillStyle = PAL.stoneDark;                                   // tracery spokes
+  for (let i=0;i<8;i++){
+    const a = i*Math.PI/4;
+    for (let r0=3;r0<10;r0+=2) g.fillRect(Math.round(16+Math.cos(a)*r0), Math.round(18+Math.sin(a)*r0), 1, 1);
+  }
+  g.fillStyle = PAL.goldLight; g.beginPath(); g.arc(16,18,3.4,0,7); g.fill();
+  g.fillStyle = PAL.cream; g.fillRect(15,17,2,2);
+  const gl = g.createRadialGradient(16,18,1,16,18,13);
+  gl.addColorStop(0,'rgba(255,236,170,.55)'); gl.addColorStop(1,'rgba(255,236,170,0)');
+  g.fillStyle = gl; g.fillRect(3,5,26,26);
+  g.fillStyle = 'rgba(255,255,255,.45)'; g.fillRect(10,10,2,5);  // glass shine
+});
+const churchWallNiche = px(TILE,TILE,(g)=>{
+  g.drawImage(churchWallAshlar,0,0);
+  g.fillStyle = PAL.stoneLight; g.fillRect(8,8,16,20);        // stone surround
+  g.beginPath(); g.arc(16,8,8,Math.PI,0); g.fill();
+  g.fillStyle = PAL.stone; g.fillRect(8,8,2,20);
+  g.fillStyle = '#3A3A52'; g.fillRect(10,10,12,16);           // recessed shadowed arch
+  g.beginPath(); g.arc(16,10,6,Math.PI,0); g.fill();
+  g.fillStyle = PAL.flowerBlue; g.fillRect(14,12,4,8);        // narrow blue glass slit
+  g.fillStyle = '#FFFFFF'; g.fillRect(15,13,1,5);
+  g.fillStyle = PAL.stoneDark; g.fillRect(10,22,12,2);        // shelf
+  g.fillStyle = PAL.gold; g.fillRect(15,20,2,2);               // tiny candle dot
+  g.fillStyle = PAL.light; g.fillRect(15,19,1,1);
+});
+// corner buttress: stepped stone pier with quoins (side: -1 west, +1 east)
+function churchWallButtress(side) {
+  return px(TILE,TILE,(g)=>{
+    g.drawImage(churchWallAshlar,0,0);
+    const R = srand(0xb011 + (side > 0 ? 7 : 0));
+    const ox = side > 0 ? TILE-12 : 0;
+    g.fillStyle = PAL.stone; g.fillRect(ox, 4, 12, TILE-4);  // pier mass
+    g.fillStyle = PAL.stoneLight; g.fillRect(ox, 4, 12, 2);
+    // stepped ledges down the pier
+    for (const sy of [10, 18, 26]) {
+      g.fillStyle = PAL.stoneDark; g.fillRect(ox - (side > 0 ? 0 : 0), sy, 12, 2);
+      g.fillStyle = PAL.stoneLight; g.fillRect(ox, sy, 12, 1);
+    }
+    // quoin stones on the outer corner
+    for (let r0=0;r0<4;r0++){
+      const y0 = 5 + r0*7;
+      g.fillStyle = r0 % 2 ? PAL.stoneLight : '#DDD2B8'; g.fillRect(side > 0 ? TILE-6 : 0, y0, 6, 6);
+      g.fillStyle = PAL.stoneDark; g.fillRect(side > 0 ? TILE-6 : 0, y0+5, 6, 1);
+    }
+    g.fillStyle = 'rgba(40,30,15,.35)';                        // deep inner shadow
+    g.fillRect(side > 0 ? TILE-13 : 11, 4, 1, TILE-4);
+    g.fillStyle = 'rgba(255,255,255,.20)'; g.fillRect(ox, 6, 2, TILE-8); // pier light
+  });
+}
+const churchWallButtressL = churchWallButtress(-1), churchWallButtressR = churchWallButtress(1);
+// base plinth overlay + ivy overlay + door steps (transparent, drawn over walls)
+const churchPlinth = px(TILE,TILE,(g)=>{ g.clearRect(0,0,TILE,TILE);
+  g.fillStyle = PAL.stoneLight; g.fillRect(0,25,TILE,2);
+  g.fillStyle = PAL.stone; g.fillRect(0,27,TILE,3);
+  g.fillStyle = PAL.stoneDark; g.fillRect(0,30,TILE,2);
+  g.fillStyle = 'rgba(40,30,15,.35)'; g.fillRect(0,29,TILE,1);
+  for (let x=2;x<TILE;x+=8) g.fillStyle = PAL.stoneDark, g.fillRect(x,27,1,3);
+});
+const churchIvy = px(TILE,TILE,(g)=>{ g.clearRect(0,0,TILE,TILE);
+  const R = srand(0x1ee);
+  for (let i=0;i<22;i++){                                       // leaf-dot chain climbing the corner
+    const y = 30 - i*1.3, x = 3 + Math.sin(i*0.7)*3 + R(3);
+    g.fillStyle = i % 3 ? PAL.leaf : PAL.leafDark; g.fillRect(x, y, 2, 2);
+    if (i % 4 === 0) { g.fillStyle = PAL.leafLight; g.fillRect(x, y, 1, 1); }
+  }
+  g.fillStyle = PAL.blossom;
+  for (let i=0;i<3;i++) g.fillRect(2+R(8), 8+R(14), 2, 2);
+});
+const churchSteps = px(TILE,TILE,(g)=>{ g.clearRect(0,0,TILE,TILE);
+  g.fillStyle = PAL.stoneDark; g.fillRect(4,2,24,4);
+  g.fillStyle = PAL.stoneLight; g.fillRect(4,2,24,1);
+  g.fillStyle = PAL.stone; g.fillRect(6,6,20,4);
+  g.fillStyle = PAL.stoneLight; g.fillRect(6,6,20,1);
+  g.fillStyle = 'rgba(40,30,15,.25)'; g.fillRect(4,10,24,1);
 });
 // Church roof (Batch 2): crown of tall blue-gray spires, each cross-topped
 const churchRoof = px(TILE,TILE,(g)=>{
@@ -4316,14 +4547,26 @@ function drawWorld(g, now) {
     if (tx>=CHURCH.x0 && tx<=CHURCH.x1 && ty>=CHURCH.y0-1 && ty<=CHURCH.y1) {
       if (ty===CHURCH.y0-1) g.drawImage(churchRoof, x, y);
       else {
-        g.drawImage(churchWallEx, x, y);
+        // VISUAL-PASS-2: facade depth — rose window under the steeple,
+        // buttress corners, niches on the west wall, plain ashlar between,
+        // lancets only where they belong; plinth + ivy finish the base.
+        const col = tx - CHURCH.x0, row = ty - CHURCH.y0;
+        let wall = churchWallEx;
+        if (col === 2 && row === 0) wall = churchWallRose;
+        else if (col === 0) wall = (row === 1 || row === 3) ? churchWallNiche : churchWallButtressL;
+        else if (col === 4) wall = churchWallButtressR;
+        else if (col === 2) wall = churchWallAshlar;
+        g.drawImage(wall, x, y);
+        if (row === CHURCH.y1 - CHURCH.y0) g.drawImage(churchPlinth, x, y);
+        if (col === 4 && row >= 3) g.drawImage(churchIvy, x, y);
         if (night && (tx===29||tx===31) && ty===11) { g.fillStyle='rgba(255,214,120,.85)'; g.fillRect(x+9,y+9,14,14); }
+        if (night && col===2 && row===0) { g.fillStyle='rgba(255,214,120,.45)'; g.beginPath(); g.arc(x+16,y+18,9,0,7); g.fill(); }
       }
     }
     if (tx===CHURCH.door.tx && ty===CHURCH.door.ty) { g.drawImage(pathTile,x,y); g.drawImage(doorMat,x,y); }
     // VISUAL-PASS-CHURCH: path approach + flower beds flanking the church door
     // (walkable grass tiles; footprint and collision untouched)
-    if (tx===30 && ty===16) g.drawImage(pathTile, x, y);
+    if (tx===30 && ty===16) { g.drawImage(pathTile, x, y); g.drawImage(churchSteps, x, y); }
     for (const s of CHURCH_FLOWERS) if (s[0]===tx && s[1]===ty)
       g.drawImage(s[2]===0 ? flowerTile : s[2]===1 ? churchBedA : churchBedB, x, y);
     // home — VISUAL-PASS-FARMHOME: warm cottage — detailed shingle roof with
@@ -4331,10 +4574,19 @@ function drawWorld(g, now) {
     if (tx>=HOME.x0 && tx<=HOME.x1 && ty>=HOME.y0-1 && ty<=HOME.y1) {
       if (ty===HOME.y0-1) {
         g.drawImage(houseRoof, x, y);
+        if (tx===8) g.drawImage(houseDormer, x, y);          // cottage dormer
         if (tx===HOME.x1) g.drawImage(houseChimney, x, y);   // chimney on the east end
       }
       else {
-        g.drawImage(houseWall, x, y);
+        // VISUAL-PASS-2: ground floor keeps the shuttered windows; upper
+        // rows read as cottage wall — plain plaster, attic window, ivy.
+        let wall = houseWall;
+        if (ty < HOME.y1) {
+          if (tx===8 && ty===HOME.y0) wall = houseWallAttic;
+          else if (tx===10 && ty===HOME.y0+1) wall = houseWallIvy;
+          else wall = houseWallPlain;
+        }
+        g.drawImage(wall, x, y);
         // front windows glow warm at night (the old tx===8&&ty===12 condition
         // could never match inside this block — it drew nothing)
         if (night && ty===HOME.y1 && (tx===7 || tx===9 || tx===10)) g.drawImage(windowTile, x, y);
@@ -4350,7 +4602,14 @@ function drawWorld(g, now) {
     // cafe
     if (tx>=CAFE.x0 && tx<=CAFE.x1 && ty>=CAFE.y0-1 && ty<=CAFE.y1) {
       if (ty===CAFE.y0-1) g.drawImage(cafeRoof, x, y);
-      else g.drawImage(cafeWall, x, y);
+      else {
+        // VISUAL-PASS-2: no two cafe wall tiles alike + scalloped valance
+        // running continuously across the ground-floor front.
+        const ccol = tx - CAFE.x0;
+        const cwall = ccol === 0 ? cafeWall : ccol === 1 ? cafeWallB : cafeWallC;
+        g.drawImage(cwall, x, y);
+        if (ty===CAFE.y1) g.drawImage(cafeAwning, x, y);
+      }
     }
     if (tx===CAFE.counter.tx && ty===CAFE.counter.ty) g.drawImage(counterTile, x, y);
     if ((tx===23||tx===25) && ty===17) g.drawImage(tableTile, x, y);
