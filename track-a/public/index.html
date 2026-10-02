@@ -370,6 +370,17 @@
   #creatorOk { background:linear-gradient(#e5b952, #d4a940); border:3px solid #5d4226;
     color:#3a2a12; box-shadow:0 4px 0 #5d4226; }
   #creatorOk:active { transform:translateY(3px); box-shadow:0 1px 0 #5d4226; }
+  /* VISUAL-PASS-2: gold frame lines + corner flourishes on the parchment
+     cards (board's framed storybook panels) — decoration only. */
+  .warmcard, #dialogue, #creatorWrap {
+    background-image:
+      radial-gradient(circle at 10px 10px, rgba(212,169,64,.55) 2px, transparent 3px),
+      radial-gradient(circle at calc(100% - 10px) 10px, rgba(212,169,64,.55) 2px, transparent 3px),
+      radial-gradient(circle at 10px calc(100% - 10px), rgba(212,169,64,.55) 2px, transparent 3px),
+      radial-gradient(circle at calc(100% - 10px) calc(100% - 10px), rgba(212,169,64,.55) 2px, transparent 3px);
+  }
+  #dialogue, .warmcard { box-shadow:0 10px 34px rgba(0,0,0,.55), inset 0 0 0 1.5px rgba(212,169,64,.45), inset 0 0 26px rgba(212,169,64,.10); }
+  #panel .card, #creatorWrap { box-shadow:0 10px 34px rgba(0,0,0,.5), inset 0 0 0 1.5px rgba(212,169,64,.45), inset 0 0 40px rgba(212,169,64,.12); }
   /* hud chips: navy/gold to match */
   #roomcode { background:rgba(26,35,64,.8); border:1.5px solid rgba(212,169,64,.6); color:#f5eeda; }
   #dayInfo { background:rgba(26,35,64,.7); border:1.5px solid rgba(212,169,64,.45); color:#e9dfc2; }
@@ -1418,6 +1429,40 @@ function drawVistaBack() {
   g.fillStyle = 'rgba(255,232,163,0.95)';
   g.fillRect(kx + 10, ky - 12, 3, 4); g.fillRect(kx + 2, ky - 20, 3, 4);
   g.fillRect(cityX + 16, cityY - 16, 3, 4); g.fillRect(cityX + 30, cityY - 10, 3, 4);
+  // VISUAL-PASS-2: the far kingdom reads as a real castle-city, not lumps —
+  // a stepped great keep with gold-tipped towers and banner flags on the
+  // nearer ridge, a waterfall thread from the cliffs to the sea, and
+  // conifer silhouettes standing on the ridge shoulders.
+  const ckx = Math.round(w*0.435), cky = landY - Math.round(h*0.115);
+  g.fillStyle = mixHex(PAL.navy, '#46608C', .35);
+  g.fillRect(ckx - 26, cky + 24, 84, 4);                              // cliff shoulder
+  for (const [tx2, tw2, th2] of [[-18, 10, 34], [2, 14, 46], [26, 10, 30]]) {
+    g.fillRect(ckx + tx2, cky + 26 - th2, tw2, th2);                  // towers
+    g.beginPath();                                                 // spire caps
+    g.moveTo(ckx + tx2 - 2, cky + 26 - th2); g.lineTo(ckx + tx2 + tw2 / 2, cky + 16 - th2); g.lineTo(ckx + tx2 + tw2 + 2, cky + 26 - th2);
+    g.closePath(); g.fill();
+    g.fillStyle = PAL.goldLight; g.fillRect(ckx + tx2 + tw2 / 2 - 1, cky + 12 - th2, 2, 6);  // gold tips
+    g.fillStyle = mixHex(PAL.navy, '#46608C', .35);
+  }
+  g.fillRect(ckx - 12, cky + 6, 58, 22);                             // keep body
+  g.fillStyle = PAL.terracotta;                                      // banner flags
+  for (const fx2 of [ckx - 13, ckx + 9, ckx + 31]) { g.beginPath(); g.moveTo(fx2, cky + 12 - 46); g.lineTo(fx2 + 9, cky + 15 - 46); g.lineTo(fx2, cky + 18 - 46); g.closePath(); g.fill(); }
+  g.fillStyle = 'rgba(255,232,163,0.95)';                            // lit windows
+  for (const [wx2, wy2] of [[-8, 12], [6, 8], [18, 14], [30, 10], [-16, 2], [38, 4]])
+    g.fillRect(ckx + wx2, cky + wy2, 3, 4);
+  // waterfall thread: cliff to sea, with a bright plunge line
+  const wfx = Math.round(w * 0.665);
+  g.fillStyle = 'rgba(191,228,255,.75)'; g.fillRect(wfx, horizon - Math.round(h*0.085), 3, Math.round(h*0.085));
+  g.fillStyle = 'rgba(255,255,255,.85)'; g.fillRect(wfx + 1, horizon - Math.round(h*0.085), 1, Math.round(h*0.085));
+  g.fillStyle = 'rgba(230,246,255,.8)'; g.fillRect(wfx - 3, horizon - 2, 9, 2); g.fillRect(wfx - 1, horizon + 2, 5, 2);
+  // conifer silhouettes on the home-hill shoulders
+  g.fillStyle = mixHex(PAL.pine, PAL.navy, .8);
+  for (let i = 0; i < 16; i++) {
+    const txp = Math.round(w * (0.015 + i * 0.012)), th3 = 8 + ((i * 37) % 9);
+    g.beginPath(); g.moveTo(txp, h - Math.round(h*0.085)); g.lineTo(txp + 4, h - Math.round(h*0.085) - th3); g.lineTo(txp + 8, h - Math.round(h*0.085)); g.closePath(); g.fill();
+    const txq = Math.round(w * (0.985 - i * 0.012));
+    g.beginPath(); g.moveTo(txq, h - Math.round(h*0.085)); g.lineTo(txq + 4, h - Math.round(h*0.085) - th3); g.lineTo(txq + 8, h - Math.round(h*0.085)); g.closePath(); g.fill();
+  }
   // home hill in front: the village rests below the vista
   g.fillStyle = mixHex(PAL.pine, PAL.navy, .68);
   g.beginPath(); g.moveTo(0, h); g.lineTo(0, h - Math.round(h*0.10));
@@ -1674,6 +1719,9 @@ function lookSpriteF(lk, fr) {
     g.fillStyle = blouse; g.fillRect(4, 12, 8, 5);
     g.fillStyle = blouseD; g.fillRect(6,13,1,3); g.fillRect(9,13,1,3); // fabric folds (soft shading)
     g.fillStyle = blouseL; g.fillRect(5, 13, 1, 2);
+    // VISUAL-PASS-2: shaded body facets — sunlit left edge, deeper right half
+    g.fillStyle = mixHex(blouse, '#1a0f08', .10); g.fillRect(10, 12, 2, 5);
+    g.fillStyle = mixHex(blouse, '#ffffff', .35); g.fillRect(4, 12, 1, 4);
     // outfit trim: collar, waistband
     g.fillStyle = trim; g.fillRect(6,12,4,1); g.fillRect(4,16,8,1);
 
@@ -1689,6 +1737,7 @@ function lookSpriteF(lk, fr) {
       g.fillStyle = skirtD;                        // pleats
       for (const plx of [4, 7, 10]) g.fillRect(plx + dx, 19, 1, 2);
       g.fillStyle = skirtL; g.fillRect(2 + dx, 21, 12, 1); // hem light
+      g.fillStyle = skirtD; g.fillRect(11 + dx, 19, 2, 2); g.fillRect(12 + dx, 20, 1, 1);  // shaded right facet
     } else {
       // tunic: longer blouse + trim hem over the trousers
       g.fillStyle = blouse; g.fillRect(4, 17, 8, 1);
@@ -1998,7 +2047,7 @@ const pathTile = px(TILE,TILE,(g)=>{
     g.beginPath(); g.ellipse(cx, cy + 1.2, rx, ry, 0, 0, 7); g.fill();
     g.fillStyle = base;
     g.beginPath(); g.ellipse(cx, cy, rx, ry, 0, 0, 7); g.fill();
-    g.fillStyle = 'rgba(255,248,225,.35)';                         // sunlit top face
+    g.fillStyle = 'rgba(255,248,225,.16)';                         // sunlit top face
     g.beginPath(); g.ellipse(cx - rx * .18, cy - ry * .32, rx * .58, ry * .42, 0, 0, 7); g.fill();
     g.fillStyle = 'rgba(120,95,60,.30)'; g.fillRect(cx - 2, cy + ry - 2, 4, 1);
   };
@@ -2020,16 +2069,16 @@ const plazaTile = px(TILE,TILE,(g)=>{
     g.beginPath(); g.ellipse(cx, cy + 1.4, rx, ry, 0, 0, 7); g.fill();
     g.fillStyle = base;
     g.beginPath(); g.ellipse(cx, cy, rx, ry, 0, 0, 7); g.fill();
-    g.fillStyle = 'rgba(255,248,225,.30)';
+    g.fillStyle = 'rgba(255,248,225,.15)';
     g.beginPath(); g.ellipse(cx - rx * .16, cy - ry * .3, rx * .6, ry * .44, 0, 0, 7); g.fill();
     g.fillStyle = 'rgba(183,157,120,.5)';
     for (let i=0;i<2;i++) g.fillRect(cx - 4 + R(9), cy + R(5), 2, 1);  // sand grit
   };
-  stone(8 + (R(3)-1), 8, 7.8, 7.2, PAL.path);
-  stone(24 + (R(3)-1), 9, 7.8, 7.2, PAL.pathLight);
-  stone(9 + (R(3)-1), 24, 7.8, 7.2, PAL.pathLight);
-  stone(25 + (R(3)-1), 25, 7.8, 7.2, PAL.path);
-  stone(16, 17, 6.6, 6.2, mixHex(PAL.path, PAL.pathLight, .5));    // fuller center stone
+  stone(8 + (R(3)-1), 8, 7.4 + R(2), 6.6, PAL.path);
+  stone(24 + (R(3)-1), 9, 7.4 + R(2), 6.6, PAL.pathLight);
+  stone(9 + (R(3)-1), 24, 7.4 + R(2), 6.6, PAL.pathLight);
+  stone(25 + (R(3)-1), 25, 7.4 + R(2), 6.6, PAL.path);
+  stone(16, 17, 6.2 + R(2), 5.8, mixHex(PAL.path, PAL.pathLight, .5));    // fuller center stone
   g.fillStyle = 'rgba(232,213,176,.5)';
   for (let i=0;i<6;i++) g.fillRect(R(TILE), R(TILE), 2, 1);         // swept sand dust
 });
@@ -2192,6 +2241,9 @@ const waterTile = px(TILE,TILE,(g)=>{
   for (let i=0;i<3;i++) g.fillRect(R(26), R(TILE), 12, 2);
   g.fillStyle = PAL.waterLight;                                       // pale wave bands
   for (let i=0;i<4;i++) g.fillRect(R(22), R(TILE), 10, 2);
+  // VISUAL-PASS-2: two-tone surface — pale sunlit band over the deeper body
+  g.fillStyle = 'rgba(141,211,226,.30)'; g.fillRect(0,0,TILE,6);
+  g.fillStyle = 'rgba(255,255,255,.20)'; g.fillRect(0,2,TILE,1);
   g.fillStyle = 'rgba(255,255,255,.55)';
   for (let i=0;i<4;i++) g.fillRect(R(27), R(30), 4, 1);          // sparkle streaks
   g.fillStyle = 'rgba(255,255,255,.9)';
@@ -2566,6 +2618,12 @@ function gardenBed(state, variant, sway) {
         g.fillStyle = S.blooms[R(S.blooms.length)]; g.fillRect(x, y, 4, 3);
         g.fillStyle = S.center; g.fillRect(x+1, y+1, 1, 1);
       }
+      // VISUAL-PASS-2: flower-carpet ground density — no bare soil shows
+      for (let i=0;i<7;i++) { const x=R(30), y=R(30);
+        g.fillStyle = S.blooms[R(S.blooms.length)]; g.fillRect(x, y, 2, 2);
+        g.fillStyle = S.center; g.fillRect(x, y, 1, 1); }
+      g.fillStyle = 'rgba(240,215,139,.45)';
+      for (let i=0;i<5;i++) g.fillRect(R(30), R(30), 2, 1);
       g.fillStyle = 'rgba(255,255,255,.8)';
       for (let i=0;i<6;i++) g.fillRect(R(30), R(30), 1, 1);        // drifting petal specks
       speckle(g, R, 5, PAL.goldLight, 1, 1);                      // golden pollen glints
@@ -3112,6 +3170,12 @@ const fountainTile = px(TILE,TILE,(g)=>{
   g.fillStyle = 'rgba(230,245,255,.95)'; g.fillRect(15.4,0,1.2,2.4);
   g.fillStyle = 'rgba(255,255,255,.9)';
   g.fillRect(12,1,1.4,1.4); g.fillRect(19,1.6,1.4,1.4);
+  // VISUAL-PASS-2: living sparkle points pinned in the basin water
+  const Rs = srand(0x5501);
+  g.fillStyle = 'rgba(255,255,255,.85)';
+  for (let i=0;i<7;i++) g.fillRect(5 + Rs(22), 17 + Rs(7), 2, 1);
+  g.fillStyle = 'rgba(190,230,255,.7)';
+  for (let i=0;i<5;i++) g.fillRect(6 + Rs(20), 18 + Rs(6), 1, 1);
 });
 const fountainDryTile = px(TILE,TILE,(g)=>{ g.clearRect(0,0,TILE,TILE);
   // RESTORE THE LIGHT: the fountain runs dry until the Old Garden wakes —
@@ -4386,6 +4450,43 @@ const RIVER_BANK = new Map(), RIVER_FOAM = new Map();
     }
   }
 })();
+// VISUAL-PASS-2: lily pads rest on calm water (bridge lane + dock kept clear)
+const RIVER_LILY = new Set();
+(function () {
+  for (let ty = 0; ty < WH; ty++) for (let tx = 0; tx < WW; tx++) {
+    if (baseTile(tx, ty) !== 'water') continue;
+    if (tx >= 18 && tx <= 22) continue;
+    if (tx === 17 && ty === 20) continue;
+    if (hash2(tx * 3 + 7, ty * 5 + 2) < 0.14) RIVER_LILY.add(tx + ',' + ty);
+  }
+})();
+// VISUAL-PASS-2: pennant banner poles strung between the market stalls
+// (transparent decor on walkable grass; pennants in the board's stall colors)
+const bannerTile = px(TILE,TILE,(g)=>{ g.clearRect(0,0,TILE,TILE);
+  g.fillStyle = '#5E4230'; g.fillRect(15,6,3,26);              // pole
+  g.fillStyle = '#77563A'; g.fillRect(15,6,1,26);
+  g.fillStyle = PAL.gold; g.fillRect(14,4,5,3);                // finial
+  g.fillStyle = PAL.stoneDark; g.fillRect(12,30,9,2);          // ground shadow
+  g.fillStyle = '#3A2A1A';                                     // rope to both neighbours
+  g.fillRect(0,7,15,1); g.fillRect(18,7,14,1);
+  g.fillStyle = 'rgba(255,255,255,.25)'; g.fillRect(0,7,15,0.6);
+  const cols = [PAL.terracotta, PAL.cream, '#5a8ac9', PAL.flowerPink, PAL.cream, PAL.terracotta];
+  for (let i=0;i<6;i++){ const x = 1 + i*5;                     // pennant triangles
+    g.fillStyle = cols[i];
+    g.beginPath(); g.moveTo(x, 8); g.lineTo(x+4, 8); g.lineTo(x+2, 13); g.closePath(); g.fill();
+    g.fillStyle = 'rgba(255,255,255,.35)'; g.fillRect(x+1, 8.6, 2, 1);
+  }
+});
+const lilyTile = px(TILE,TILE,(g)=>{ g.clearRect(0,0,TILE,TILE);
+  const pad = (x, y, r) => {
+    g.fillStyle = PAL.leafDark; g.beginPath(); g.arc(x, y, r, 0.5, 5.9); g.fill();
+    g.fillStyle = PAL.leaf; g.beginPath(); g.arc(x, y - 1, Math.max(r - 1.4, 1), 0.5, 5.9); g.fill();
+    g.fillStyle = PAL.leafLight; g.fillRect(x - 2, y - 3, 3, 1);
+  };
+  pad(10, 12, 5); pad(23, 20, 4); pad(16, 26, 3);
+  g.fillStyle = '#e87aa0'; g.fillRect(9, 7, 3, 3);
+  g.fillStyle = '#fff0f6'; g.fillRect(10, 8, 1, 1);
+});
 // VISUAL-PASS-FARMHOME: natural grass boundary outside the farm fence —
 // computed once at load. Ring grass tiles (no trees, no fence, no plots,
 // no garden beds) get a tuft+wildflower overlay. Pure decor: all tiles stay
@@ -4503,6 +4604,7 @@ function drawWorld(g, now) {
       g.drawImage(rippleTileB, x, y-off); g.drawImage(rippleTileB, x, y-off+TILE);
       const fm = RIVER_FOAM.get(tx + ',' + ty);           // foam lapping the bank
       if (fm) for (const f of fm) g.drawImage(f, x, y);
+      if (RIVER_LILY.has(tx + ',' + ty)) g.drawImage(lilyTile, x, y);   // VISUAL-PASS-2
       // shimmer: light dancing on the river
       const sh = Math.sin(now/450 + tx*2.1 + ty*3.7);
       if (sh > 0.45) {
@@ -4717,6 +4819,8 @@ function drawWorld(g, now) {
     if ((tx===23||tx===25) && ty===17) g.drawImage(tableTile, x, y);
     // market stalls
     for (const s of STALLS) if (s.tx===tx && s.ty===ty) g.drawImage(s.s, x, y);
+    // VISUAL-PASS-2: pennant banner poles between the stalls
+    if ((tx===15 || tx===17) && ty===10) g.drawImage(bannerTile, x, y);
     // fountain — VISUAL-PASS-TOWN: living water. fountainSparkle is the animated
     // spill sheets + expanding basin ripples + twinkling spray, all clocked by `now`
     if (tx===FOUNTAIN.tx && ty===FOUNTAIN.ty) {
@@ -4751,6 +4855,7 @@ function drawWorld(g, now) {
       const lit = lampLit(li);
       g.drawImage(lit ? lampTile : lampTileDark, x, y-8);
       if (lit && night) drawGlow(g, x+16, y+2, 26, 'rgba(255,205,110,A)', now, l.tx*3+l.ty);
+      if (lit && !night) drawGlow(g, x+16, y+2, 16, 'rgba(255,232,163,A)', now, l.tx*3+l.ty, 0.12);   // small day halo
     } }
     // dock
     if (tx===17 && ty===20) g.drawImage(dockTile, x, y);
@@ -4803,6 +4908,12 @@ function drawWorld(g, now) {
         g.fillRect(wx+8+((now/90)%14), 54, 3, 3);
         g.fillRect(wx+20-((now/110)%10), 58, 2, 2);
       }
+      // VISUAL-PASS-2: plunge-pool foam ring where the fall lands
+      const wy2 = w.ty*TILE;
+      g.strokeStyle = 'rgba(255,255,255,.70)'; g.lineWidth = 2;
+      g.beginPath(); g.ellipse(wx+16, wy2+61, 10 + 2*Math.sin(now/300 + wx), 4, 0, 0, 7); g.stroke();
+      g.fillStyle = 'rgba(255,255,255,.85)';
+      for (let i=0;i<6;i++) { const fx2 = wx + 5 + ((i*5 + ((now/80+i*3)|0)) % 22); g.fillRect(fx2, wy2+57-(i%3), 3, 2); }
       if (w.tx === 36) { // VISUAL-PASS-RUINS: soft mist where the NE fall meets
         // the forest floor, like the board's DISCOVER panel
         const ma = 0.10 + 0.06*Math.sin(now/600);
@@ -5261,7 +5372,16 @@ function loop(now) {
   // the community is restored enough to gather under it — never as a
   // player's trophy. Soft in daylight, radiant at night.
   if (restore && restore.central && !inside) {
-    drawGlow(ctx, 20*TILE+16, 15*TILE+8, 100, 'rgba(255,216,120,A)', now, 21, 0.30 + 0.70*nightF);
+    // VISUAL-PASS-2: layered light — wide dawn bloom, warm mid glow,
+    // tight bright heart, and a small stepped pixel-star core.
+    const cs = 0.30 + 0.70*nightF;
+    drawGlow(ctx, 20*TILE+16, 15*TILE+8, 132, 'rgba(255,232,163,A)', now, 21, 0.5*cs);
+    drawGlow(ctx, 20*TILE+16, 15*TILE+8, 100, 'rgba(255,216,120,A)', now, 21, cs);
+    drawGlow(ctx, 20*TILE+16, 15*TILE+8, 54, 'rgba(255,244,205,A)', now+320, 22, 0.85*cs);
+    const sx2 = 20*TILE+16, sy2 = 15*TILE+8, sp2 = 4 + ((Math.sin(now/350) + 1) * 2);
+    ctx.fillStyle = 'rgba(255,248,213,' + (0.25 + 0.55*nightF).toFixed(2) + ')';
+    ctx.fillRect(sx2-1, sy2-sp2, 2, sp2*2); ctx.fillRect(sx2-sp2, sy2-1, sp2*2, 2);
+    ctx.fillRect(sx2-1, sy2-1, 2, 2);
   }
   ctx.restore();
   updateTint(); // ease the day/night tint toward its phase target
