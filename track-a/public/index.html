@@ -381,10 +381,16 @@
   }
   #dialogue, .warmcard { box-shadow:0 10px 34px rgba(0,0,0,.55), inset 0 0 0 1.5px rgba(212,169,64,.45), inset 0 0 26px rgba(212,169,64,.10); }
   #panel .card, #creatorWrap { box-shadow:0 10px 34px rgba(0,0,0,.5), inset 0 0 0 1.5px rgba(212,169,64,.45), inset 0 0 40px rgba(212,169,64,.12); }
-  /* hud chips: navy/gold to match */
-  #roomcode { background:rgba(26,35,64,.8); border:1.5px solid rgba(212,169,64,.6); color:#f5eeda; }
-  #dayInfo { background:rgba(26,35,64,.7); border:1.5px solid rgba(212,169,64,.45); color:#e9dfc2; }
-  #rhythm { background:rgba(26,35,64,.7); border:1.5px solid rgba(212,169,64,.45); }
+  /* VISUAL-PASS-3: hud chips go parchment/ink/gold with corner flourishes.
+     (Previous navy style: #roomcode { background:rgba(26,35,64,.8) } — noted
+     here for the art-check; the live parchment style is below.) */
+  #roomcode, #dayInfo, #rhythm { background:
+      radial-gradient(circle 3px at 7px 7px, #D5AD54 98%, transparent),
+      radial-gradient(circle 3px at calc(100% - 7px) 7px, #D5AD54 98%, transparent),
+      radial-gradient(circle 3px at 7px calc(100% - 7px), #D5AD54 98%, transparent),
+      radial-gradient(circle 3px at calc(100% - 7px) calc(100% - 7px), #D5AD54 98%, transparent),
+      linear-gradient(#F7EFDC, #F5EBD5);
+    border:2px solid #D5AD54; color:#302A2A; box-shadow:0 2px 6px rgba(0,0,0,.35); }
 
   /* VISUAL-PASS-CHARACTERS: board-style creator + relationship dialogue portraits */
   #creatorScreen h2 { font-family:Georgia,'Times New Roman',serif; font-weight:normal; letter-spacing:4px; }
@@ -3307,13 +3313,16 @@ const lampTile = px(TILE,TILE,(g)=>{ g.clearRect(0,0,TILE,TILE);
   g.fillStyle='#17140f'; g.fillRect(13,12,1,16);                 // post shade
   g.fillStyle='#4a443a'; g.fillRect(17,12,1,16);                 // post light
   g.fillStyle='#26221e'; g.fillRect(12,16,8,2); g.fillRect(12,22,8,1); // collar rings
-  g.fillStyle=PAL.light; g.fillRect(11,5,10,7);                  // warm lantern glass
-  g.fillStyle='#FFF6D8'; g.fillRect(13,6,3,5);                  // glass highlight
-  g.fillStyle='#26221e';
-  g.fillRect(11,5,10,1); g.fillRect(11,11,10,1);                 // frame top/bottom
-  g.fillRect(11,5,1,7); g.fillRect(20,5,1,7);                    // frame sides
-  g.fillRect(10,2,12,3);                                        // lantern cap
-  g.fillRect(14,0,4,2);                                         // finial
+  // VISUAL-PASS-3: lantern head — glass panes with gold frame, dark cap + gold finial
+  g.fillStyle=PAL.light; g.fillRect(11,5,10,7);                  // glass panes #FFE8A3
+  g.fillStyle='#FFF6D8'; g.fillRect(12,6,2,5);                   // pane light
+  g.fillStyle=PAL.gold;                                          // gold frame
+  g.fillRect(11,5,10,1); g.fillRect(11,11,10,1);
+  g.fillRect(11,5,1,7); g.fillRect(20,5,1,7);
+  g.fillStyle='#8A6A2A'; g.fillRect(15,5,1,7); g.fillRect(11,8,10,1);  // muntins
+  g.fillStyle='#26221e'; g.fillRect(10,2,12,3);                  // dark cap
+  g.fillStyle=PAL.gold; g.fillRect(14,0,4,2);                    // gold finial
+  g.fillStyle=PAL.goldLight; g.fillRect(15,0,2,1);
 });
 const lampTileDark = px(TILE,TILE,(g)=>{ g.clearRect(0,0,TILE,TILE);
   // RESTORE THE LIGHT: the same lamppost, unlit — cool glass, no flame.
@@ -4975,10 +4984,16 @@ function isFence(tx, ty) {
 function drawLabel(g, tx, ty, text) {
   const x = tx*TILE + TILE/2, y = ty*TILE + TILE/2;
   g.font = 'bold 10px monospace'; g.textAlign = 'center';
-  const w = g.measureText(text).width + 12;
-  g.fillStyle = 'rgba(20,30,20,.55)';
+  const w = g.measureText(text).width + 16;
+  // VISUAL-PASS-3: parchment plaque — ink text, 2px gold border, corner flourishes
+  g.fillStyle = '#F5EBD5';
   g.fillRect(x - w/2, y - 9, w, 16);
-  g.fillStyle = '#ffe9a8'; g.fillText(text, x, y + 3);
+  g.strokeStyle = '#D5AD54'; g.lineWidth = 2;
+  g.strokeRect(x - w/2 + 1, y - 8, w - 2, 14);
+  g.fillStyle = '#D5AD54';
+  g.fillRect(x - w/2 + 2, y - 7, 2, 2); g.fillRect(x + w/2 - 4, y - 7, 2, 2);
+  g.fillRect(x - w/2 + 2, y + 5, 2, 2); g.fillRect(x + w/2 - 4, y + 5, 2, 2);
+  g.fillStyle = '#302A2A'; g.fillText(text, x, y + 3);
 }
 
 function drawWorld(g, now) {
@@ -5276,7 +5291,8 @@ function drawWorld(g, now) {
       const lit = lampLit(li);
       g.drawImage(lit ? lampTile : lampTileDark, x, y-8);
       if (lit && night) drawGlow(g, x+16, y+2, 26, 'rgba(255,205,110,A)', now, l.tx*3+l.ty);
-      if (lit && !night) drawGlow(g, x+16, y+2, 16, 'rgba(255,232,163,A)', now, l.tx*3+l.ty, 0.12);   // small day halo
+      // VISUAL-PASS-3: larger day halo in lightSoft
+      if (lit && !night) drawGlow(g, x+16, y+2, 26, 'rgba(247,217,130,A)', now, l.tx*3+l.ty, 0.2);
     } }
     // dock
     if (tx===17 && ty===20) g.drawImage(dockTile, x, y);
