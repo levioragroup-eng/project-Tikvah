@@ -806,6 +806,7 @@ let gardenBloomed = false, homeRug = 0;
 let restore = null;   // RESTORE THE LIGHT: synced town-restoration state (stage + world effects only)
 let sayFlash = null;       // {name, until} — dialogue bubble over NPC
 let npcChat = null;        // TOWN-LIFE: {a, b, until} — two villagers pausing to chat
+let lastPhaseSeen = '';    // TOWN-LIFE: phase-transition detector for the morning wake cue
 let worshipFlash = 0, peaceFlash = 0;
 // ================= Persistent identity (M3) =================
 // No logins, no passwords, no accounts — one invisible traveler token,
@@ -878,6 +879,7 @@ function onMsg(m) {
       npcs = new Map(m.npcs.map(n => [n.name, n]));
       farm = m.farm; ruinOpen = m.ruin.open; ruinA = !!m.ruin.a; ruinB = !!m.ruin.b; ruinGate = !!m.ruin.gate; fox = m.fox;
       day = m.day; gardenBloomed = m.garden.bloomed; homeRug = m.home.rug;
+      lastPhaseSeen = (m.day && m.day.phase) || '';
       restore = m.restore || null;
       document.getElementById('menu').style.display = 'none';
       document.getElementById('game').style.display = 'block';
@@ -910,7 +912,18 @@ function onMsg(m) {
     case 'player': players.set(m.p.id, m.p); break;
     case 'farm': farm = m.farm; break;
     case 'fox': fox = m; break;
-    case 'day': day = m; updateDayHud(); break;
+    case 'day': {
+      // TOWN-LIFE: a gentle morning wake cue — a soft pastoral hello as the
+      // village wakes, never an alarm. Fires on phase transitions only.
+      const wasPhase = lastPhaseSeen;
+      day = m; updateDayHud();
+      if (wasPhase && wasPhase !== m.phase && m.phase === 'morning') {
+        toast('🌅 Good morning — the village wakes.');
+        try { chime(); } catch (e) {}
+      }
+      lastPhaseSeen = m.phase;
+      break;
+    }
     case 'worship': worshipFlash = Date.now(); worshipChord(); toast('🙏 A moment of worship'); break;
     case 'sermon-peace': peaceFlash = Date.now(); chime(); toast('🕊️ ' + m.by + ' feels refreshed and at peace.'); break;
     case 'garden-bloom':
@@ -985,6 +998,7 @@ function onMsg(m) {
       npcs = new Map(m.npcs.map(n => [n.name, n]));
       farm = m.farm; ruinOpen = m.ruin.open; ruinA = !!m.ruin.a; ruinB = !!m.ruin.b; ruinGate = !!m.ruin.gate; fox = m.fox;
       day = m.day; gardenBloomed = m.garden.bloomed; homeRug = m.home.rug;
+      lastPhaseSeen = (m.day && m.day.phase) || '';
       restore = m.restore || null;
       updateDayHud();
       document.getElementById('ending').style.display = 'none';

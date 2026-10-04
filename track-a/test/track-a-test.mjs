@@ -1615,6 +1615,24 @@ try {
     tl._greetSay = sayG; tl._greetPhase = phase;
     return greets.includes(sayG.text) && sayG.hearts === 1;
   })(), JSON.stringify(tl._greetSay));
+
+  // ---------- TOWN-LIFE (d): market day wire check (sleep to day 4) ----------
+  // two more sleeps -> day 4 -> the market gathers (flag syncs to the village)
+  ok('sleep to day 4 (market day)', await (async () => {
+    for (let s = 0; s < 2; s++) {
+      await walkTo(tl, 8*TILE+16, 12*TILE+16, 8000);
+      tl.send({ t: 'interact' });
+      if (!await tl.waitFor(() => tl.me()?.inside === true, 3000)) return false;
+      await walkTo(tl, 29*TILE+16, 18*TILE+16, 8000);
+      tl.send({ t: 'interact' });
+      await walkTo(tl, 32*TILE+16, 24*TILE+16, 8000);
+      tl.send({ t: 'interact' });
+      if (!await tl.waitFor(() => tl.me()?.inside === false, 3000)) return false;
+    }
+    return tl.waitFor(() => (tl.lastOf('day')?.n || 0) === 4, 4000);
+  })());
+  ok('market day flag syncs to the village', tl.lastOf('day')?.marketDay === true,
+     JSON.stringify({ n: tl.lastOf('day')?.n, marketDay: tl.lastOf('day')?.marketDay }));
   tl.close();
 
   // ---------- TOWN-LIFE (b): shop open/closed states (static page) ----------
@@ -1654,6 +1672,16 @@ try {
     ['chat bubble for npc chats', 'chattingNpc'],
   ];
   for (const [label, needle] of idleChecks) ok('page contains ' + label, pageHtml.includes(needle));
+
+  // ---------- TOWN-LIFE (d): market day + evening/night + morning cue (static page) ----------
+  console.log('town-life market day & rhythms (static page):');
+  const rhythmChecks = [
+    ['morning wake cue', 'Good morning — the village wakes.'],
+    ['phase transition detector', 'lastPhaseSeen'],
+    ['cue is pastoral, not an alarm', 'never an alarm'],
+    ['morning cue chime', 'chime();'],
+  ];
+  for (const [label, needle] of rhythmChecks) ok('page contains ' + label, pageHtml.includes(needle));
 
   [a, b, c, d, k, v2, v3, i2, h2, f1, ...fillers].forEach(x => x.close());
 } finally {
