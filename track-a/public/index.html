@@ -3473,6 +3473,44 @@ function stallTile(awning) {
   });
 }
 const stallA = stallTile('#e87aa0'), stallB = stallTile('#5a8ac9'), stallC = stallTile('#e8b93c');
+// TOWN-LIFE: shop hours — Open/Closed hanging signs (board idiom: navy board,
+// gold frame, cream text) and a pulled timber shutter for closed stalls and
+// counters. Living feel only; no transaction changes.
+function shopSignTile(open) {
+  return px(26, 12, (g) => {
+    g.clearRect(0,0,26,12);
+    g.fillStyle = '#1a2340'; g.fillRect(0,0,26,12);
+    g.fillStyle = '#d4a940';
+    g.fillRect(0,0,26,1); g.fillRect(0,11,26,1); g.fillRect(0,0,1,12); g.fillRect(25,0,1,12);
+    g.fillStyle = '#f5eeda'; g.font = 'bold 6px monospace';
+    g.textAlign = 'center'; g.textBaseline = 'middle';
+    g.fillText(open ? 'OPEN' : 'CLOSED', 13, 7);
+  });
+}
+const signOpenTile = shopSignTile(true), signShutTile = shopSignTile(false);
+const stallShutterTile = px(TILE,TILE,(g)=>{
+  g.clearRect(0,0,TILE,TILE);
+  for (let y=14; y<32; y+=4) {                       // pulled timber shutter
+    g.fillStyle = '#8a5a2b'; g.fillRect(2,y,28,4);
+    g.fillStyle = '#a06a35'; g.fillRect(2,y,28,1);
+    g.fillStyle = '#5a3a1a'; g.fillRect(2,y+3,28,1);
+  }
+  g.fillStyle = '#3a2412'; g.fillRect(2,14,28,2);     // top rail shadow
+});
+// TOWN-LIFE: extra market-day bunting swags between the stall poles
+const marketBuntingTile = px(TILE,TILE,(g)=>{
+  g.clearRect(0,0,TILE,TILE);
+  const bunt = ['#e87aa0','#e8b93c','#5a8ac9'];
+  for (let x=0; x<32; x++) {                          // sagging string
+    const y = 5 + Math.round(4*Math.sin(Math.PI*x/32));
+    g.fillStyle = '#8F6B4F'; g.fillRect(x, y, 1, 1);
+  }
+  for (let i=0;i<5;i++){ const bx=3+i*6;              // pennants
+    const y = 5 + Math.round(4*Math.sin(Math.PI*(bx+1.5)/32));
+    g.fillStyle = bunt[i%3];
+    g.beginPath(); g.moveTo(bx,y+1); g.lineTo(bx+3,y+1); g.lineTo(bx+1.5,y+5); g.closePath(); g.fill();
+  }
+});
 // Home walls (Batch 2): cream plaster + timber frame, lit window, flower box
 // VISUAL-PASS-FARMHOME: richer warm plaster, stone foundation, shutters,
 // deeper flower box, timber corner posts.
@@ -5251,12 +5289,27 @@ function drawWorld(g, now) {
         if (ty===CAFE.y1) g.drawImage(cafeAwning, x, y);
       }
     }
-    if (tx===CAFE.counter.tx && ty===CAFE.counter.ty) g.drawImage(counterTile, x, y);
+    if (tx===CAFE.counter.tx && ty===CAFE.counter.ty) {
+      g.drawImage(counterTile, x, y);
+      // TOWN-LIFE: the café keeps hours too — shutter + sign when closed
+      const cafeOpen = !day.shops || day.shops.cafe !== 'closed';
+      if (!cafeOpen) g.drawImage(stallShutterTile, x, y);
+      g.drawImage(cafeOpen ? signOpenTile : signShutTile, x+3, y+1);
+    }
     if ((tx===23||tx===25) && ty===17) g.drawImage(tableTile, x, y);
     // market stalls
     for (const s of STALLS) if (s.tx===tx && s.ty===ty) g.drawImage(s.s, x, y);
+    // TOWN-LIFE: stalls keep shop hours — Open/Closed hanging sign, and a
+    // pulled shutter over the counter when closed (living feel only)
+    for (const s of STALLS) if (s.tx===tx && s.ty===ty) {
+      const stallsOpen = !day.shops || day.shops.stalls !== 'closed';
+      if (!stallsOpen) g.drawImage(stallShutterTile, x, y);
+      g.drawImage(stallsOpen ? signOpenTile : signShutTile, x+3, y+1);
+    }
     // VISUAL-PASS-2: pennant banner poles between the stalls
     if ((tx===15 || tx===17) && ty===10) g.drawImage(bannerTile, x, y);
+    // TOWN-LIFE: on market day the poles carry extra bunting swags
+    if ((tx===15 || tx===17) && ty===10 && day.marketDay) g.drawImage(marketBuntingTile, x, y);
     // fountain — VISUAL-PASS-TOWN: living water. fountainSparkle is the animated
     // spill sheets + expanding basin ripples + twinkling spray, all clocked by `now`
     if (tx===FOUNTAIN.tx && ty===FOUNTAIN.ty) {

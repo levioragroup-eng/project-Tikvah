@@ -1609,6 +1609,27 @@ try {
   })(), JSON.stringify(tl._greetSay));
   tl.close();
 
+  // ---------- TOWN-LIFE (b): shop open/closed states (static page) ----------
+  console.log('town-life shops (static page):');
+  const shopChecks = [
+    ['shop sign painter', 'function shopSignTile'],
+    ['open sign tile', 'signOpenTile'],
+    ['closed sign tile', 'signShutTile'],
+    ['closed sign text', "'CLOSED'"],
+    ['open sign text', "'OPEN'"],
+    ['sign board idiom (navy)', '#1a2340'],
+    ['sign board idiom (gold frame)', '#d4a940'],
+    ['pulled shutter tile', 'stallShutterTile'],
+    ['shutter slats', 'pulled timber shutter'],
+    ['market-day bunting tile', 'marketBuntingTile'],
+    ['bunting swag string', 'sagging string'],
+    ['stall hours render gate', "day.shops.stalls !== 'closed'"],
+    ['cafe hours render gate', "day.shops.cafe !== 'closed'"],
+    ['market-day bunting render gate', 'day.marketDay'],
+    ['no transaction changes', 'Living feel only'],
+  ];
+  for (const [label, needle] of shopChecks) ok('page contains ' + label, pageHtml.includes(needle));
+
   [a, b, c, d, k, v2, v3, i2, h2, f1, ...fillers].forEach(x => x.close());
 } finally {
   srv.kill('SIGTERM');
