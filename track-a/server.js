@@ -91,7 +91,8 @@ export const HOME_DOOR = { tx: 8, ty: 12 };       // press E near door -> enter 
 // Spots are on a 3-tile grid so their 56px interact zones never overlap.
 // (walkTo stops within 30px of a target; 96px spacing keeps every stop unambiguous.)
 export const HOME_EXIT = { tx: 32, ty: 24 };
-export const SLEEP_SPOT = { tx: 29, ty: 18 };      // bed
+// Ariel (2026-10-04): no sleep in the game — days roll over on their own clock.
+// (SLEEP_SPOT/bed interact removed; the bed remains home furniture.)
 export const HEARTH = { tx: 35, ty: 18 };          // cook spot (home)
 export const WARDROBE = { tx: 32, ty: 21 };        // change clothes
 export const RUG_SPOT = { tx: 29, ty: 21 };        // decorate: cycle rug color
@@ -338,11 +339,11 @@ export const NPC_DEFS = [
   ]},
   // CHURCH-REDESIGN (2026-10-03): the village pastor. Present in the church at
   // scheduled sermon times (see sermonActive), otherwise near the church.
-  // NOTE (Ariel): rename freely — this name is a placeholder she may change.
-  { name: 'Pastor Naomi', hx: 28, hy: 16, r: 2, lines: [
+  // NOTE (Ariel 2026-10-04): the pastor is Pastor Nathan (male) — her chosen name.
+  { name: 'Pastor Nathan', hx: 28, hy: 16, r: 2, lines: [
     'Welcome, traveler. The church is open to all — come as you are.',
-    'On sermon days, from morning till afternoon, I preach at the altar. Come sit a while.',
-    'Hope is a seed. We plant it every morning, and it grows.',
+    'On sermon days, from morning till afternoon, I preach the Scripture at the altar. Come sit a while.',
+    '"The LORD is my shepherd; I shall not want." — Psalm 23:1. Hold that close today.',
     'The light we lost is coming back — I can feel it in the village.',
     'Peace to you. You are always welcome here.',
   ]},
@@ -376,7 +377,7 @@ export const TOWN_GREETS = {
   ],
   night: [
     'The lamps are lit and the village is quiet. Rest well.',
-    'Night blessings, dear friend. Sleep in peace.',
+    'Night blessings, dear friend. The lamps are lit — home is near.',
   ],
 };
 export function townGreeting(phase, warm) {
@@ -389,7 +390,7 @@ export const NPC_CHAT_LINES = [
   'Mind the marigolds — they are showing off today.',
   'The café has something warm if you stop by.',
   'Have you seen the garden? It is waking up, I swear it.',
-  'Pastor Naomi preaches on sermon day, morning till afternoon. Do not forget.',
+  'Pastor Nathan preaches on sermon day, morning till afternoon. Do not forget.',
   'Evening lamps, morning birds — this village takes care of us.',
   'I saved you the sunny bench by the fountain.',
   'Small faithfulness, day after day. That is the whole secret.',
@@ -397,7 +398,7 @@ export const NPC_CHAT_LINES = [
 
 // Per-villager schedule geography: [tx, ty] tiles. Roles: Hannah keeps the
 // garden and plaza flowers; Elias vendors the market stall; Miriam keeps the
-// café; Pastor Naomi welcomes at the church door.
+// café; Pastor Nathan welcomes at the church door.
 // Every leg — including slot-transition legs — is lane-routed around the
 // fountain, the café, and the trees; the suite walks every full-day route and
 // fails if any leg crosses a solid tile.
@@ -426,7 +427,7 @@ export const TOWN_SCHEDULE = {
     aftB: [[24,18],[20,18],[16,16],[16,14]], aftActB: 'tend',
     marketWp: [[20,18],[19,14],[16,12],[14,11],[16,11],[18,11],[15,11],[17,11]],
     evening: [[20,18],[24,18],[26,18]] },
-  'Pastor Naomi': { home: [27,17],
+  'Pastor Nathan': { home: [27,17],
     goWork: [[29,16],[30,16]],
     workWp: [[30,16]], workAct: 'idle',
     lunchWp: [[29,16]],
@@ -482,11 +483,11 @@ export function townSlot(npcName, dayN, phase, frac) {
     }
   } else if (phase === 'sunset') {
     slot = 'evening';
-    // on market day Pastor Naomi's return routes around the café crowds
+    // on market day Pastor Nathan's return routes around the café crowds
     waypoints = (dayN % 7 === 4 && S.marketEve) ? S.marketEve : S.evening;
     act = 'stroll';
   }
-  else { slot = 'night'; waypoints = [S.home]; act = 'sleep'; }
+  else { slot = 'night'; waypoints = [S.home]; act = 'home'; }
   return { key: slot + '|' + dayN, waypoints, act };
 }
 // Full ordered waypoint route for one villager's day — slot transitions
@@ -840,18 +841,7 @@ function handleInteract(room, ws, p) {
   }
   if (p.inside && p.place === 'home') {
     if (near(p, HOME_EXIT.tx, HOME_EXIT.ty)) { exitInterior(room, ws, p, HOME_DOOR.tx, HOME_DOOR.ty); return {ok:true, action:'exit-home'}; }
-    if (near(p, SLEEP_SPOT.tx, SLEEP_SPOT.ty)) {
-      // STORY-FIX G6: rest has a quiet 10 s cooldown per traveler — silent,
-      // the prompt already says "Rest until morning".
-      if (now - (p.sleepAt || 0) < 10000) return {ok:false, reason:'rested'};
-      p.sleepAt = now;
-      room.day.n++; room.day.start = now;
-      // Sleep is personal rest: the day counter advances, but the room's
-      // rhythm flags and garden bloom persist (sleep never wipes progress).
-      broadcast(room, { t: 'day', ...dayPublic(room) });   // authoritative day: everyone
-      send(ws, { t: 'slept', by: p.name, n: room.day.n }); // personal rest effect: sleeper only
-      return {ok:true, action:'sleep'};
-    }
+    // Ariel (2026-10-04): no sleep — the bed is furniture, not an action.
     if (near(p, HEARTH.tx, HEARTH.ty)) { send(ws, {t:'menu', kind:'cook'}); return {ok:true, action:'cook-menu'}; }
     if (near(p, WARDROBE.tx, WARDROBE.ty)) { send(ws, {t:'menu', kind:'creator'}); return {ok:true, action:'creator-menu'}; }
     if (near(p, RUG_SPOT.tx, RUG_SPOT.ty)) {
@@ -1023,7 +1013,7 @@ function tickRoom(room) {
   const sermon = sermonActive(room, now);
   if (sermon && !room.sermonOn) {
     room.sermonOn = true;
-    const seats = { 'Pastor Naomi': [20,19], 'Hannah': [19,21], 'Elias': [21,21], 'Miriam': [19,23] };
+    const seats = { 'Pastor Nathan': [20,19], 'Hannah': [19,21], 'Elias': [21,21], 'Miriam': [19,23] };
     for (const n of room.npcs) {
       const s = seats[n.name]; if (!s) continue;
       const sx = s[0]*TILE+TILE/2, sy = s[1]*TILE+TILE/2;
@@ -1074,6 +1064,15 @@ function tickRoom(room) {
   }
   // day/night heartbeat (1s)
   room.tickCount++;
+  // Ariel (2026-10-04): no sleep — days roll over on their own clock. When the
+  // day fraction wraps past night, the day counter advances for everyone;
+  // rhythm flags and garden bloom persist (rollover never wipes progress).
+  const fracNow = dayFrac(room, now);
+  if (room.day.fracPrev !== undefined && fracNow < room.day.fracPrev) {
+    room.day.n++;
+    broadcast(room, { t: 'day', ...dayPublic(room) });
+  }
+  room.day.fracPrev = fracNow;
   if (room.tickCount % 20 === 0) broadcast(room, { t: 'day', ...dayPublic(room) });
   // crops
   let farmChanged = false;

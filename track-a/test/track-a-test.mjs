@@ -303,7 +303,7 @@ const b4Checks = [
   ['hearth glow kept', "drawGlow(g, x+16, y+20, 44, 'rgba(255,150,60,A)', now, 5)"],
   ['pew rows with sit gaps', 'CH_PEW_SITS'],
   ['sermon lines ship in the page', 'SERMON_LINES'],
-  ['pastor npc look defined', 'Pastor Naomi'],
+  ['pastor npc look defined', 'Pastor Nathan'],
   ['peace flash wash', 'peaceFlash'],
   ['day/night tint hook kept', 'tintCur'],
 ];
@@ -876,7 +876,7 @@ try {
   const bloom = a.lastOf('garden-bloom');
   ok('bloom message is warm, not preachy', !!bloom && /bloom/i.test(bloom.message) && !/repent|sin|hell/i.test(bloom.message), bloom?.message);
 
-  // ---------- 6e. home interior: enter, sleep, decorate, wardrobe, exit ----------
+  // ---------- 6e. home interior: enter, bed (furniture), decorate, wardrobe, exit ----------
   console.log('home:');
   ok('walk to church exit', await walkTo(a, 20*TILE+16, 24*TILE+16));
   a.send({ t: 'interact' });
@@ -892,18 +892,15 @@ try {
   const BED = { x: 29*TILE+16, y: 18*TILE+16 };
   ok('walk to bed', await walkTo(a, BED.x, BED.y));
   const dayBefore = a.lastOf('day')?.n || 1;
-  a.send({ t: 'interact' }); // sleep
-  ok('sleep advances to a new day (A)', await a.waitFor(() => (a.lastOf('day')?.n || 0) > dayBefore, 3000));
-  ok('sleep advances to a new day (B)', await b.waitFor(() => (b.lastOf('day')?.n || 0) > dayBefore, 3000));
-  ok('sleep does NOT wipe the day rhythm (A)', (a.lastOf('day')?.rhythm && Object.values(a.lastOf('day').rhythm).every(v => v === true)) === true, JSON.stringify(a.lastOf('day')?.rhythm));
-  ok('sleep does NOT wipe the day rhythm (B)', (b.lastOf('day')?.rhythm && Object.values(b.lastOf('day').rhythm).every(v => v === true)) === true, JSON.stringify(b.lastOf('day')?.rhythm));
-  ok('sleeper gets the personal slept effect', !!a.lastOf('slept'));
-  ok('partner does NOT get the personal slept effect', !b.msgs.some(m => m.t === 'slept'));
-  // STORY-FIX G6: rest has a quiet 10 s cooldown per traveler (still at the bed)
-  const dayAfterFirst = a.lastOf('day')?.n || 1;
-  a.send({ t: 'interact' }); // sleep again, at once
-  ok('sleep cooldown rejects an immediate second rest', await a.waitFor(() => a.msgs.some(m => m.t === 'interact-fail' && m.reason === 'rested'), 2000));
-  ok('sleep cooldown does not advance the day again', (a.lastOf('day')?.n || 1) === dayAfterFirst, 'day=' + a.lastOf('day')?.n);
+  a.send({ t: 'interact' }); // bed is furniture now — no sleep action
+  await new Promise(r => setTimeout(r, 800));
+  ok('bed does nothing (no sleep action)', !a.msgs.some(m => m.t === 'slept'), 'no slept msg');
+  ok('bed does not advance the day', (a.lastOf('day')?.n || 1) === dayBefore, 'day=' + a.lastOf('day')?.n);
+  // Ariel (2026-10-04): days roll over on their own clock (DAY_MS=45000 in test env)
+  ok('day rolls over on its own clock (A)', await a.waitFor(() => (a.lastOf('day')?.n || 0) > dayBefore, 60000));
+  ok('day rolls over on its own clock (B)', await b.waitFor(() => (b.lastOf('day')?.n || 0) > dayBefore, 60000));
+  ok('rollover does NOT wipe the day rhythm (A)', (a.lastOf('day')?.rhythm && Object.values(a.lastOf('day').rhythm).every(v => v === true)) === true, JSON.stringify(a.lastOf('day')?.rhythm));
+  ok('rollover does NOT wipe the day rhythm (B)', (b.lastOf('day')?.rhythm && Object.values(b.lastOf('day').rhythm).every(v => v === true)) === true, JSON.stringify(b.lastOf('day')?.rhythm));
   const RUG = { x: 29*TILE+16, y: 21*TILE+16 };
   ok('walk to rug', await walkTo(a, RUG.x, RUG.y));
   a.send({ t: 'interact' }); // decorate
@@ -935,7 +932,7 @@ try {
   ok('day 1 is a sermon day (synced flag)', await w1.waitFor(() => w1.lastOf('day')?.sermon === true, 5000),
      'sermon=' + w1.lastOf('day')?.sermon + ' phase=' + w1.lastOf('day')?.phase);
   const nearTile = (n, tx, ty) => n && Math.abs(n.x - (tx*TILE+16)) < 40 && Math.abs(n.y - (ty*TILE+16)) < 40;
-  ok('pastor takes the pulpit', await w1.waitFor(() => nearTile(w1.state.npcs.get('Pastor Naomi'), 20, 19), 15000));
+  ok('pastor takes the pulpit', await w1.waitFor(() => nearTile(w1.state.npcs.get('Pastor Nathan'), 20, 19), 15000));
   ok('Hannah sits in a pew', await w1.waitFor(() => nearTile(w1.state.npcs.get('Hannah'), 19, 21), 15000));
   ok('Elias sits in a pew', await w1.waitFor(() => nearTile(w1.state.npcs.get('Elias'), 21, 21), 15000));
   ok('Miriam sits in a pew', await w1.waitFor(() => nearTile(w1.state.npcs.get('Miriam'), 19, 23), 15000));
@@ -952,7 +949,7 @@ try {
   ok('sermon attendance counts toward the day rhythm', await w1.waitFor(() => w1.lastOf('day')?.rhythm?.sermon === true, 3000));
   ok('sermon-peace fires once per sermon', await sleep(600).then(() => w1.msgs.filter(m => m.t === 'sermon-peace').length === 1),
      'count=' + w1.msgs.filter(m => m.t === 'sermon-peace').length);
-  ok('page carries the sermon lines', pageHtml.includes('SERMON_LINES') && pageHtml.includes('Pastor Naomi: '));
+  ok('page carries the sermon lines', pageHtml.includes('SERMON_LINES') && pageHtml.includes('Pastor Nathan: '));
   w1.close();
 
   // ---------- 7. SIGNATURE: ruin opens when both stand on stones ----------
@@ -1581,7 +1578,7 @@ try {
   ok('morning commute: to the work spot', gowork.key === 'gowork|2' && gowork.act === 'carry' &&
      JSON.stringify(gowork.waypoints[gowork.waypoints.length-1]) === JSON.stringify([16,11]), JSON.stringify(gowork));
   const workE = TL.townSlot('Elias', 2, 'day', 0.30), workH = TL.townSlot('Hannah', 2, 'day', 0.30),
-        workM = TL.townSlot('Miriam', 2, 'day', 0.30), workN = TL.townSlot('Pastor Naomi', 2, 'day', 0.30);
+        workM = TL.townSlot('Miriam', 2, 'day', 0.30), workN = TL.townSlot('Pastor Nathan', 2, 'day', 0.30);
   ok('day work: vendor behind the stall', workE.key === 'work|2' && workE.act === 'serve' &&
      JSON.stringify(workE.waypoints) === JSON.stringify([[16,11]]), JSON.stringify(workE));
   ok('day work: café keeper behind the counter', workM.act === 'serve' &&
@@ -1602,7 +1599,7 @@ try {
   ok('sunset: heading home', eve.key === 'evening|2' && eve.act === 'stroll' &&
      JSON.stringify(eve.waypoints[eve.waypoints.length-1]) === JSON.stringify([26,18]), JSON.stringify(eve));
   const night = TL.townSlot('Miriam', 2, 'night', 0.85);
-  ok('night: home, asleep', night.key === 'night|2' && night.act === 'sleep' &&
+  ok('night: home, quiet (no sleep)', night.key === 'night|2' && night.act === 'home' &&
      JSON.stringify(night.waypoints) === JSON.stringify([[26,18]]), JSON.stringify(night));
   ok('unknown villager -> null slot', TL.townSlot('Nobody', 2, 'day', 0.3) === null);
   // every full-day route: waypoints walkable, every leg (transitions included)
@@ -1702,15 +1699,8 @@ try {
   const tl = new C('Towny'); await tl.connect();
   tl.send({ t: 'create', name: 'Towny' });
   ok('town-life room created', await tl.waitFor(() => !!tl.state.code, 3000));
-  ok('sleep advances to ordinary day 2', await (async () => {
-    await walkTo(tl, 13*TILE+16, 12*TILE+16, 8000);
-    await walkTo(tl, 8*TILE+16, 12*TILE+16, 8000);
-    tl.send({ t: 'interact' });
-    if (!await tl.waitFor(() => tl.me()?.inside === true, 3000)) return false;
-    await walkTo(tl, 29*TILE+16, 18*TILE+16, 8000);
-    tl.send({ t: 'interact' });
-    return tl.waitFor(() => (tl.lastOf('day')?.n || 0) === 2, 4000);
-  })());
+  // Ariel (2026-10-04): no sleep — days roll over on their own clock (45 s in tests).
+  ok('day rolls over to ordinary day 2 on its own clock', await tl.waitFor(() => (tl.lastOf('day')?.n || 0) === 2, 90000));
   ok('day payload carries shop hours + market-day flag', await tl.waitFor(() => {
     const d = tl.lastOf('day');
     return !!d && d.shops && (d.shops.stalls === 'open' || d.shops.stalls === 'closed') &&
@@ -1727,8 +1717,11 @@ try {
     }, 25000);
   })(), JSON.stringify({ x: tl.state.npcs.get('Elias')?.x, y: tl.state.npcs.get('Elias')?.y, act: tl.state.npcs.get('Elias')?.act }));
   // greeting: first talk of the day uses the time-of-day greeting, heart mechanic untouched.
-  // (the traveler is still inside the home after sleeping — step out first)
-  ok('exit home after sleeping', await (async () => {
+  // (no sleep inside anymore — home enter/exit still works)
+  ok('home enter and exit still work', await (async () => {
+    await walkTo(tl, 8*TILE+16, 12*TILE+16, 8000);
+    tl.send({ t: 'interact' });
+    if (!await tl.waitFor(() => tl.me()?.inside === true, 3000)) return false;
     await walkTo(tl, 32*TILE+16, 24*TILE+16, 8000);
     tl.send({ t: 'interact' });
     return tl.waitFor(() => tl.me()?.inside === false, 3000);
@@ -1750,24 +1743,12 @@ try {
     return greets.includes(sayG.text) && sayG.hearts === 1;
   })(), JSON.stringify(tl._greetSay));
 
-  // ---------- TOWN-LIFE (d): market day wire check (sleep to day 4) ----------
-  // two more sleeps -> day 4 -> the market gathers (flag syncs to the village).
-  // STORY-FIX G6: rest has a 10 s cooldown per traveler, so the second sleep
-  // waits it out — the intent (two real sleeps -> day 4) is unchanged.
-  ok('sleep to day 4 (market day)', await (async () => {
-    for (let s = 0; s < 2; s++) {
-      await walkTo(tl, 8*TILE+16, 12*TILE+16, 8000);
-      tl.send({ t: 'interact' });
-      if (!await tl.waitFor(() => tl.me()?.inside === true, 3000)) return false;
-      await walkTo(tl, 29*TILE+16, 18*TILE+16, 8000);
-      tl.send({ t: 'interact' });
-      if (!await tl.waitFor(() => (tl.lastOf('day')?.n || 0) === 3 + s, 4000)) return false;
-      await sleep(10500); // the rest cooldown clears before the next sleep
-      await walkTo(tl, 32*TILE+16, 24*TILE+16, 8000);
-      tl.send({ t: 'interact' });
-      if (!await tl.waitFor(() => tl.me()?.inside === false, 3000)) return false;
-    }
-    return tl.waitFor(() => (tl.lastOf('day')?.n || 0) === 4, 4000);
+  // ---------- TOWN-LIFE (d): market day wire check (rollover to day 4) ----------
+  // Ariel (2026-10-04): no sleep — two more rollovers -> day 4 -> the market
+  // gathers (flag syncs to the village).
+  ok('day rolls over to day 4 (market day)', await (async () => {
+    if (!await tl.waitFor(() => (tl.lastOf('day')?.n || 0) === 3, 90000)) return false;
+    return tl.waitFor(() => (tl.lastOf('day')?.n || 0) === 4, 90000);
   })());
   ok('market day flag syncs to the village', tl.lastOf('day')?.marketDay === true,
      JSON.stringify({ n: tl.lastOf('day')?.n, marketDay: tl.lastOf('day')?.marketDay }));
@@ -1805,7 +1786,6 @@ try {
     ['serve bread glyph', "'🍞'"],
     ['tend sprout glyph', "'🌿'"],
     ['lunch meal glyph', "'🍲'"],
-    ['sleep glyph', "'💤'"],
     ['resting seated render', 'seatedStill'],
     ['chat bubble for npc chats', 'chattingNpc'],
   ];

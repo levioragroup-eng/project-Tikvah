@@ -130,7 +130,7 @@
   #dialogue .who .hearts { color:#e06a8a; font-size:14px; }
   #dialogue .line { font-size:15px; line-height:1.55; font-style:italic; }
   #dialogue .next { font-size:11px; color:#8a7a5a; margin-top:8px; text-align:right; }
-  /* sleep fade */
+  /* screen fade */
   #fade { position:absolute; inset:0; background:#000; opacity:0; pointer-events:none; transition:opacity 1.2s; z-index:25; }
   /* ending overlay */
   #ending { position:absolute; inset:0; display:none; align-items:center; justify-content:center; z-index:30;
@@ -970,7 +970,6 @@ function onMsg(m) {
             m.reason === 'no-meal' ? 'No meals to share yet — cook something first.' :
             m.reason === 'nobody-nearby' ? 'No one nearby to share with.' : 'Nothing to do here — walk closer.');
       break;
-    case 'slept': sleepFade(); toast('🌙 ' + m.by + ' rested — Day ' + m.n + ' dawns'); break;
     case 'decor': homeRug = m.rug; toast('🏠 ' + m.by + ' redecorated the rug'); break;
     case 'verse': showVerse(m.ref, m.text); break;
     case 'interact-fail': if (m.reason === 'nothing-nearby') toast('Nothing to do here — walk closer.'); break;
@@ -1038,19 +1037,17 @@ function updateDayHud() {
 
 // ================= Weekly sermon =================
 // CHURCH-REDESIGN (2026-10-03): every 7th day (day 1 is a sermon day),
-// morning until afternoon, Pastor Naomi preaches at the altar. Derived from
+// morning until afternoon, Pastor Nathan preaches at the altar. Derived from
 // the already-synced day payload — both travelers share the event. Lines are
 // reverent and light/restoration themed; no new Scripture verses.
 const SERMON_LINES = [
-  'Hope is a seed. We plant it every morning, and it grows.',
-  'The light we lost is coming back — I can feel it in this village.',
-  'Come as you are. This church always has a seat for you.',
-  'Rest is holy too. Sit a while; let peace find you.',
-  'Every meal shared, every neighbor greeted — that is worship.',
-  'The garden will bloom again. Small faithfulness, day after day.',
-  'You are not forgotten here. None of us are.',
-  'Let your light be gentle today. Gentle is enough.',
-  'We were made for mornings like this — together, and at peace.',
+  '"For I know the thoughts that I think toward you, saith the LORD, thoughts of peace, and not of evil, to give you an expected end." — Jeremiah 29:11',
+  'Jeremiah 29:11: His plans for this village are peace, not evil — an expected end, a hope restored.',
+  '"The LORD is my shepherd; I shall not want." — Psalm 23:1',
+  'Psalm 23:1: the Shepherd walks these lanes with us. We shall not want.',
+  '"I am the light of the world: he that followeth me shall not walk in darkness, but shall have the light of life." — John 8:12',
+  'John 8:12: follow the Light, and you will not walk in darkness.',
+  'Come as you are. This church always has a seat for you — and the Word is for everyone.',
   'Go in kindness. The village is brighter because you are in it.',
 ];
 function sermonActiveClient() {
@@ -1062,7 +1059,7 @@ setInterval(() => {
   const me = myId && players.get(myId);
   if (me && me.inside && me.place === 'church' && sermonActiveClient()) {
     const idx = Math.floor(Date.now() / 30000) % SERMON_LINES.length;
-    if (idx !== lastSermonIdx) { lastSermonIdx = idx; toast('🕊️ Pastor Naomi: ' + SERMON_LINES[idx]); }
+    if (idx !== lastSermonIdx) { lastSermonIdx = idx; toast('🕊️ Pastor Nathan: ' + SERMON_LINES[idx]); }
   } else lastSermonIdx = -1;
 }, 5000);
 
@@ -1243,7 +1240,7 @@ const CH_EXIT = { tx: 20, ty: 24 }, CH_PRAY = { tx: 20, ty: 20 },
 // CHURCH-REDESIGN (2026-10-03): designated pew sit gaps — walkable tiles in
 // the pew rows, aisle-adjacent, where travelers can sit (mirrors the server).
 const CH_PEW_SITS = [ { tx: 19, ty: 21 }, { tx: 21, ty: 21 }, { tx: 19, ty: 23 }, { tx: 21, ty: 23 } ];
-const HM_EXIT = { tx: 32, ty: 24 }, HM_SLEEP = { tx: 29, ty: 18 }, HM_HEARTH = { tx: 35, ty: 18 },
+const HM_EXIT = { tx: 32, ty: 24 }, HM_HEARTH = { tx: 35, ty: 18 },
       HM_WARD = { tx: 32, ty: 21 }, HM_RUG = { tx: 29, ty: 21 }, HM_SIT = { tx: 35, ty: 21 },
       HM_NOOK = { tx: 32, ty: 18 };
 const DOCK_T = { tx: 17, ty: 20 };
@@ -1266,7 +1263,6 @@ function promptFor(me) {
   }
   if (me.inside && me.place === 'home') {
     if (tDist(me.x, me.y, HM_EXIT.tx, HM_EXIT.ty) <= IR) return 'Step outside';
-    if (tDist(me.x, me.y, HM_SLEEP.tx, HM_SLEEP.ty) <= IR) return 'Rest until morning';
     if (tDist(me.x, me.y, HM_HEARTH.tx, HM_HEARTH.ty) <= IR) return 'Cook';
     if (tDist(me.x, me.y, HM_WARD.tx, HM_WARD.ty) <= IR) return 'Change clothes';
     if (tDist(me.x, me.y, HM_RUG.tx, HM_RUG.ty) <= IR) return 'Decorate';
@@ -1657,12 +1653,6 @@ function showDialogue(name, text, hearts, by) {
 }
 function closeDialogue() { document.getElementById('dialogue').style.display = 'none'; }
 document.getElementById('dialogue').addEventListener('click', closeDialogue);
-function sleepFade() {
-  const f = document.getElementById('fade');
-  f.style.transition = 'opacity 1.2s';
-  f.style.opacity = '1';
-  setTimeout(() => { f.style.opacity = '0'; }, 1400);
-}
 // quick fade for entering / leaving interiors
 function roomFade() {
   const f = document.getElementById('fade');
@@ -1992,8 +1982,8 @@ const npcLooks = {
   Hannah: { skin:'#9a6540', hair:'long', hairColor:'#241610', outfit:'#c96a4a', dress:true, accessory:'flower', apron:true },
   Elias:  { skin:'#e0ac7e', hair:'short', hairColor:'#5a3a1e', outfit:'#6aa84f', dress:false, accessory:'none' },
   Miriam: { skin:'#f2c99a', hair:'bun', hairColor:'#d9c08a', outfit:'#9a6ac9', dress:true, accessory:'none' },
-  // CHURCH-REDESIGN (2026-10-03): the village pastor (Ariel may rename).
-  'Pastor Naomi': { skin:'#6e452a', hair:'bun', hairColor:'#d9c08a', outfit:'#f5efdd', dress:true, accessory:'none' },
+  // CHURCH-REDESIGN (2026-10-03): the village pastor — Ariel's choice: Pastor Nathan (male).
+  'Pastor Nathan': { skin:'#6e452a', hair:'short', hairColor:'#3a2a18', outfit:'#f5efdd', dress:false, accessory:'none' },
 };
 const npcSprites = {};
 function npcSprite(name) {
@@ -5849,7 +5839,7 @@ function drawHomeInterior(g, tx, ty, x, y, now) {
   const border = tx===28||tx===38||ty===17||ty===26;
   if (border) g.drawImage(homeWall, x, y);
   else g.drawImage(woodFloor, x, y);
-  if (tx===29 && ty===18) g.drawImage(bedTile, x, y);          // sleep
+  if (tx===29 && ty===18) g.drawImage(bedTile, x, y);          // bed (furniture)
   if (tx===30 && ty===18) g.drawImage(bookcaseTile, x, y);     // bookshelf (decor)
   if (tx===32 && ty===18) g.drawImage(nookTile, x, y);         // pray nook
   if (tx===37 && ty===18) g.drawImage(plantPotTall, x, y);      // potted plant (decor)
@@ -5998,7 +5988,9 @@ function spriteForF(lk, fr) {
   }
   return spriteCache.get(k);
 }
-const EMOJI = { wave: '👋', heart: '❤️', pray: '🙏', sit: '💤' };
+const EMOJI = { wave: '👋', heart: '❤️', pray: '🙏' };
+// Ariel (2026-10-04): sitting in a church pew shows an open Bible — prayer hands
+// when praying, never the old sleep emoji.
 
 function drawNameTag(g, x, y, name, color) {
   g.font = '10px monospace'; g.textAlign = 'center';
@@ -6089,10 +6081,10 @@ function loop(now) {
     if (inside) { if (!(me.place === 'church' && inChurchRect)) continue; }
     else if (inChurchRect) continue;   // seated congregation stays a church sight
     const seated = inside && sermonActiveClient();
-    // TOWN-LIFE: villagers at lunch or asleep render seated and still, and
+    // TOWN-LIFE: villagers at lunch render seated and still, and
     // carry a small activity glyph (same visual language as the chat bubble)
     const idleAct = n.act || 'idle';
-    const resting = idleAct === 'lunch' || idleAct === 'sleep';
+    const resting = idleAct === 'lunch';
     const seatedStill = seated || resting;
     const nBob = seatedStill ? 0 : Math.sin(now/650 + n.x*0.5)*1.2 + Math.sin(now/1300 + n.y)*0.5;
     const nDrift = seatedStill ? 0 : Math.sin(now/800 + n.x)*1.2;
@@ -6113,8 +6105,8 @@ function loop(now) {
       ctx.font = '16px monospace'; ctx.textAlign = 'center';
       ctx.fillStyle = '#fff'; ctx.fillText('💬', n.x, n.y - 44 + Math.sin(now/300)*2);
     }
-    // TOWN-LIFE: idle activity glyph — baskets, wares, tending, meals, rest
-    const actEmoji = { carry: '🧺', serve: '🍞', tend: '🌿', lunch: '🍲', sleep: '💤' }[idleAct];
+    // TOWN-LIFE: idle activity glyph — baskets, wares, tending, meals
+    const actEmoji = { carry: '🧺', serve: '🍞', tend: '🌿', lunch: '🍲' }[idleAct];
     if (actEmoji && !chatting) {
       ctx.font = '13px monospace'; ctx.textAlign = 'center';
       ctx.fillStyle = '#fff'; ctx.fillText(actEmoji, n.x + 14, n.y - 30 + Math.sin(now/400 + n.x)*1.5);
@@ -6145,9 +6137,10 @@ function loop(now) {
       ctx.font = '14px monospace'; ctx.textAlign = 'center';
       ctx.fillText(p.fishing==='bite' ? '❗' : '🎣', p.x+14, p.y-24);
     }
-    if (p.emote && EMOJI[p.emote]) {
+    if (p.emote && (EMOJI[p.emote] || p.emote === 'sit')) {
       ctx.font = '18px monospace'; ctx.textAlign = 'center';
-      ctx.fillText(EMOJI[p.emote], p.x, p.y-44 + Math.sin(now/300)*2);
+      const em = EMOJI[p.emote] || (p.inside && p.place === 'church' ? '📖' : null);
+      if (em) ctx.fillText(em, p.x, p.y-44 + Math.sin(now/300)*2);
     }
     // quick-chat speech bubble (preset text from the server, ~4 s)
     const qb = qcBubbles.get(p.id);
