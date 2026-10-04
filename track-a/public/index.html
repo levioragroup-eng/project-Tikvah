@@ -2130,53 +2130,93 @@ function grassTile(variant) {
       if (i % 3 === 0) { g.fillStyle = '#FFF3C4'; g.fillRect(x, y, 1, 1); }
     }
     if (variant === 1) for (let i = 0; i < 3; i++) tuft2(g, 4 + R(24), 8 + R(20), dark, light);
+    // VISUAL-PASS-3: denser speckle (~1.5x) + flower-patch clusters on ~40%
+    // of tiles + occasional stem flowers
+    speckle(g, R, 4, dark, 3, 2); speckle(g, R, 5, light, 3, 2);
+    speckle(g, R, 3, deep, 2, 2);
+    if (R(10) < 4) {                                            // flower-patch cluster
+      const pcx = 6 + R(20), pcy = 6 + R(20);
+      const pcols = [PAL.flowerPink, PAL.flowerCream, PAL.gold];
+      g.fillStyle = PAL.leafDark; g.fillRect(pcx - 3, pcy + 4, 8, 2);
+      for (let i = 0; i < 7; i++) {                             // 5–9 dots in 6px radius
+        const a = R(628) / 100, rr = R(6);
+        g.fillStyle = pcols[R(3)];
+        g.fillRect(Math.round(pcx + Math.cos(a) * rr), Math.round(pcy + Math.sin(a) * rr), 2, 2);
+      }
+      g.fillStyle = '#FFF3C4'; g.fillRect(pcx, pcy, 1, 1);
+    }
+    if (R(6) === 0) {                                           // stem flower
+      const fx = 4 + R(24), fy = 10 + R(16);
+      g.fillStyle = PAL.leafDark; g.fillRect(fx, fy, 2, 5);      // 2px stem
+      g.fillStyle = R(2) ? PAL.flowerBlue : PAL.flowerLavender;
+      g.fillRect(fx, fy - 2, 2, 2);                             // 2x2 bloom
+      g.fillStyle = '#FFF3C4'; g.fillRect(fx, fy - 2, 1, 1);
+    }
   });
 }
 const grassA = grassTile(0), grassB = grassTile(1);
 const grassC = grassTile(2);
 const pathTile = px(TILE,TILE,(g)=>{
-  // VISUAL-PASS-2: hand-laid flagstone ellipses — dark rim, sunlit top face,
-  // worn bottom shade — never a checkerboard.
+  // VISUAL-PASS-3: hand-laid flagstones — wider 5–9px stones, ±0.15 rotation,
+  // varied joint width, grass tufts in ~40% of joints, cracked stones
   const R = srand(0x9a7e);
   g.fillStyle = PAL.pathShadow; g.fillRect(0,0,TILE,TILE);          // worn dirt mortar
   const shades = [PAL.path, PAL.pathLight, PAL.path, mixHex(PAL.path, PAL.pathLight, .5), mixHex(PAL.path, PAL.pathShadow, .3)];
-  const stone = (cx, cy, rx, ry, base) => {
-    g.fillStyle = mixHex(PAL.pathShadow, '#5A4632', .35);         // dark rim drops 1px
-    g.beginPath(); g.ellipse(cx, cy + 1.2, rx, ry, 0, 0, 7); g.fill();
+  const stone = (cx, cy, rx, ry, base, rot) => {
+    const jw = 1 + R(2);                                         // varied joint width
+    g.fillStyle = mixHex(PAL.pathShadow, '#5A4632', .35);         // dark rim drops jw px
+    g.beginPath(); g.ellipse(cx, cy + jw, rx, ry, rot, 0, 7); g.fill();
     g.fillStyle = base;
-    g.beginPath(); g.ellipse(cx, cy, rx, ry, 0, 0, 7); g.fill();
+    g.beginPath(); g.ellipse(cx, cy, rx, ry, rot, 0, 7); g.fill();
     g.fillStyle = 'rgba(255,248,225,.16)';                         // sunlit top face
-    g.beginPath(); g.ellipse(cx - rx * .18, cy - ry * .32, rx * .58, ry * .42, 0, 0, 7); g.fill();
+    g.beginPath(); g.ellipse(cx - rx * .18, cy - ry * .32, rx * .58, ry * .42, rot, 0, 7); g.fill();
     g.fillStyle = 'rgba(120,95,60,.30)'; g.fillRect(cx - 2, cy + ry - 2, 4, 1);
+  };
+  const tuftP = (x, y) => {                                      // 2–3px grass tuft
+    g.fillStyle = PAL.meadowDark;
+    g.fillRect(x, y, 1, 3); g.fillRect(x+1, y+1, 1, 2); g.fillRect(x+2, y, 1, 3);
+    g.fillStyle = PAL.meadowLight; g.fillRect(x+1, y, 1, 1);
   };
   for (let row=0; row<4; row++) {
     const cy = 4 + row*8, off = (row%2)*8;
     for (let cx0=-1; cx0<3; cx0++) {
-      stone(cx0*16 + off + 8 + (R(3)-1), cy, 6.4 + R(2), 3.4, shades[R(5)]);
-      if (R(4) === 0) { g.fillStyle = PAL.meadowDark; g.fillRect(cx0*16 + off + 2 + R(12), cy + 3, 2, 2); } // grass in the joint
+      const ccx = cx0*16 + off + 8 + (R(3)-1), rot = (R(31)-15)/100;  // ±0.15 rotation
+      stone(ccx, cy, 5 + R(4), 3.5 + R(3), shades[R(5)], rot);
+      if (R(10) < 4) tuftP(cx0*16 + off + 2 + R(10), cy + 3 + R(2));   // grass in ~40% of joints
+      if (R(12) === 0) {                                         // cracked stone
+        g.fillStyle = PAL.stoneDark; g.fillRect(ccx - 3, cy - 1, 7, 1);
+      }
     }
   }
 });
 const plazaTile = px(TILE,TILE,(g)=>{
-  // VISUAL-PASS-2: town-square flagstone ellipses — big warm slabs with
-  // dark rims and worn light centers (the board's sandy paved square)
+  // VISUAL-PASS-3: town-square flagstones — wider 5–9px slabs, ±0.15 rotation,
+  // varied joints, weedy tufts, cracked slabs (the board's sandy paved square)
   const R = srand(0xc0da);
   g.fillStyle = mixHex(PAL.pathShadow, PAL.path, .35); g.fillRect(0,0,TILE,TILE); // sandy mortar
-  const stone = (cx, cy, rx, ry, base) => {
+  const stone = (cx, cy, rx, ry, base, rot) => {
+    const jw = 1 + R(2);                                         // varied joint width
     g.fillStyle = mixHex(PAL.pathShadow, '#5A4632', .4);
-    g.beginPath(); g.ellipse(cx, cy + 1.4, rx, ry, 0, 0, 7); g.fill();
+    g.beginPath(); g.ellipse(cx, cy + jw, rx, ry, rot, 0, 7); g.fill();
     g.fillStyle = base;
-    g.beginPath(); g.ellipse(cx, cy, rx, ry, 0, 0, 7); g.fill();
+    g.beginPath(); g.ellipse(cx, cy, rx, ry, rot, 0, 7); g.fill();
     g.fillStyle = 'rgba(255,248,225,.15)';
-    g.beginPath(); g.ellipse(cx - rx * .16, cy - ry * .3, rx * .6, ry * .44, 0, 0, 7); g.fill();
+    g.beginPath(); g.ellipse(cx - rx * .16, cy - ry * .3, rx * .6, ry * .44, rot, 0, 7); g.fill();
     g.fillStyle = 'rgba(183,157,120,.5)';
     for (let i=0;i<2;i++) g.fillRect(cx - 4 + R(9), cy + R(5), 2, 1);  // sand grit
+    if (R(10) < 4) {                                             // weedy tuft in the joint
+      g.fillStyle = PAL.meadowDark;
+      g.fillRect(cx + rx - 2, cy + ry - 1, 1, 3); g.fillRect(cx + rx - 1, cy + ry, 1, 2);
+      g.fillStyle = PAL.meadowLight; g.fillRect(cx + rx - 1, cy + ry - 1, 1, 1);
+    }
+    if (R(14) === 0) { g.fillStyle = PAL.stoneDark; g.fillRect(cx - 4, cy, 8, 1); }  // cracked slab
   };
-  stone(8 + (R(3)-1), 8, 7.4 + R(2), 6.6, PAL.path);
-  stone(24 + (R(3)-1), 9, 7.4 + R(2), 6.6, PAL.pathLight);
-  stone(9 + (R(3)-1), 24, 7.4 + R(2), 6.6, PAL.pathLight);
-  stone(25 + (R(3)-1), 25, 7.4 + R(2), 6.6, PAL.path);
-  stone(16, 17, 6.2 + R(2), 5.8, mixHex(PAL.path, PAL.pathLight, .5));    // fuller center stone
+  const rot = () => (R(31)-15)/100;                              // ±0.15 rotation
+  stone(8 + (R(3)-1), 8, 5 + R(4), 5 + R(4), PAL.path, rot());
+  stone(24 + (R(3)-1), 9, 5 + R(4), 5 + R(4), PAL.pathLight, rot());
+  stone(9 + (R(3)-1), 24, 5 + R(4), 5 + R(4), PAL.pathLight, rot());
+  stone(25 + (R(3)-1), 25, 5 + R(4), 5 + R(4), PAL.path, rot());
+  stone(16, 17, 5 + R(3), 5 + R(3), mixHex(PAL.path, PAL.pathLight, .5), rot());  // fuller center stone
   g.fillStyle = 'rgba(232,213,176,.5)';
   for (let i=0;i<6;i++) g.fillRect(R(TILE), R(TILE), 2, 1);         // swept sand dust
 });
@@ -2739,6 +2779,12 @@ function gardenBed(state, variant, sway) {
         g.fillStyle = spireCols[R(spireCols.length)];
         for (let sgm=0;sgm<4;sgm++) g.fillRect(x-(sgm%2), y-sgm*2, 3+(sgm%2), 2); // stacked spike
         g.fillStyle = 'rgba(255,255,255,.55)'; g.fillRect(x, y-6, 1, 6);
+        // VISUAL-PASS-3: denser rose spires — bloom dots with gold centers
+        for (let sgm=0;sgm<4;sgm++) {
+          g.fillStyle = spireCols[R(spireCols.length)];
+          g.fillRect(x-(sgm%2)-1, y-sgm*2, 2, 2);
+          g.fillStyle = PAL.gold; g.fillRect(x-(sgm%2), y-sgm*2+1, 1, 1);
+        }
       }
       const sh2 = sway ? -1 : 0;                                  // …mid row the other (parallax)
       for (let i=0;i<5;i++) {                                     // round blooms
@@ -2834,14 +2880,17 @@ const gardenPathD = gardenPathTile('dormant'), gardenPathB = gardenPathTile('blo
 function gardenEdgeTile(state) {   // low clipped hedge edging the garden
   return px(TILE,TILE,(g)=>{ g.clearRect(0,0,TILE,TILE);
     const S = SEASON_BLOOMS.spring, R = srand(0xed6e);
-    g.fillStyle = state==='blooming' ? '#2f6b2f' : '#2a5f2a';
-    g.fillRect(4,12,24,14); g.fillRect(8,7,16,7);
+    const body = state==='blooming' ? '#2f6b2f' : '#2a5f2a';
+    g.fillStyle = body;
+    g.fillRect(4,12,24,10); g.fillRect(8,7,16,7);                 // bush body
+    // VISUAL-PASS-3: clipped hedge border — 4px leafDark mass, leafLight top dots
+    g.fillStyle = PAL.leafDark; g.fillRect(4,22,24,4);           // 4px clipped mass
     g.fillStyle = state==='blooming' ? '#3a7230' : '#244e24';
-    g.fillRect(4,22,24,4);                                        // belly shade
-    g.fillStyle = state==='blooming' ? '#6ab04c' : '#6a7a42';
-    for (let i=0;i<30;i++) g.fillRect(4+R(24), 7+R(16), 2, 2);     // leaf dither
+    g.fillRect(4,24,24,2);                                        // belly shade
+    g.fillStyle = PAL.leafLight;                                  // leafLight top dots
+    for (let i=0;i<14;i++) g.fillRect(5+R(22), 7+R(6), 1, 1);
     g.fillStyle = state==='blooming' ? PAL.meadowLight : '#6a9a4a';
-    for (let i=0;i<12;i++) g.fillRect(6+R(20), 8+R(8), 1, 1);     // sunlit crown
+    for (let i=0;i<12;i++) g.fillRect(6+R(20), 10+R(8), 1, 1);    // sunlit crown
     if (state==='blooming') for (let i=0;i<5;i++) {               // tiny blooms on the hedge
       const x = 6+R(20), y = 9+R(10);
       g.fillStyle = S.blooms[R(S.blooms.length)]; g.fillRect(x, y, 2, 2);
@@ -3716,8 +3765,10 @@ const cafeSignboard = px(TILE,TILE,(g)=>{ g.clearRect(0,0,TILE,TILE);
 // Home door (Batch 2): planked wood, iron hinges, brass knob, lintel, step
 const doorTileH = px(TILE,TILE,(g)=>{
   g.drawImage(pathTile,0,0);
-  g.fillStyle = PAL.stone; g.fillRect(8,28,16,4);
-  g.fillStyle = PAL.stoneLight; g.fillRect(8,28,16,1);
+  // VISUAL-PASS-3: 2-step stone stoop
+  g.fillStyle = PAL.stoneDark; g.fillRect(5,30,22,2);
+  g.fillStyle = PAL.stone; g.fillRect(8,28,16,2);
+  g.fillStyle = PAL.stoneLight; g.fillRect(8,28,16,1); g.fillRect(5,30,22,1);
   g.fillStyle = '#4a2c14'; g.fillRect(9,3,14,26);
   g.fillStyle = PAL.timber; g.fillRect(11,5,10,23);
   g.fillStyle = '#5E4230';
@@ -3729,6 +3780,15 @@ const doorTileH = px(TILE,TILE,(g)=>{
   g.fillStyle = PAL.goldLight; g.fillRect(18,15,1,1);
   g.fillStyle = PAL.timber; g.fillRect(8,1,16,3);
   g.fillStyle = '#8F6B4F'; g.fillRect(8,1,16,1);
+  // VISUAL-PASS-3: potted flowers flanking the door (overlay only)
+  for (const ppx of [1, 26]) {
+    g.fillStyle = PAL.terracotta; g.fillRect(ppx, 26, 5, 5);      // terracotta pot
+    g.fillStyle = PAL.terracottaDark; g.fillRect(ppx, 30, 5, 1);
+    g.fillStyle = '#D08A66'; g.fillRect(ppx, 26, 5, 1);
+    g.fillStyle = PAL.leaf; g.fillRect(ppx+1, 23, 3, 3);          // leaf
+    g.fillStyle = PAL.flowerPink; g.fillRect(ppx+1, 21, 3, 3);    // bloom
+    g.fillStyle = '#FFF3C4'; g.fillRect(ppx+2, 22, 1, 1);
+  }
 });
 // Night overlay for the home window (Batch 2): halo + relit panes over houseWall
 const windowTile = px(TILE,TILE,(g)=>{
@@ -3966,6 +4026,15 @@ const churchSteps = px(TILE,TILE,(g)=>{ g.clearRect(0,0,TILE,TILE);
   g.fillStyle = PAL.stoneLight; g.fillRect(6,6,20,1);
   g.fillStyle = 'rgba(40,30,15,.25)'; g.fillRect(4,10,24,1);
 });
+// VISUAL-PASS-3: stone steps at the garden's north gate, mirroring churchSteps
+const gardenSteps = px(TILE,TILE,(g)=>{ g.clearRect(0,0,TILE,TILE);
+  g.fillStyle = PAL.stoneDark; g.fillRect(4,2,24,4);
+  g.fillStyle = PAL.stoneLight; g.fillRect(4,2,24,1);
+  g.fillStyle = PAL.stone; g.fillRect(6,6,20,4);
+  g.fillStyle = PAL.stoneLight; g.fillRect(6,6,20,1);
+  g.fillStyle = PAL.leafDark; g.fillRect(5,3,2,1); g.fillRect(25,7,2,1);  // moss in the joints
+  g.fillStyle = 'rgba(40,30,15,.25)'; g.fillRect(4,10,24,1);
+});
 // VISUAL-PASS-3: pitched gable roof row — center ridge peaking over the
 // middle tile, slopes stepping down to the edges, blue-gray shingle courses
 // with a terracotta eave course, triangular stone gable ends east/west,
@@ -4198,8 +4267,19 @@ const doorMat = px(TILE,TILE,(g)=>{
   g.fillRect(12,16,2,2); g.fillRect(18,16,2,2);
   g.fillRect(12,24,2,2); g.fillRect(18,24,2,2);                 // iron studs
   g.fillStyle = P.gold; g.fillRect(15,17,2,6);                 // pull handle
-  g.fillStyle = '#a89e88'; g.fillRect(6,28,20,4);               // threshold
+  g.fillStyle = '#a89e88'; g.fillRect(6,28,20,2);               // threshold step
   g.fillStyle = '#d8d0c0'; g.fillRect(6,28,20,1);
+  g.fillStyle = PAL.stoneDark; g.fillRect(4,30,24,2);           // 2-step stoop base
+  g.fillStyle = PAL.stoneLight; g.fillRect(4,30,24,1);
+  // VISUAL-PASS-3: potted flowers flanking the door (overlay only)
+  for (const ppx of [0, 27]) {
+    g.fillStyle = PAL.terracotta; g.fillRect(ppx, 26, 5, 5);      // terracotta pot
+    g.fillStyle = PAL.terracottaDark; g.fillRect(ppx, 30, 5, 1);
+    g.fillStyle = '#D08A66'; g.fillRect(ppx, 26, 5, 1);
+    g.fillStyle = PAL.leaf; g.fillRect(ppx+1, 23, 3, 3);          // leaf
+    g.fillStyle = PAL.flowerPink; g.fillRect(ppx+1, 21, 3, 3);    // bloom
+    g.fillStyle = '#FFF3C4'; g.fillRect(ppx+2, 22, 1, 1);
+  }
   g.fillStyle = P.gold; g.fillRect(15,0,2,6); g.fillRect(12,2,8,2);  // cross above
   g.fillStyle = '#ffe9a8'; g.fillRect(15,0,1,6);
 });
@@ -4987,21 +5067,25 @@ function drawWorld(g, now) {
       const bedState = gardenBloomed ? 'blooming'
         : (restore && restore.garden === 'waking') ? 'waking'
         : 'dormant';
-      if (bedState === 'blooming') {
+      // VISUAL-PASS-3: the medallion ring stays visible at the garden center —
+      // bed tiles skip the four tiles around the fountain
+      const med = (tx===FOUNTAIN.tx && (ty===FOUNTAIN.ty-1 || ty===FOUNTAIN.ty+1)) ||
+                  (ty===FOUNTAIN.ty && (tx===FOUNTAIN.tx-1 || tx===FOUNTAIN.tx+1));
+      if (!med && bedState === 'blooming') {
         const sw = ((now/650)|0) % 2 === 1;
         const bt = gv < 0.34 ? (sw ? bloomTileS : bloomTile)
                  : gv < 0.67 ? (sw ? bloomTileBS : bloomTileB)
                  : (sw ? bloomTileCS : bloomTileC);
         g.drawImage(bt, x, y);
       }
-      else if (bedState === 'waking') {
+      else if (!med && bedState === 'waking') {
         const sw = ((now/650)|0) % 2 === 1;
         const bt = gv < 0.34 ? (sw ? wakeTileS : wakeTile)
                  : gv < 0.67 ? (sw ? wakeTileBS : wakeTileB)
                  : (sw ? wakeTileCS : wakeTileC);
         g.drawImage(bt, x, y);
       }
-      else if (bedState === 'dormant' && (tx+ty)%2===0) g.drawImage(gv < 0.5 ? gardenTile : gardenTileB, x, y);
+      else if (!med && bedState === 'dormant' && (tx+ty)%2===0) g.drawImage(gv < 0.5 ? gardenTile : gardenTileB, x, y);
       // garden composition: path, edge planting, resting stone, north gate —
       // all walkable decor; footprint and collision untouched
       if (bedState) {
@@ -5010,6 +5094,7 @@ function drawWorld(g, now) {
           g.drawImage(gs==='blooming' ? gardenArchB[tx===18?0:1] : gardenArchD[tx===18?0:1], x, y);
         else if (ty===13 && tx>=19 && tx<=20) {
           g.drawImage(gs==='blooming' ? gardenPathB : gardenPathD, x, y);
+          g.drawImage(gardenSteps, x, y);   // VISUAL-PASS-3: stone steps at the garden gate
           // distant mountains beyond the north gate — the world past the garden
           const fa = gs==='blooming' ? '0.55' : '0.30', na = gs==='blooming' ? '0.65' : '0.38';
           g.fillStyle = 'rgba(168,176,214,' + fa + ')';
