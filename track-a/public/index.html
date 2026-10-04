@@ -2328,10 +2328,14 @@ const benchTile = px(TILE,TILE,(g)=>{
   g.fillStyle = '#c98d4e'; g.fillRect(5, 17, 22, 1); g.fillRect(5, 22, 22, 1);  // seat light
   g.fillStyle = '#5f3d1f'; g.fillRect(5, 20, 22, 1); g.fillRect(5, 25, 22, 1);  // slat shade
 });
-const waterTile = px(TILE,TILE,(g)=>{
+// VISUAL-PASS-3: four water variants — diagonal sparkle lanes replace the
+// repeating dash glyphs; drawWorld picks the variant by hash2(tx,ty) and
+// flips wave-band orientation per tile.
+function waterTileV(v) {
+return px(TILE,TILE,(g)=>{
   // VISUAL-PASS-BOARDMATCH: board river — bright azure body, deep teal depth
   // patches, pale shifting wave bands, white sparkle (tileable, 32px period)
-  const R = srand(0x21e4);
+  const R = srand(0x21e4 + v*1013);
   g.fillStyle = PAL.water; g.fillRect(0,0,TILE,TILE);
   g.fillStyle = PAL.waterDeep;
   for (let i=0;i<4;i++) g.fillRect(R(24), R(TILE), 9, 4);       // depth patches
@@ -2339,14 +2343,21 @@ const waterTile = px(TILE,TILE,(g)=>{
   for (let i=0;i<3;i++) g.fillRect(R(26), R(TILE), 12, 2);
   g.fillStyle = PAL.waterLight;                                       // pale wave bands
   for (let i=0;i<4;i++) g.fillRect(R(22), R(TILE), 10, 2);
-  // VISUAL-PASS-2: two-tone surface — pale sunlit band over the deeper body
-  g.fillStyle = 'rgba(141,211,226,.30)'; g.fillRect(0,0,TILE,6);
-  g.fillStyle = 'rgba(255,255,255,.20)'; g.fillRect(0,2,TILE,1);
-  g.fillStyle = 'rgba(255,255,255,.55)';
-  for (let i=0;i<4;i++) g.fillRect(R(27), R(30), 4, 1);          // sparkle streaks
-  g.fillStyle = 'rgba(255,255,255,.9)';
-  for (let i=0;i<3;i++) g.fillRect(R(30), R(30), 2, 2);
+  // VISUAL-PASS-3: two fading 1px bands soften the two-tone surface
+  g.fillStyle = 'rgba(141,211,226,.22)'; g.fillRect(0,0,TILE,1);
+  g.fillStyle = 'rgba(255,255,255,.12)'; g.fillRect(0,2,TILE,1);
+  // VISUAL-PASS-3: longer diagonal sparkle lanes (8–14px) instead of dashes
+  g.fillStyle = 'rgba(255,255,255,.22)';
+  for (let i=0;i<4;i++) {
+    const sx = R(20), sy = R(22), len = 8 + R(7);
+    for (let k=0;k<len && sx+k<TILE && sy+k<TILE;k++) g.fillRect(sx+k, sy+k, 1, 1);
+  }
+  g.fillStyle = 'rgba(255,255,255,.5)';
+  for (let i=0;i<3;i++) { const sx=R(24), sy=R(24); g.fillRect(sx,sy,2,1); g.fillRect(sx+1,sy+1,1,1); }
 });
+}
+const waterTile = waterTileV(0);
+const waterTileB = waterTileV(1), waterTileC = waterTileV(2), waterTileD = waterTileV(3);
 // VISUAL-PASS-CHURCH: transparent scrolling ripple overlays — drawn in drawWorld
 // with a world-anchored phase so the pattern flows continuously across tiles
 const rippleTileA = px(TILE,TILE,(g)=>{
@@ -2368,23 +2379,29 @@ const rippleTileB = px(TILE,TILE,(g)=>{
 });
 // VISUAL-PASS-CHURCH: foam lapping the bank — drawn on water tiles that touch
 // sand (N = sand to the north edge, S = sand to the south edge)
+// VISUAL-PASS-3: irregular 2–4px scallop arcs with hashed x-offsets,
+// lapping the bank instead of straight dash rows
 const shoreFoamN = px(TILE,TILE,(g)=>{
   g.clearRect(0,0,TILE,TILE);
-  g.fillStyle = 'rgba(255,255,255,.65)';
-  for (let x=0;x<TILE;x+=4) g.fillRect(x, 0, 3, 1);
-  g.fillStyle = 'rgba(255,255,255,.40)';
-  for (let x=2;x<TILE;x+=6) g.fillRect(x, 2, 2, 1);
-  g.fillStyle = 'rgba(240,250,255,.55)';
-  for (let x=1;x<TILE;x+=8) g.fillRect(x, 4, 1, 1);
+  const R = srand(0xf0a1);
+  g.fillStyle = 'rgba(255,255,255,.62)';
+  for (let x=0;x<TILE;){ const wdt=2+R(3), ox=R(3);
+    g.beginPath(); g.arc(x+ox+wdt/2, 2, wdt/2, Math.PI, 0); g.fill();
+    x += wdt + 1 + R(2);
+  }
+  g.fillStyle = 'rgba(240,250,255,.45)';
+  for (let i=0;i<5;i++) g.fillRect(R(30), 3+R(3), 2, 1);
 });
 const shoreFoamS = px(TILE,TILE,(g)=>{
   g.clearRect(0,0,TILE,TILE);
-  g.fillStyle = 'rgba(255,255,255,.65)';
-  for (let x=0;x<TILE;x+=4) g.fillRect(x, TILE-1, 3, 1);
-  g.fillStyle = 'rgba(255,255,255,.40)';
-  for (let x=2;x<TILE;x+=6) g.fillRect(x, TILE-3, 2, 1);
-  g.fillStyle = 'rgba(240,250,255,.55)';
-  for (let x=1;x<TILE;x+=8) g.fillRect(x, TILE-5, 1, 1);
+  const R = srand(0xf0a5);
+  g.fillStyle = 'rgba(255,255,255,.62)';
+  for (let x=0;x<TILE;){ const wdt=2+R(3), ox=R(3);
+    g.beginPath(); g.arc(x+ox+wdt/2, TILE-2, wdt/2, 0, Math.PI); g.fill();
+    x += wdt + 1 + R(2);
+  }
+  g.fillStyle = 'rgba(240,250,255,.45)';
+  for (let i=0;i<5;i++) g.fillRect(R(30), TILE-4-R(3), 2, 1);
 });
 // VISUAL-PASS-CHURCH: river-bank dressing — reeds, rocks, flowers on sand tiles
 // beside the water (transparent overlays, precomputed once, chosen by hash2)
@@ -2394,22 +2411,25 @@ function riverBankTile(variant) {
     const R = srand(0xba4 + variant*977);
     const S = SEASON_BLOOMS.spring;
     if (variant === 0 || variant === 3) {                       // reed clumps
-      for (let i=0;i<5;i++) {
+      const nR = 3 + R(3);                                      // 3–5 reeds, clustered
+      for (let i=0;i<nR;i++) {
         const x = 3 + R(26), h = 12 + R(8);
         g.fillStyle = '#2f6b2f'; g.fillRect(x, 32-h, 2, h);
         g.fillStyle = '#4a8f3c'; g.fillRect(x, 32-h, 1, h);
-        g.fillStyle = '#8a6a4a'; g.fillRect(x-1, 30-h, 4, 3);    // seed head
-        g.fillStyle = '#c9a06a'; g.fillRect(x, 30-h, 2, 1);
+        g.fillStyle = PAL.gold; g.fillRect(x-1, 30-h, 4, 2);    // gold seed head
+        g.fillStyle = '#F5DFA0'; g.fillRect(x, 30-h, 2, 1);      // seed-head dot
         g.fillStyle = '#3a7230';                                // blade leaves
         g.fillRect(x-3, 32-h+R(6), 3, 1); g.fillRect(x+2, 32-h+R(6), 3, 1);
       }
     }
-    if (variant === 1 || variant === 3) {                       // water-worn rocks
+    if (variant === 1 || variant === 3) {                       // stone clusters
       for (let i=0;i<3;i++) {
-        const x = 3 + R(24), y = 20 + R(9), w = 5 + R(4);
-        g.fillStyle = '#8a8a92'; g.fillRect(x, y, w, 4);
-        g.fillStyle = '#b5b5c0'; g.fillRect(x, y, w, 1);
-        g.fillStyle = '#6e6e78'; g.fillRect(x, y+3, w, 1);
+        const x = 3 + R(24), y = 20 + R(9);
+        const cols = [PAL.stone, PAL.stoneLight, PAL.stoneDark];
+        for (let k=0;k<4;k++) {
+          g.fillStyle = cols[R(3)];
+          g.fillRect(x + R(5), y + R(3), 2 + R(3), 2 + R(2));   // 2–4px stones
+        }
         g.fillStyle = '#4a8f3c'; g.fillRect(x+1, y-1, 2, 1);     // moss cap
       }
     }
@@ -2421,6 +2441,21 @@ function riverBankTile(variant) {
         g.fillStyle = S.blooms[R(S.blooms.length)]; g.fillRect(x, y, 4, 4);
         g.fillStyle = S.center; g.fillRect(x+1, y+1, 1, 1);
       }
+    }
+    g.fillStyle = '#FFFFFF';                                    // shell dots
+    for (let i=0;i<4;i++) g.fillRect(2+R(28), 22+R(8), 1+R(2), 1);
+    g.fillStyle = PAL.flowerPink;
+    for (let i=0;i<3;i++) g.fillRect(2+R(28), 22+R(8), 1+R(2), 1);
+    if (R(3) === 0) {                                           // driftwood, ~1 in 3 tiles
+      const dx = 4 + R(20), dy = 24 + R(5);
+      g.fillStyle = PAL.timber; g.fillRect(dx, dy, 5, 2);
+      g.fillStyle = '#5E4230'; g.fillRect(dx+1, dy, 3, 1);      // dark grain
+      g.fillStyle = '#8F6B4F'; g.fillRect(dx, dy, 5, 1);
+    }
+    g.fillStyle = 'rgba(255,255,255,.55)';                       // irregular foam scallop
+    for (let x=0;x<TILE;){ const wdt=2+R(3), ox=R(2);
+      g.beginPath(); g.arc(x+ox+wdt/2, TILE-1, wdt/2, 0, Math.PI); g.fill();
+      x += wdt + 2 + R(2);
     }
   });
 }
@@ -2436,37 +2471,41 @@ const sandTile = px(TILE,TILE,(g)=>{
   for (let i=0;i<4;i++) g.fillRect(rnd(TILE), rnd(TILE), 2, 1);   // shell grit
 });
 const bridgeTile = px(TILE,TILE,(g)=>{
-  // VISUAL-PASS-CHURCH: stone arch bridge — deck runs north-south (vertical),
-  // warm sandstone, moss in the seams, herringbone walkway, carved parapets
+  // VISUAL-PASS-3: weathered timber plank bridge — deck runs north-south
+  // (vertical), plank seams every 8px, grain ticks, nail heads, post rails
+  // with sagging rope. Timber deck replaces the VISUAL-PASS-CHURCH: stone arch bridge
+  // deck (stone abutments live on in bridgeEndTile, left as-is).
+  // Was: // parapets: raised stone rails — now timber posts with sagging rope.
   const P = PAL, R = srand(0xb21d);
-  g.fillStyle = PAL.path; g.fillRect(0,0,TILE,TILE);            // stone base
-  g.fillStyle = P.stone; g.fillRect(6,0,20,TILE);               // deck
-  g.fillStyle = PAL.stoneDark;
-  for (let y=4;y<TILE;y+=8) g.fillRect(6,y,20,1);                // deck courses
-  g.fillStyle = PAL.pathLight;                                       // herringbone walkway
-  for (let y=0;y<TILE;y+=4) {
-    g.fillRect(13,y,6,2);
-    g.fillStyle = PAL.path; g.fillRect(13+(y%8===0?0:3),y,3,1);
-    g.fillStyle = PAL.pathLight;
+  g.fillStyle = PAL.timber; g.fillRect(0,0,TILE,TILE);            // timber base
+  g.fillStyle = '#4E3826'; g.fillRect(4,0,2,TILE); g.fillRect(26,0,2,TILE);  // side stringers
+  for (let y=0;y<TILE;y+=8){                                     // planks, seams every 8px
+    g.fillStyle = '#8A6A4C'; g.fillRect(6,y+1,20,6);             // plank light
+    g.fillStyle = 'rgba(255,235,210,.12)'; g.fillRect(6,y+1,20,1);
+    g.fillStyle = '#5E4230'; g.fillRect(6,y+7,20,1);             // seam
+    g.fillStyle = '#5E4230';                                     // 3 grain ticks per plank
+    for (let k=0;k<3;k++) g.fillRect(8+R(14), y+2+R(4), 2, 1);
+    g.fillStyle = '#3E2A1A';                                     // nail heads
+    g.fillRect(7,y+3,1,1); g.fillRect(24,y+3,1,1);
+    g.fillStyle = 'rgba(255,235,210,.08)'; g.fillRect(8,y+2,16,1); // wear sheen
   }
-  g.fillStyle = 'rgba(255,255,255,.25)'; g.fillRect(13,0,1,TILE);
-  // arch crown: pale curve swelling across the deck
-  g.strokeStyle = 'rgba(119,115,96,.55)'; g.lineWidth = 2;
-  g.beginPath(); g.arc(16,-8,22,Math.PI*0.18,Math.PI*0.82); g.stroke();
-  g.fillStyle = PAL.leafDark;                                       // moss in the seams
-  for (let i=0;i<4;i++) g.fillRect(7+R(18), R(TILE), 2, 1);
-  // parapets: raised stone rails left + right with capstones
+  // rails: posts with sagging rope
   for (const px0 of [1,25]) {
-    g.fillStyle = mixHex(PAL.stone, PAL.stoneDark, .35); g.fillRect(px0,0,6,TILE);         // parapet wall
-    g.fillStyle = PAL.stoneLight; g.fillRect(px0,0,6,2);            // capstone
-    g.fillStyle = PAL.stoneDark; g.fillRect(px0,2,6,1);            // cap shadow
-    g.fillStyle = PAL.stoneLight;
-    for (let y=7;y<TILE;y+=10) g.fillRect(px0+1,y,4,1);        // stone courses
-    g.fillStyle = PAL.stoneDark;
-    for (let y=4;y<TILE;y+=10) g.fillRect(px0+2,y,2,2);        // posts
-    g.fillStyle = 'rgba(255,255,255,.20)'; g.fillRect(px0,0,1,TILE); // edge light
+    g.fillStyle = '#4a2c14';
+    for (let y=0;y<TILE;y+=10) g.fillRect(px0,y+2,4,8);          // posts
+    g.fillStyle = '#5E4230';
+    for (let y=0;y<TILE;y+=10) g.fillRect(px0,y+2,1,8);          // post shade
+    g.fillStyle = '#6B4A2E';
+    for (let y=0;y<TILE;y+=10) g.fillRect(px0,y+2,4,1);          // post cap light
+    g.strokeStyle = PAL.path; g.lineWidth = 1;                   // sagging rope
+    g.beginPath();
+    for (let y=2;y+10<TILE;y+=10) {
+      g.moveTo(px0+2, y+2);
+      g.quadraticCurveTo(px0+4, y+7, px0+2, y+12);               // sag between posts
+    }
+    g.stroke();
   }
-  // water shadow where the arch meets the river
+  // water shadow where the deck meets the river
   g.fillStyle = 'rgba(30,60,90,.28)';
   g.fillRect(0,0,1,TILE); g.fillRect(TILE-1,0,1,TILE);
 });
@@ -4826,7 +4865,12 @@ function drawWorld(g, now) {
     }
     const b = baseTile(tx, ty);
     if (b === 'water') {
-      g.drawImage(waterTile, x, y);
+      // VISUAL-PASS-3: water variant by hash2 + flipped wave-band orientation
+      // per tile so the lanes never march in lockstep
+      const wv = [waterTile, waterTileB, waterTileC, waterTileD][Math.floor(hash2(tx, ty)*4) % 4];
+      if (hash2(tx*3+1, ty*7+2) < 0.5) {
+        g.save(); g.translate(x+TILE, y); g.scale(-1, 1); g.drawImage(wv, 0, 0); g.restore();
+      } else g.drawImage(wv, x, y);
       // VISUAL-PASS-CHURCH: two scrolling ripple layers, world-anchored phase
       // so the pattern flows continuously across tiles (4 blits per tile)
       const wx = tx*TILE, wy = ty*TILE;
