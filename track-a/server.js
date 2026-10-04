@@ -240,6 +240,7 @@ function newRestore() {
     central: false,           // the central light is on (finale)
     gatherUntil: 0,           // villagers drift to the garden/plaza while > now
     relightAt: 0,             // last lantern-step timestamp
+    soloGardenSince: 0,       // STORY-FIX G1: solo finale — when the lone traveler entered the garden
   };
 }
 function stageRank(s) { return RESTORE_STAGES.indexOf(s); }
@@ -840,6 +841,10 @@ function handleInteract(room, ws, p) {
   if (p.inside && p.place === 'home') {
     if (near(p, HOME_EXIT.tx, HOME_EXIT.ty)) { exitInterior(room, ws, p, HOME_DOOR.tx, HOME_DOOR.ty); return {ok:true, action:'exit-home'}; }
     if (near(p, SLEEP_SPOT.tx, SLEEP_SPOT.ty)) {
+      // STORY-FIX G6: rest has a quiet 10 s cooldown per traveler — silent,
+      // the prompt already says "Rest until morning".
+      if (now - (p.sleepAt || 0) < 10000) return {ok:false, reason:'rested'};
+      p.sleepAt = now;
       room.day.n++; room.day.start = now;
       // Sleep is personal rest: the day counter advances, but the room's
       // rhythm flags and garden bloom persist (sleep never wipes progress).
@@ -952,10 +957,12 @@ function handleCook(room, ws, p, action) {
     broadcast(room, {t:'player', p: playerPublic(p)});
   } else if (action === 'give') {
     if (p.inv.meals < 1) { send(ws, {t:'cook-fail', reason:'no-meal'}); return; }
-    // nearest other player first
+    // nearest other player first — same room space only (STORY-FIX G9: a
+    // meal cannot cross walls; inside and place must match the giver's)
     let best = null, bd = 110;
     for (const [, q] of room.players) {
       if (q === p) continue;
+      if (q.inside !== p.inside || q.place !== p.place) continue;
       const d = dist(p.x, p.y, q.x, q.y);
       if (d <= bd) { bd = d; best = q; }
     }
@@ -966,7 +973,9 @@ function handleCook(room, ws, p, action) {
       broadcast(room, {t:'player', p: playerPublic(p)});
       broadcast(room, {t:'player', p: playerPublic(best)});
     } else {
-      const npc = nearestNpc(room, p, 110);
+      // STORY-FIX G9: villagers are only reachable out in the world — from
+      // inside, a meal finds no one.
+      const npc = p.inside ? null : nearestNpc(room, p, 110);
       if (!npc) { send(ws, {t:'cook-fail', reason:'nobody-nearby'}); return; }
       p.inv.meals--;
       npc.hearts[p.uuid] = Math.min(5, (npc.hearts[p.uuid] || 0) + 1);
@@ -1141,15 +1150,34 @@ function tickRoom(room) {
   // begin the Return: the town lanterns relight one by one, then the central
   // light, then the whole village gathers. (Same trigger shape as the old
   // instant ending — ruin open, discovery made, 2+ in the garden plaza.)
+  // STORY-FIX G1: a lone traveler is not locked out of the climax — one
+  // traveler resting alone in the garden for ~20 s begins the same Return.
   if (!room.ending.done) {
     const ps = [...room.players.values()].filter(p => !p.inside);
     const inGarden = (p) => p.x >= 17*TILE && p.x < 23*TILE && p.y >= 13*TILE && p.y < 18*TILE;
     const r = room.restore;
-    if (room.ruin.open && r.discoverySeen && r.stage === 'discovered' && ps.filter(inGarden).length >= 2) {
-      r.stage = 'relight';
-      r.relightAt = now;
-      r.gatherUntil = now + RESTORE_GATHER_MS;   // the village comes outside
-      sendRestore(room);
+    if (room.ruin.open && r.discoverySeen && r.stage === 'discovered') {
+      const gardeners = ps.filter(inGarden);
+      if (gardeners.length >= 2) {
+        r.soloGardenSince = 0;
+        r.stage = 'relight';
+        r.relightAt = now;
+        r.gatherUntil = now + RESTORE_GATHER_MS;   // the village comes outside
+        sendRestore(room);
+      } else if (gardeners.length === 1 && room.players.size === 1) {
+        // solo finale path: exactly one traveler in the room, standing in
+        // the garden. ~20 s of stillness there begins the Return.
+        if (!r.soloGardenSince) r.soloGardenSince = now;
+        else if (now - r.soloGardenSince >= 20000) {
+          r.soloGardenSince = 0;
+          r.stage = 'relight';
+          r.relightAt = now;
+          r.gatherUntil = now + RESTORE_GATHER_MS;   // the village comes outside
+          sendRestore(room);
+        }
+      } else {
+        r.soloGardenSince = 0;   // company, or the garden stands empty — no solo wait
+      }
     }
     if (r.stage === 'relight') {
       if (r.lit < LANTERN_TOTAL && now - r.relightAt >= RELIGHT_STEP_MS) {
@@ -1168,7 +1196,7 @@ function tickRoom(room) {
         }
         broadcast(room, { t: 'ending',
           title: 'The Garden of Hope',
-          message: 'Two travelers. One village. A hope discovered together.' });
+          message: 'Travelers together. One village. A hope discovered together.' });
         sendRestore(room);
       }
     }
@@ -1336,7 +1364,10 @@ wss.on('connection', (ws, req) => {
             send(ws, { t: 'reset-personal', p: pub });
             break;
           }
-          // private rooms: reset the shared world for a fresh run
+          // private rooms: reset the shared world for a fresh run.
+          // STORY-FIX G4: play-again only starts a fresh run after the ending
+          // has been lived — an early tap is ignored, never a mid-game wipe.
+          if (!room.ending.done) return;
           const now2 = Date.now();
           room.farm = FARM_PLOTS.map(p => ({ tx: p.tx, ty: p.ty, stage: 'empty', t: 0 }));
           room.ruin = newRuin();
@@ -1357,6 +1388,13 @@ wss.on('connection', (ws, req) => {
             p.dir = 'right'; p.moving = false; p.ix = 0; p.iy = 0;
             p.emote = null; p.emoteAt = 0; p.inside = false; p.place = null; p.fishing = null;
             p.inv = { produce: 0, fish: 0, meals: 0 };
+          }
+          // STORY-FIX G3: the stored identities must reset with the run —
+          // a disconnected traveler rejoining within the reap window gets
+          // the fresh-run inventory (and spawn), not the pre-reset one.
+          for (const [, rec] of room.identities) {
+            rec.inv = { produce: 0, fish: 0, meals: 0 };
+            delete rec.x; delete rec.y; rec.place = null;
           }
           const r = joinedPayload(room, [...room.players.values()][0] || { id:'', name:'' }, room.code);
           broadcast(room, { t: 'reset',

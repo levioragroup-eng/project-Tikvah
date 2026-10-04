@@ -523,7 +523,7 @@
 
     <div id="creatorScreen" style="display:none">
       <h2>Create Your Character</h2>
-      <p class="sub">She'll be waiting for you in the village.</p>
+      <p class="sub">Your traveler will be waiting for you in the village.</p>
       <div id="creatorWrap">
         <div id="creatorTop">
           <canvas id="preview" width="32" height="48"></canvas>
@@ -583,7 +583,7 @@
   <button id="qcBtn" title="Quick chat">💬</button>
   <div id="qcPanel"></div>
 
-  <div id="dialogue" class="warmcard"><div class="who"><canvas id="dPortrait" width="32" height="48"></canvas><div class="wtext"><span id="dName"></span> <span class="hearts" id="dHearts"></span></div></div><div class="line" id="dText"></div><div class="next">Press E to continue</div></div>
+  <div id="dialogue" class="warmcard"><div class="who"><canvas id="dPortrait" width="32" height="48"></canvas><div class="wtext"><span id="dName"></span> <span class="hearts" id="dHearts"></span></div></div><div class="line" id="dText"></div><div class="next">Press E to close</div></div>
 
   <div id="panel"><div class="card">
     <h3 id="pTitle"></h3>
@@ -787,7 +787,7 @@ document.getElementById('creatorOk').onclick = () => {
     menu.style.display = 'none';
     menu.style.background = '';
     creatorMode = 'title';
-    document.getElementById('creatorOk').textContent = '✔ Looks good';
+    document.getElementById('creatorOk').textContent = 'Begin';
     document.querySelector('#creatorScreen .backlink').style.display = '';
     showPanel('titleScreen');
     toast('🧥 New look!');
@@ -800,7 +800,7 @@ const WS_URL = (location.protocol === 'https:' ? 'wss://' : 'ws://') + location.
 let ws = null, myId = null, code = null;
 let players = new Map(), npcs = new Map(), farm = [], ruinOpen = false, fox = {x:0,y:0};
 let ruinA = false, ruinB = false, ruinGate = false;   // RESTORE THE LIGHT M4: synced ruin-puzzle state
-let fishing = null, biteFlash = 0;
+let biteFlash = 0;
 let day = { n: 1, phase: 'morning', label: 'Morning', sermon: false, rhythm: { farm:false, fish:false, cook:false, greet:false, sermon:false } };
 let gardenBloomed = false, homeRug = 0;
 let restore = null;   // RESTORE THE LIGHT: synced town-restoration state (stage + world effects only)
@@ -894,7 +894,7 @@ function onMsg(m) {
       updateMuteIcon();
       document.getElementById('qcBtn').style.display = 'block';
       buildQcPanel();
-      if (m.ending) showEnding('Two travelers. One village. A hope discovered together.');
+      if (m.ending) showEnding('Travelers together. One village. A hope discovered together.');
       document.getElementById('prompt').style.display = 'none';
       firstViewT = Date.now();   // cinematic first view: camera pans toward the village
       wasInside = false;
@@ -949,14 +949,14 @@ function onMsg(m) {
       break;
     }
     case 'catch': {
-      toast('🐟 ' + m.by + ' caught a fish!'); fishing = null; chime();
+      toast('🐟 ' + m.by + ' caught a fish!'); chime();
       const cp = playerByName(m.by);
       sparkleAt(cp ? cp.x : 33*TILE, cp ? cp.y : 20*TILE, '140,200,255', 12);
       break;
     }
     case 'bite': if (m.player === myId) { biteFlash = Date.now(); toast('❗ TAP E NOW!'); } break;
     case 'pet': toast('🦊 ' + m.by + ' petted the fox'); break;
-    case 'say': sayFlash = { name: m.name, until: Date.now() + 6000 }; showDialogue(m.name, m.text, m.hearts); break;
+    case 'say': sayFlash = { name: m.name, until: Date.now() + 6000 }; showDialogue(m.name, m.text, m.hearts, m.by); break;
     // TOWN-LIFE: two villagers pause to chat when they cross paths — a short
     // warm line, shared with both travelers
     case 'npc-chat': npcChat = { a: m.a, b: m.b, until: Date.now() + 6000 }; toast('💬 ' + m.a + ' & ' + m.b + ': ' + m.line); break;
@@ -1003,6 +1003,7 @@ function onMsg(m) {
       updateDayHud();
       document.getElementById('ending').style.display = 'none';
       document.getElementById('verse').style.display = 'none';
+      document.getElementById('discovery').style.display = 'none';
       document.getElementById('panel').style.display = 'none';
       document.getElementById('dialogue').style.display = 'none';
       burst = 0; particles.length = 0;
@@ -1016,9 +1017,11 @@ function onMsg(m) {
       players.set(m.p.id, m.p);
       document.getElementById('ending').style.display = 'none';
       document.getElementById('verse').style.display = 'none';
+      document.getElementById('discovery').style.display = 'none';
       document.getElementById('panel').style.display = 'none';
       document.getElementById('dialogue').style.display = 'none';
       burst = 0; particles.length = 0;
+      qcBubbles.clear(); document.getElementById('qcPanel').style.display = 'none';
       firstViewT = Date.now();
       toast('🌱 A new beginning — the village carries on around you.');
       break;
@@ -1639,14 +1642,18 @@ function openCookPanel() {
     { label: '✕ Close', ghost: true, fn: () => {} },
   ]);
 }
-function showDialogue(name, text, hearts) {
+function showDialogue(name, text, hearts, by) {
   document.getElementById('dName').textContent = name;
   const dp = document.getElementById('dPortrait');
   if (dp) { const dg = dp.getContext('2d'); dg.imageSmoothingEnabled = false; dg.clearRect(0,0,32,48); dg.drawImage(npcSprite(name), 0, 0, 32, 48); }
   document.getElementById('dHearts').textContent = '❤'.repeat(Math.max(0, hearts || 0)) || '';
   document.getElementById('dText').textContent = '\u201C' + text + '\u201D';
   document.getElementById('dialogue').style.display = 'block';
-  if (hearts >= 3) setTimeout(() => toast('💛 ' + name + ' considers you a true friend'), 600);
+  // STORY-FIX G8: the "true friend" toast is personal — it fires only for the
+  // traveler who spoke (the server sends who triggered it as `by`).
+  const me = players.get(myId);
+  const myName = me && me.name;
+  if (hearts >= 3 && by && myName && by === myName) setTimeout(() => toast('💛 ' + name + ' considers you a true friend'), 600);
 }
 function closeDialogue() { document.getElementById('dialogue').style.display = 'none'; }
 document.getElementById('dialogue').addEventListener('click', closeDialogue);
@@ -3498,7 +3505,6 @@ function stallTile(awning) {
   });
 }
 const stallA = stallTile('#e87aa0'), stallB = stallTile('#5a8ac9'), stallC = stallTile('#e8b93c');
-const stallA = stallTile('#e87aa0'), stallB = stallTile('#5a8ac9'), stallC = stallTile('#e8b93c');
 // ================= FOOD-ART (2026-10-03) =================
 // Visible food, storybook style, render-layer ONLY (canvas painters +
 // transient fx + CSS). Tasteful, contextual placement ONLY per Ariel's
@@ -5082,7 +5088,7 @@ const LAMPS = [{tx:17,ty:12},{tx:22,ty:12},{tx:19,ty:17},{tx:27,ty:14},{tx:13,ty
 // lights beside the garden before the central light comes on.
 const LAMP_ORDER = LAMPS.map((l, i) => ({ i, d: Math.hypot(l.tx - 20.5, l.ty - 15.5) })).sort((a, b) => b.d - a.d).map(o => o.i);
 function lampLit(idx) {
-  if (!restore) return true;                                 // nothing known yet: shipped look
+  if (!restore) return false;                                // STORY-FIX G10: dark until the server says lit — no flash on join
   if (restore.central) return true;                          // the Return is complete
   if (LAMP_ORDER.indexOf(idx) < restore.lit) return true;    // relit on the Return, edges first
   if (restore.garden !== 'dormant' && idx <= 2) return true; // garden lamps wake with the Old Garden
@@ -6117,8 +6123,10 @@ function loop(now) {
     // plate set beside them, steam + crumbs (render layer only)
     if (idleAct === 'lunch') drawLunchFood(ctx, n, now);
   }
-  // players sorted by y
-  const list = [...players.values()].sort((a,b)=>a.y-b.y);
+  // players sorted by y — only co-located travelers are drawn (STORY-FIX
+  // G2: a traveler inside the church/home never sees, or is seen by, the
+  // world outside — no leaked name tags, emotes, or quick-chat bubbles)
+  const list = [...players.values()].filter(p => (p.inside === inside) && (p.place === (me && me.place))).sort((a,b)=>a.y-b.y);
   list.forEach((p) => {
     // stride + bob walk cycle: painted stride frames (1/2) selected by stride
     // phase while moving, idle frame 0 otherwise; a slow breath-like sway when idle

@@ -341,7 +341,7 @@ const b5Checks = [
   ['creator parchment', '#f7f0dd'],
   ['hud chips navy', '#roomcode { background:rgba(26,35,64,.8)'],
   ['openPanel hook kept', 'function openPanel(title, sub, invHtml, buttons)'],
-  ['showDialogue hook kept', 'function showDialogue(name, text, hearts)'],
+  ['showDialogue hook kept', 'function showDialogue(name, text, hearts, by)'],
   ['toast hook kept', 'function toast(msg)'],
   ['showVerse hook kept', 'function showVerse(ref, text)'],
   ['buildQcPanel hook kept', 'function buildQcPanel()'],
@@ -827,6 +827,34 @@ try {
   ok('give shares the meal with the nearby player', !!gift && gift.from === 'Friend' && gift.to === 'Ariel', JSON.stringify(gift));
   ok('A received the meal', await a.waitFor(() => a.me()?.inv?.meals === 1, 2000));
 
+  // ---------- 6c2. meal gifts never cross walls (STORY-FIX G9) ----------
+  // A carries the meal inside the home (hearth = cook spot); B waits out in
+  // the world ~90px away, through the wall — inside B's old gift radius.
+  // The fix: the wall holds — no gift, the meal is kept, nobody-nearby.
+  console.log('give (walls):');
+  ok('B walks east below the church', await walkTo(b, 33*TILE+16, 16*TILE+16, 12000));
+  ok('A walks west on the market lane', await walkTo(a, 13*TILE+16, 12*TILE+16, 12000));
+  ok('A walks west to the home door', await walkTo(a, 8*TILE+16, 12*TILE+16, 8000));
+  a.send({ t: 'interact' }); // enter home
+  ok('A enters home', await a.waitFor(() => a.me()?.inside === true && a.me()?.place === 'home', 2000));
+  ok('A walks to the hearth', await walkTo(a, 35*TILE+16, 18*TILE+16, 8000));
+  const mealsA = a.me()?.inv?.meals || 0, mealsB = b.me()?.inv?.meals || 0;
+  const giftsToB = b.msgs.filter(m => m.t === 'gift' && m.to === 'Friend').length;
+  a.send({ t: 'cook', action: 'give' });
+  ok('give from inside reports nobody nearby (villagers are outside)', await a.waitFor(() => a.msgs.some(m => m.t === 'cook-fail' && m.reason === 'nobody-nearby'), 2000));
+  await sleep(800);
+  ok('no meal crosses the wall to the player outside', b.msgs.filter(m => m.t === 'gift' && m.to === 'Friend').length === giftsToB);
+  ok('giver keeps the meal', mealsA === 1 && (a.me()?.inv?.meals || 0) === 1, 'A meals=' + a.me()?.inv?.meals);
+  ok('player outside keeps their inventory', (b.me()?.inv?.meals || 0) === mealsB, 'B meals=' + b.me()?.inv?.meals);
+  ok('A walks to the home exit', await walkTo(a, 32*TILE+16, 24*TILE+16, 8000));
+  a.send({ t: 'interact' }); // exit home
+  ok('A exits home', await a.waitFor(() => a.me()?.inside === false, 2000));
+  // leave the world as 6c left it: A back near the cafe for the 6d worship walk
+  ok('A walks east on the market lane', await walkTo(a, 13*TILE+16, 12*TILE+16, 12000));
+  ok('A walks east to the east lane', await walkTo(a, 27*TILE+16, 12*TILE+16, 12000));
+  ok('A walks south down the east lane', await walkTo(a, 27*TILE+16, 16*TILE+16, 8000));
+  ok('A walks west to the cafe', await walkTo(a, CAFE.x, CAFE.y + 32, 8000));
+
   // ---------- 6d. church worship + pew sit -> garden blooms ----------
   // CHURCH-REDESIGN (2026-10-03): the candle stand is gone. Sincere prayer at
   // the altar is the worship moment; sitting in a pew is the new pew verb.
@@ -871,6 +899,11 @@ try {
   ok('sleep does NOT wipe the day rhythm (B)', (b.lastOf('day')?.rhythm && Object.values(b.lastOf('day').rhythm).every(v => v === true)) === true, JSON.stringify(b.lastOf('day')?.rhythm));
   ok('sleeper gets the personal slept effect', !!a.lastOf('slept'));
   ok('partner does NOT get the personal slept effect', !b.msgs.some(m => m.t === 'slept'));
+  // STORY-FIX G6: rest has a quiet 10 s cooldown per traveler (still at the bed)
+  const dayAfterFirst = a.lastOf('day')?.n || 1;
+  a.send({ t: 'interact' }); // sleep again, at once
+  ok('sleep cooldown rejects an immediate second rest', await a.waitFor(() => a.msgs.some(m => m.t === 'interact-fail' && m.reason === 'rested'), 2000));
+  ok('sleep cooldown does not advance the day again', (a.lastOf('day')?.n || 1) === dayAfterFirst, 'day=' + a.lastOf('day')?.n);
   const RUG = { x: 29*TILE+16, y: 21*TILE+16 };
   ok('walk to rug', await walkTo(a, RUG.x, RUG.y));
   a.send({ t: 'interact' }); // decorate
@@ -1049,6 +1082,91 @@ try {
   ok('solo: through the opened way to the inner stone', await walkTo(solo, STONE_B.x, STONE_B.y, 12000));
   ok('solo: both stones answered — the ruin opens (no dead end)', await solo.waitFor(() => solo.state.ruinOpen, 6000));
   solo.close();
+
+  // ---------- 7e. play-again is gated until the ending (STORY-FIX G4) ----------
+  console.log('play-again gate:');
+  const ga = new C('Gater'); await ga.connect();
+  ga.send({ t: 'create', name: 'Gater' });
+  ok('gate room created', await ga.waitFor(() => !!ga.state.code, 3000));
+  ga.send({ t: 'play-again' });
+  ok('play-again ignored before the ending', await sleep(1500).then(() => !ga.msgs.some(m => m.t === 'reset')));
+  ga.close();
+
+  // ---------- 7f. STORY-FIX G1: a lone traveler can reach the Return ----------
+  // One player, the ruin opened solo, the Discovery witnessed: standing in
+  // the garden ~20 s begins the same Return — no second traveler required.
+  console.log('solo finale:');
+  const fin = new C('Finale'); await fin.connect();
+  fin.send({ t: 'create', name: 'Finale', uuid: 'storyfix-g1-uuid' });
+  ok('finale room created', await fin.waitFor(() => !!fin.state.code, 3000));
+  const FIN_GARDEN = { x: 19*TILE+16, y: 15*TILE+16 };
+  ok('fin walks north to the market lane', await walkTo(fin, 13*TILE+16, 12*TILE+16, 12000));
+  ok('fin walks east to the north lane', await walkTo(fin, 19*TILE+16, 12*TILE+16, 12000));
+  ok('fin walks south to the garden', await walkTo(fin, FIN_GARDEN.x, FIN_GARDEN.y, 12000));
+  await sleep(4000); // a brief rest: the instant (2-player) trigger must not fire
+  ok('no Return begins with the ruin still closed', !fin.msgs.some(m => m.t === 'ending') &&
+     (fin.lastOf('restore')?.restore?.stage || 'dimmed') === 'dimmed',
+     fin.lastOf('restore') ? JSON.stringify(fin.lastOf('restore').restore) : 'no restore yet');
+  // the solo ruin: forest stone, then the inner stone (same route as 7d)
+  ok('fin: east along the upper lane', await walkTo(fin, 33*TILE+16, 8*TILE+16, 15000));
+  ok('fin: west along the upper lane', await walkTo(fin, 19*TILE+16, 8*TILE+16, 15000));
+  ok('fin: west toward the forest', await walkTo(fin, 13*TILE+16, 8*TILE+16, 10000));
+  ok('fin: to the forest stone', await walkTo(fin, STONE_A.x, STONE_A.y, 12000));
+  ok('fin: forest stone answers and the way opens', await fin.waitFor(() => { const r = fin.lastOf('ruin'); return !!r && r.ruin.a && r.ruin.gate; }, 5000));
+  ok('fin: back east along the upper lane', await walkTo(fin, 19*TILE+16, 8*TILE+16, 15000));
+  ok('fin: east to the ruins lane', await walkTo(fin, 33*TILE+16, 8*TILE+16, 15000));
+  ok('fin: through the opened way to the inner stone', await walkTo(fin, STONE_B.x, STONE_B.y, 12000));
+  ok('fin: the ruin opens', await fin.waitFor(() => fin.state.ruinOpen, 6000));
+  ok('fin: the Discovery is witnessed at the inner stone', await fin.waitFor(() => fin.msgs.some(m => m.t === 'discovery'), 4000));
+  // tend one plot, so the pre-reset inventory is nonzero (STORY-FIX G3 setup)
+  ok('fin: west on the upper lane', await walkTo(fin, 19*TILE+16, 8*TILE+16, 15000));
+  ok('fin: west toward the forest', await walkTo(fin, 13*TILE+16, 8*TILE+16, 10000));
+  ok('fin: south to the market lane', await walkTo(fin, 6*TILE+16, 12*TILE+16, 12000));
+  ok('fin: east on the market lane', await walkTo(fin, 8*TILE+16, 12*TILE+16, 8000));
+  ok('fin: south to the farm gate', await walkTo(fin, 8*TILE+16, 14*TILE+16, 8000));
+  ok('fin: south into the farm', await walkTo(fin, 8*TILE+16, 16*TILE+16, 8000));
+  ok('fin: to plot 1', await walkTo(fin, PLOT0.x, PLOT0.y, 8000));
+  fin.send({ t: 'interact' }); // plant
+  ok('fin plants', await fin.waitFor(() => fin.state.farm[0]?.stage === 'planted', 2000));
+  fin.send({ t: 'interact' }); // water
+  ok('fin waters', await fin.waitFor(() => fin.state.farm[0]?.stage === 'growing', 2000));
+  ok('fin crop grows', await fin.waitFor(() => fin.state.farm[0]?.stage === 'ready', 8000));
+  fin.send({ t: 'interact' }); // harvest -> produce
+  ok('fin harvests produce', await fin.waitFor(() => (fin.me()?.inv?.produce || 0) >= 1, 3000));
+  // back to the garden for the long rest
+  ok('fin: north to the farm gate', await walkTo(fin, 8*TILE+16, 14*TILE+16, 8000));
+  ok('fin: north to the market lane', await walkTo(fin, 8*TILE+16, 12*TILE+16, 8000));
+  ok('fin: east on the market lane', await walkTo(fin, 13*TILE+16, 12*TILE+16, 8000));
+  ok('fin: east to the north lane', await walkTo(fin, 19*TILE+16, 12*TILE+16, 12000));
+  ok('fin: south to the garden', await walkTo(fin, FIN_GARDEN.x, FIN_GARDEN.y, 12000));
+  ok('the Return begins for one traveler', await fin.waitFor(() => fin.msgs.some(m => m.t === 'ending'), 45000));
+  const fEnd = fin.lastOf('ending');
+  ok('solo ending message names every traveler', !!fEnd && fEnd.message === 'Travelers together. One village. A hope discovered together.', fEnd?.message);
+  ok('solo finale relights every lantern', await fin.waitFor(() => {
+    const r = fin.lastOf('restore')?.restore;
+    return !!r && r.stage === 'complete' && r.central === true && r.lit === r.lanterns;
+  }, 4000), JSON.stringify(fin.lastOf('restore')?.restore));
+  // the gate is now open: play-again resets the run (G4), and the stored
+  // identity resets with it (G3) — a rejoin inside the reap window starts fresh
+  fin.send({ t: 'play-again' });
+  const fres = await fin.waitFor(() => fin.msgs.some(m => m.t === 'reset'), 3000) ? fin.lastOf('reset') : null;
+  ok('play-again works after the ending', !!fres);
+  ok('reset dims the town again', !!fres && fres.restore.stage === 'dimmed' && fres.restore.lit === 0 && fres.restore.central === false && fres.restore.garden === 'dormant' && fres.restore.discovery === false,
+     JSON.stringify(fres?.restore));
+  ok('reset clears inventories', !!fres && fres.players.every(p => p.inv.produce === 0 && p.inv.fish === 0 && p.inv.meals === 0));
+  const finCode = fin.state.code;
+  fin.close();
+  await sleep(250); // inside the 500 ms reap grace
+  const fin2 = new C('FinaleAgain'); await fin2.connect();
+  fin2.send({ t: 'join', name: 'FinaleAgain', code: finCode, uuid: 'storyfix-g1-uuid' });
+  ok('rejoin with the same uuid inside the reap window', await fin2.waitFor(() => !!fin2.me(), 3000));
+  ok('rejoin after play-again gets the fresh-run inventory (no pre-reset stock)',
+     (fin2.me()?.inv?.produce || 0) === 0 && (fin2.me()?.inv?.fish || 0) === 0 && (fin2.me()?.inv?.meals || 0) === 0,
+     JSON.stringify(fin2.me()?.inv));
+  ok('rejoin after play-again respawns at the village lane',
+     Math.hypot((fin2.me()?.x || 0) - SPAWN_X, (fin2.me()?.y || 0) - SPAWN_Y) < 40,
+     `(${Math.round(fin2.me()?.x)},${Math.round(fin2.me()?.y)})`);
+  fin2.close();
 
   // ---------- 8. negative: invalid room codes + room cap ----------
   console.log('negative tests:');
@@ -1328,6 +1446,21 @@ try {
   ok('page shows the discovery writing', pageHtml.includes("case 'discovery':"));
   ok('page paints dark lanterns for the dimmed town', pageHtml.includes('lampTileDark'));
   ok('page orders the lantern relight (LAMP_ORDER)', pageHtml.includes('LAMP_ORDER'));
+  // ---------- STORY-FIXES (2026-10-03): client static checks ----------
+  // G2: only co-located travelers are drawn (no cross-place name tags)
+  ok('draw list filters to co-located players', pageHtml.includes('(p.inside === inside) && (p.place === (me && me.place))'));
+  // G5: the Discovery panel hides on both resets, qc bubbles clear on personal
+  ok('reset hides the discovery panel', (pageHtml.match(/getElementById\('discovery'\)\.style\.display = 'none'/g) || []).length >= 2);
+  ok('reset-personal mirrors qc bubble clearing', pageHtml.includes("case 'reset-personal':") && pageHtml.includes("qcBubbles.clear(); document.getElementById('qcPanel').style.display = 'none';"));
+  // G8: the true-friend toast fires only for the traveler who spoke
+  ok('say passes the speaker to the dialogue', pageHtml.includes('showDialogue(m.name, m.text, m.hearts, m.by)'));
+  ok('true-friend toast gated on the speaker', pageHtml.includes('by === myName'));
+  // G10 nits
+  ok('wardrobe confirm restores the title button to Begin', !pageHtml.includes('✔ Looks good'));
+  ok('lamps stay dark until restoration is known', pageHtml.includes('if (!restore) return false;'));
+  ok('creator subtitle is not gendered', pageHtml.includes('Your traveler will be waiting for you in the village.'));
+  ok('dead global fishing state removed', !pageHtml.includes('let fishing'));
+  ok('dialogue prompt says close (E dismisses)', pageHtml.includes('Press E to close'));
   ok('page gates lamp light on restoration (lampLit)', pageHtml.includes('function lampLit('));
   ok('page rests the fountain dry until the garden wakes', pageHtml.includes('fountainDryTile'));
   ok('the Discovery earns its own panel in the ruins', pageHtml.includes('id="discovery"'));
@@ -1424,10 +1557,11 @@ try {
   s2.send({ t: 'join', name: 'Latecomer', code: s1.state.code });
   ok('late joiner sees the same waking town', await s2.waitFor(() => s2.lastOf('joined')?.restore?.stage === 'awake', 3000),
      JSON.stringify(s2.lastOf('joined')?.restore));
+  // STORY-FIX G4: play-again is a post-ending beat — tapped mid-run it is
+  // ignored, never a world wipe. (The "reset dims the town again" beat now
+  // lives in 7f, after a real ending.)
   s1.send({ t: 'play-again' });
-  const rr = await s1.waitFor(() => s1.msgs.some(m => m.t === 'reset'), 3000) ? s1.lastOf('reset') : null;
-  ok('reset dims the town again', !!rr && rr.restore.stage === 'dimmed' && rr.restore.lit === 0 && rr.restore.central === false && rr.restore.garden === 'dormant' && rr.restore.discovery === false,
-     JSON.stringify(rr?.restore));
+  ok('play-again ignored mid-run (no ending yet)', await sleep(1500).then(() => !s1.msgs.some(m => m.t === 'reset') && !s2.msgs.some(m => m.t === 'reset')));
   s1.close(); s2.close();
 
   // ---------- TOWN-LIFE (a): daily schedules + work spots ----------
@@ -1617,7 +1751,9 @@ try {
   })(), JSON.stringify(tl._greetSay));
 
   // ---------- TOWN-LIFE (d): market day wire check (sleep to day 4) ----------
-  // two more sleeps -> day 4 -> the market gathers (flag syncs to the village)
+  // two more sleeps -> day 4 -> the market gathers (flag syncs to the village).
+  // STORY-FIX G6: rest has a 10 s cooldown per traveler, so the second sleep
+  // waits it out — the intent (two real sleeps -> day 4) is unchanged.
   ok('sleep to day 4 (market day)', await (async () => {
     for (let s = 0; s < 2; s++) {
       await walkTo(tl, 8*TILE+16, 12*TILE+16, 8000);
@@ -1625,6 +1761,8 @@ try {
       if (!await tl.waitFor(() => tl.me()?.inside === true, 3000)) return false;
       await walkTo(tl, 29*TILE+16, 18*TILE+16, 8000);
       tl.send({ t: 'interact' });
+      if (!await tl.waitFor(() => (tl.lastOf('day')?.n || 0) === 3 + s, 4000)) return false;
+      await sleep(10500); // the rest cooldown clears before the next sleep
       await walkTo(tl, 32*TILE+16, 24*TILE+16, 8000);
       tl.send({ t: 'interact' });
       if (!await tl.waitFor(() => tl.me()?.inside === false, 3000)) return false;
