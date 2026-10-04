@@ -2997,19 +2997,39 @@ function treeTile(v) {
     } else { // round canopy: dense blob (v=1 green) or cherry blossom (v=2)
       const bl = v === 2;
       groundShadow(36);
-      trunk(6, 20, '#4A3220', bl ? '#5E4230' : PAL.timber, '#77563A');
-      g.fillStyle = bl ? '#5E4230' : PAL.timber;                     // branch forks
-      g.fillRect(cx - 8, H - 30, 3, 12); g.fillRect(cx + 5, H - 30, 3, 12);
       // wide side puffs anchor the crown's broad storybook silhouette
       const blobs = [[32,30,19],[17,38,13],[47,38,13],[22,18,12],[42,18,12],[32,44,14],[13,27,9],[51,27,9]];
       if (bl) {
+        // VISUAL-PASS-3: blossom — 7px trunk with high forks, 2px branch arcs
+        // drawn BEFORE the canopy, top-left light, under-belly shadow crescents
+        g.fillStyle = '#5E4230'; g.fillRect(cx-3, H-22, 7, 22);      // 7px trunk
+        g.fillStyle = '#77563A'; g.fillRect(cx-3, H-22, 2, 22);
+        g.fillStyle = '#4A3220'; g.fillRect(cx+2, H-22, 2, 22);
+        g.fillStyle = '#4A3220'; g.fillRect(cx-6, H-4, 13, 3);        // root flare
+        g.fillStyle = '#5E4230';
+        g.fillRect(cx-9, H-36, 3, 14); g.fillRect(cx+6, H-36, 3, 14); // forks to H-36
+        g.strokeStyle = '#5E4230'; g.lineWidth = 2;                  // branch arcs
+        g.beginPath(); g.moveTo(cx, H-26); g.quadraticCurveTo(cx-14, H-36, cx-20, H-46); g.stroke();
+        g.beginPath(); g.moveTo(cx, H-26); g.quadraticCurveTo(cx+14, H-36, cx+20, H-46); g.stroke();
+        g.beginPath(); g.moveTo(cx, H-32); g.quadraticCurveTo(cx-7, H-46, cx-9, H-54); g.stroke();
         blobCanopy(g, blobs, R, { deep:'#B45A74', main:PAL.blossom, mid:PAL.blossomLight, lite:'#F9D9DE',
-          deep2:'#CE7191', spark:'#FFF0F5', nDeep:80, nMid:120, nLite:90, nSpark:34 });
+          deep2:'#CE7191', spark:'#FFF0F5', nDeep:80, nMid:110, nLite:80, nSpark:34 });
         g.fillStyle = PAL.blossom;                                   // fallen petals at the base
         for (let i = 0; i < 8; i++) g.fillRect(cx - 16 + R(32), H - 5 + R(3), 2, 1);
         g.fillStyle = PAL.blossomLight;
         for (let i = 0; i < 5; i++) g.fillRect(cx - 14 + R(28), H - 4 + R(3), 1, 1);
+        g.strokeStyle = '#8E4360'; g.lineWidth = 2;                  // under-belly shadow crescents
+        for (const [bx2, by2, br2] of blobs) {
+          g.beginPath(); g.arc(bx2 + br2*0.35, by2 + br2*0.45, br2*0.5, 0.3, 2.4); g.stroke();
+        }
+        g.fillStyle = '#F9D9DE';                                     // highlights, top-left only
+        for (const [bx2, by2, br2] of blobs)
+          for (let k=0;k<4;k++)
+            g.fillRect(Math.round(bx2 - br2*0.6 + R(br2*0.5)), Math.round(by2 - br2*0.6 + R(br2*0.4)), 2, 1);
       } else {
+        trunk(6, 20, '#4A3220', PAL.timber, '#77563A');
+        g.fillStyle = PAL.timber;                                    // branch forks
+        g.fillRect(cx - 8, H - 30, 3, 12); g.fillRect(cx + 5, H - 30, 3, 12);
         blobCanopy(g, blobs, R, { deep:PAL.leafDark, main:PAL.leaf, mid:PAL.leafLight, lite:PAL.meadowLight,
           deep2:'#2F4F2B', spark:'#CFE8A8', nDeep:80, nMid:110, nLite:80, nSpark:20 });
       }
@@ -3066,7 +3086,18 @@ function pineVariant(kind) {
       g.fillStyle = PAL.meadowLight;
       g.fillRect(cx - (twd >> 1) + R(4), ty + R(Math.max(Math.round(th) - 2, 2)), 1, 1);
     }
-    g.fillStyle = PAL.pineLight; g.fillRect(cx - 1, 0, 2, 3);
+    // VISUAL-PASS-3: sunlit left-edge column per tier, deeper right-side shade
+    for (let i = 0; i < tiers; i++) {
+      const twd = 10 + (i / (tiers - 1)) * (W - 14), ty = top + i * th;
+      g.fillStyle = PAL.pineLight;                                  // 2–3px sunlit left edge
+      g.fillRect(Math.round(cx - twd / 2), Math.round(ty), 2 + R(2), Math.round(th));
+      g.fillStyle = 'rgba(20,40,24,.45)';                           // deeper right shade
+      g.fillRect(Math.round(cx + twd * 0.18), Math.round(ty), Math.round(twd * 0.32), Math.round(th));
+    }
+    const ax = R(3) - 1;                                            // apex shape varies by hash
+    g.fillStyle = PAL.pineLight; g.fillRect(cx - 1 + ax, 0, 2 + R(2), 3);
+    g.fillStyle = PAL.leafLight;                                    // tip dots on the top tier
+    for (let k = 0; k < 4; k++) g.fillRect(Math.round(cx - 5 + R(10)), Math.round(top + R(4)), 1, 1);
   });
 }
 const pineTallB = pineVariant(0), pineTallC = pineVariant(1);
@@ -3272,11 +3303,15 @@ const fountainTile = px(TILE,TILE,(g)=>{
   g.beginPath(); g.ellipse(cx,cy,rx,ry,0,Math.PI*1.15,Math.PI*1.85); g.stroke();
   g.strokeStyle = PAL.stoneDark;
   g.beginPath(); g.ellipse(cx,cy,rx,ry,0,Math.PI*0.15,Math.PI*0.85); g.stroke();
-  // calm basin water (deep blue, thin ripple arcs — not neon)
+  // VISUAL-PASS-3: basin water — waterDeep base, white foam rim arc, sunlit
+  // sheen, stoneDark 2px rim shadow inside the masonry
   g.fillStyle = PAL.waterDeep; g.beginPath(); g.ellipse(cx,cy,rx-3.4,ry-3.2,0,0,7); g.fill();
+  g.strokeStyle = PAL.stoneDark; g.lineWidth = 2;                 // 2px rim shadow
+  g.beginPath(); g.ellipse(cx,cy,rx-2.2,ry-2.2,0,0,7); g.stroke();
   g.fillStyle = PAL.water; g.beginPath(); g.ellipse(cx-1,cy-1,rx-5.5,ry-4.6,0,0,7); g.fill();
-  g.fillStyle = PAL.waterLight; g.beginPath(); g.ellipse(cx-2,cy-2,rx-8,ry-6.4,0,0,7); g.fill(); // sunlit sheen
-  g.fillStyle = 'rgba(255,255,255,.35)'; g.beginPath(); g.ellipse(cx-3,cy-3,4,2,0,0,7); g.fill();
+  g.fillStyle = 'rgba(255,255,255,.35)'; g.beginPath(); g.ellipse(cx-3,cy-3,4,2,0,0,7); g.fill(); // sunlit sheen
+  g.strokeStyle = 'rgba(255,255,255,.8)'; g.lineWidth = 1.5;      // white foam rim arc
+  g.beginPath(); g.ellipse(cx,cy,rx-3.4,ry-3.2,0,Math.PI*0.1,Math.PI*0.9); g.stroke();
   g.strokeStyle = 'rgba(255,255,255,.55)'; g.lineWidth = 1;
   g.beginPath(); g.ellipse(cx,cy,rx-4.6,ry-4,0,Math.PI*0.1,Math.PI*0.7); g.stroke();
   g.beginPath(); g.ellipse(cx+1,cy,rx-6.4,ry-5.2,0,Math.PI*1.1,Math.PI*1.7); g.stroke();
@@ -3289,12 +3324,12 @@ const fountainTile = px(TILE,TILE,(g)=>{
   g.fillStyle = mixHex(PAL.stone, PAL.stoneDark, .35); g.beginPath(); g.ellipse(16,11,8,3.6,0,0,7); g.fill();
   g.fillStyle = PAL.stoneLight; g.beginPath(); g.ellipse(16,10.4,8,3.2,0,0,7); g.fill();
   g.fillStyle = PAL.water; g.beginPath(); g.ellipse(16,10.2,5.4,2,0,0,7); g.fill();
-  g.fillStyle = 'rgba(215,240,255,.92)';
+  g.fillStyle = PAL.water;
   for (const sx of [9.5,12.5,16,19.5,22.5]) g.fillRect(sx,12.5,2.2,5);   // falling sheets
   g.fillStyle = 'rgba(255,255,255,.9)';
   for (const sx of [10.5,14,17,20]) g.fillRect(sx,12.5,1.2,4);            // sheet cores
-  g.fillStyle = 'rgba(255,255,255,.7)';
-  for (const sx of [10,13.5,17.5,21]) g.fillRect(sx,17,2,1.4);            // foam where sheets land
+  g.strokeStyle = 'rgba(255,255,255,.75)'; g.lineWidth = 1.5;      // foam ring at landing
+  g.beginPath(); g.ellipse(16,17.5,7,2.4,0,0,7); g.stroke();
   // upper tier: smaller stone disc, smaller spill
   g.fillStyle = mixHex(PAL.stone, PAL.stoneDark, .35); g.beginPath(); g.ellipse(16,6.4,5,2.4,0,0,7); g.fill();
   g.fillStyle = PAL.stoneLight; g.beginPath(); g.ellipse(16,5.9,5,2.1,0,0,7); g.fill();
@@ -3307,6 +3342,14 @@ const fountainTile = px(TILE,TILE,(g)=>{
   g.fillStyle = 'rgba(230,245,255,.95)'; g.fillRect(15.4,0,1.2,2.4);
   g.fillStyle = 'rgba(255,255,255,.9)';
   g.fillRect(12,1,1.4,1.4); g.fillRect(19,1.6,1.4,1.4);
+  // VISUAL-PASS-3: arched jet streams from the finial onto the tier rims
+  g.strokeStyle = 'rgba(255,255,255,.85)'; g.lineWidth = 1;
+  for (const s of [-1, 1]) {
+    g.beginPath(); g.moveTo(16, 1);
+    g.quadraticCurveTo(16 + s*7, 2, 16 + s*10, 8); g.stroke();
+    g.beginPath(); g.moveTo(16, 3);
+    g.quadraticCurveTo(16 + s*11, 5, 16 + s*14, 12); g.stroke();
+  }
   // VISUAL-PASS-2: living sparkle points pinned in the basin water
   const Rs = srand(0x5501);
   g.fillStyle = 'rgba(255,255,255,.85)';
@@ -3337,32 +3380,38 @@ const fountainDryTile = px(TILE,TILE,(g)=>{ g.clearRect(0,0,TILE,TILE);
 function stallTile(awning) {
   return px(TILE,TILE,(g)=>{
     g.clearRect(0,0,TILE,TILE);
-    g.fillStyle = PAL.timber; g.fillRect(4,10,3,20); g.fillRect(25,10,3,20);
-    g.fillStyle = '#8F6B4F'; g.fillRect(4,10,1,20); g.fillRect(25,10,1,20);
+    g.fillStyle = PAL.timber; g.fillRect(4,6,3,24); g.fillRect(25,6,3,24);   // posts to y=6
+    g.fillStyle = '#8F6B4F'; g.fillRect(4,6,1,24); g.fillRect(25,6,1,24);
     for (let i=0;i<8;i++){ const x0=i*4, xc=x0+2;               // peaked canopy
-      const yt = xc<=16 ? 12-(xc-2)*(10/14) : 2+(xc-16)*(10/14);
+      const yt = xc<=16 ? 18-(xc-2)*(18/14) : (xc-16)*(18/14);  // peak ~18px
       const y0=Math.ceil(yt);
-      g.fillStyle = i%2 ? '#fffbe8' : awning;
-      g.fillRect(x0,y0,4,12-y0);
+      g.fillStyle = i%2 ? '#fffbe8' : awning;                   // 4px stripes
+      g.fillRect(x0,y0,4,18-y0);
       g.fillStyle = 'rgba(0,0,0,.08)'; g.fillRect(x0,y0,4,1);
     }
-    g.fillStyle = PAL.timber; g.fillRect(2,11,28,3);             // front beam
-    for (let i=0;i<7;i++){ const x=4+i*4;                       // scalloped valance
+    g.fillStyle = PAL.timber; g.fillRect(2,14,28,3);            // front beam
+    for (let i=0;i<7;i++){ const x=4+i*4;                       // scalloped valance, r=3 at y=16
       g.fillStyle = i%2 ? '#fffbe8' : awning;
-      g.beginPath(); g.arc(x,14,2,0,7); g.fill(); }
-    g.fillStyle = '#8F6B4F'; g.fillRect(6,22,20,8);             // counter
-    g.fillStyle = PAL.path; g.fillRect(6,22,20,2);
+      g.beginPath(); g.arc(x,16,3,0,Math.PI); g.fill(); }
+    g.fillStyle = '#8F6B4F'; g.fillRect(6,24,20,6);             // counter
+    g.fillStyle = PAL.path; g.fillRect(6,24,20,2);
     g.fillStyle = PAL.timber;
-    for (let x=11;x<26;x+=5) g.fillRect(x,24,1,6);
-    g.fillStyle = '#e05a4e'; g.fillRect(8,19,3,3); g.fillRect(12,19,3,3);   // apples
-    g.fillStyle = PAL.leafDark; g.fillRect(9,18,1,1); g.fillRect(13,18,1,1);
-    g.fillStyle = PAL.terracotta; g.fillRect(16,19,4,3);             // potted flower
-    g.fillStyle = PAL.flowerPink; g.fillRect(16,16,4,3);
-    g.fillStyle = PAL.gold; g.fillRect(17,17,2,1);
-    g.fillStyle = '#e0a860'; g.fillRect(22,19,4,3); g.fillRect(23,18,2,1);  // bread
-    g.fillStyle = '#8F6B4F'; g.fillRect(4,17,24,1);             // bunting string
-    const bunt=[PAL.flowerPink, PAL.gold, PAL.flowerBlue, PAL.cream];
-    for (let i=0;i<6;i++){ g.fillStyle=bunt[i%4]; g.fillRect(5+i*4,18,3,3); }
+    for (let x=11;x<26;x+=5) g.fillRect(x,26,1,4);
+    g.fillStyle = '#e05a4e';                                    // bigger apples, white highlights
+    g.fillRect(8,20,3,3); g.fillRect(12,20,3,3);
+    g.fillStyle = '#fff'; g.fillRect(8,20,1,1); g.fillRect(12,20,1,1);
+    g.fillStyle = PAL.leafDark; g.fillRect(9,19,1,1); g.fillRect(13,19,1,1);
+    g.fillStyle = PAL.terracotta; g.fillRect(17,21,4,3);         // taller flower pot
+    g.fillStyle = PAL.flowerPink; g.fillRect(17,18,4,3);
+    g.fillStyle = PAL.gold; g.fillRect(18,19,2,1);
+    g.fillStyle = '#fff'; g.fillRect(17,18,1,1);
+    g.fillStyle = '#e0a860'; g.fillRect(23,20,5,4);              // bread, score marks
+    g.fillStyle = '#8F6B4F'; g.fillRect(24,20,1,4); g.fillRect(26,20,1,4);
+    g.fillStyle = '#8F6B4F'; g.fillRect(4,21,24,1);              // bunting string
+    const bunt=[PAL.flowerPink, PAL.gold, PAL.flowerBlue];
+    for (let i=0;i<6;i++){ const bx=5+i*4;                      // triangular bunting
+      g.fillStyle=bunt[i%3];
+      g.beginPath(); g.moveTo(bx,22); g.lineTo(bx+3,22); g.lineTo(bx+1.5,26); g.closePath(); g.fill(); }
   });
 }
 const stallA = stallTile('#e87aa0'), stallB = stallTile('#5a8ac9'), stallC = stallTile('#e8b93c');
