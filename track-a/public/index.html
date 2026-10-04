@@ -962,9 +962,9 @@ function onMsg(m) {
     case 'npc-chat': npcChat = { a: m.a, b: m.b, until: Date.now() + 6000 }; toast('💬 ' + m.a + ' & ' + m.b + ': ' + m.line); break;
     case 'quickchat': qcBubbles.set(m.byId, { text: m.text, until: Date.now() + 4000 }); tone(660, 0, 0.2, 'sine', 0.06); break;
     case 'menu': if (m.kind === 'cook') openCookPanel(); else if (m.kind === 'creator') openCreator(); break;
-    case 'cooked': toast('🍲 ' + m.by + ' cooked Harvest Stew!'); chime(); break;
-    case 'ate': toast('😋 ' + m.by + ' enjoyed a warm meal'); break;
-    case 'gift': toast('🎁 ' + m.from + ' gave a meal to ' + m.to + ' 💛'); chime(); break;
+    case 'cooked': toast('🍲 ' + m.by + ' cooked Harvest Stew!'); chime(); foodCookFx(m.by); break;
+    case 'ate': toast('😋 ' + m.by + ' enjoyed a warm meal'); foodEatFx(m.by); break;
+    case 'gift': toast('🎁 ' + m.from + ' gave a meal to ' + m.to + ' 💛'); chime(); foodGiftFx(m.to); break;
     case 'cook-fail':
       toast(m.reason === 'need-produce-and-fish' ? 'You need 1 produce + 1 fish to cook.' :
             m.reason === 'no-meal' ? 'No meals to share yet — cook something first.' :
@@ -1624,8 +1624,15 @@ function myInvHtml() {
   const inv = me && me.inv ? me.inv : { produce: 0, fish: 0, meals: 0 };
   return '🌾 ' + inv.produce + ' produce · 🐟 ' + inv.fish + ' fish · 🍲 ' + inv.meals + ' meals';
 }
+// FOOD-ART (2026-10-03): dish gallery in the cook panel — procedural dish
+// sprites as inventory icons (render layer; dish names are Ariel-renameable)
+function dishStripHtml(){
+  return '<div style="display:flex;gap:6px;justify-content:center;margin:6px 0 2px;flex-wrap:wrap">' +
+    DISH_DEFS.map(d=>'<span style="display:flex;flex-direction:column;align-items:center;gap:2px;font-size:9px;color:#7a5a2e;width:62px"><img width="30" height="30" style="image-rendering:pixelated;border-radius:6px;background:#fff8e8" src="'+dishSprite(d.key).toDataURL()+'">'+d.name+'</span>').join('') +
+    '</div><div style="font-size:9px;color:#9a7a4e;text-align:center">Cookable today: Harvest Stew</div>';
+}
 function openCookPanel() {
-  openPanel('Cooking', 'Turn the day\'s harvest into something warm.', myInvHtml(), [
+  openPanel('Cooking', 'Turn the day\'s harvest into something warm.', myInvHtml() + dishStripHtml(), [
     { label: '🍲 Cook Harvest Stew (1 🌾 + 1 🐟)', fn: () => send({ t: 'cook', action: 'cook' }) },
     { label: '😋 Eat a meal', fn: () => send({ t: 'cook', action: 'eat' }) },
     { label: '🎁 Give a meal to someone nearby', fn: () => send({ t: 'cook', action: 'give' }) },
@@ -3491,6 +3498,261 @@ function stallTile(awning) {
   });
 }
 const stallA = stallTile('#e87aa0'), stallB = stallTile('#5a8ac9'), stallC = stallTile('#e8b93c');
+const stallA = stallTile('#e87aa0'), stallB = stallTile('#5a8ac9'), stallC = stallTile('#e8b93c');
+// ================= FOOD-ART (2026-10-03) =================
+// Visible food, storybook style, render-layer ONLY (canvas painters +
+// transient fx + CSS). Tasteful, contextual placement ONLY per Ariel's
+// 2026-10-03 correction: market stall counters, farm harvest crates,
+// café tables, the home kitchen table, cooked-dish sprites, villagers
+// eating at lunch, and the market-day picnic blanket. NO food scattered
+// on random tiles, in the church, in the Garden of Hope, at the ruins,
+// on paths, or anywhere it wouldn't naturally be. No gameplay logic,
+// no state shapes, no function signatures changed here.
+const FOOD_ART_MARKER = 'FOOD-ART-2026-10-03';
+// Small shared food painters — draw into any context at (x,y), food-palette only.
+function paintApple(g,x,y){                       // red apple + leaf + highlight
+  g.fillStyle='#c23f31'; g.fillRect(x,y,7,7);
+  g.fillStyle='#e05a4e'; g.fillRect(x+1,y,4,5);
+  g.fillStyle='#fff'; g.fillRect(x+1,y+1,2,2);
+  g.fillStyle='#6b4423'; g.fillRect(x+3,y-2,1,2);
+  g.fillStyle=PAL.leaf; g.fillRect(x+4,y-2,2,1);
+}
+function paintBerry(g,x,y){                       // raspberry cluster
+  g.fillStyle='#c9486b'; g.fillRect(x,y,5,5);
+  g.fillStyle='#e87aa0'; g.fillRect(x+1,y+1,3,3);
+  g.fillStyle='#fff'; g.fillRect(x+1,y+1,1,1);
+  g.fillStyle=PAL.leafDark; g.fillRect(x+2,y-1,1,1);
+}
+function paintBreadLoaf(g,x,y){                   // crusty loaf, score marks
+  g.fillStyle='#c98d4e'; g.fillRect(x,y,10,5);
+  g.fillStyle='#e0a860'; g.fillRect(x+1,y,8,3);
+  g.fillStyle='#8F6B4F'; g.fillRect(x+2,y+1,2,3); g.fillRect(x+6,y+1,2,3);
+}
+function paintCheeseWheel(g,x,y){                 // wheel with wax rind + holes
+  g.fillStyle='#f2d06b'; g.beginPath(); g.ellipse(x+5,y+5,5,4,0,0,7); g.fill();
+  g.fillStyle='#d9a840'; g.beginPath(); g.ellipse(x+5,y+6.5,5,2.5,0,0,7); g.fill();
+  g.fillStyle='#b57e22'; g.fillRect(x+2,y+3,1,2); g.fillRect(x+7,y+2,1,2); g.fillRect(x+5,y+6,1,2);
+}
+function paintFish(g,x,y,flip){                   // fresh silver-blue fish
+  const d = flip ? -1 : 1;
+  g.fillStyle='#8ecae6'; g.fillRect(x,y+2,10,4);
+  g.fillStyle='#bfe4ff'; g.fillRect(x+1,y+3,8,2);
+  g.fillStyle='#5a7a9a';
+  if (!flip) { g.fillRect(x+10,y+2,3,4); g.fillRect(x+12,y+1,2,6); g.fillRect(x+12,y+3,3,2); }
+  else { g.fillRect(x-1,y+2,3,4); g.fillRect(x-1,y+1,2,6); g.fillRect(x-2,y+3,3,2); }
+  g.fillRect(x+4,y,2,2);                          // dorsal fin
+  g.fillStyle='#1a2340'; g.fillRect(x+(flip?6:2),y+3,1,1);   // eye
+}
+function paintCarrot(g,x,y){                      // pulled carrot with tops
+  g.fillStyle='#e08a3c'; g.fillRect(x+2,y+3,3,5);
+  g.fillStyle='#f6c98a'; g.fillRect(x+2,y+3,1,5);
+  g.fillStyle='#4a8f3c'; g.fillRect(x+2,y,1,3); g.fillRect(x+4,y+1,1,2);
+}
+function paintMug(g,x,y,c){                       // steaming mug (steam painted live separately)
+  g.fillStyle=c||'#fffbe8'; g.fillRect(x,y,5,7);
+  g.fillStyle='rgba(0,0,0,.08)'; g.fillRect(x,y+5,5,2);
+  g.fillStyle='#8F6B4F'; g.fillRect(x+5,y+1,2,3);
+  g.fillStyle='#7a4b1f'; g.fillRect(x,y,5,1);
+}
+function paintPlate(g,x,y){                       // clean white plate
+  g.fillStyle='#fffbe8'; g.beginPath(); g.ellipse(x+6,y+3,6,3,0,0,7); g.fill();
+  g.fillStyle='#e8dcc0'; g.beginPath(); g.ellipse(x+6,y+3.5,4,1.8,0,0,7); g.fill();
+}
+function paintIce(g,x,y,w,h){                     // bed of crushed ice
+  g.fillStyle='#bfe4ff'; g.fillRect(x,y,w,h);
+  g.fillStyle='#fff'; for(let i=0;i<w;i+=3) g.fillRect(x+i,y+(i%2),2,1);
+}
+function paintSteam(g,x,y,now){                   // rising steam curls (live)
+  g.fillStyle='rgba(255,255,255,.55)';
+  for(let i=0;i<3;i++){
+    const sx = x + Math.sin(now/420 + i*2.1)*1.6;
+    g.fillRect(sx-0.5, y - i*3.5, 1.5, 3.2);
+  }
+}
+// Cooked-dish sprites (16x16, procedural). Names are Ariel-renameable.
+//   stew  — Harvest Stew      (bowl of stew, the one cookable today)
+//   trout — Sun-Baked Trout   (baked fish on a plate)
+//   loaf  — Harvest Loaf      (round scored loaf on a board)
+//   tart  — Sunberry Tart     (pastry shell + berries)
+const DISH_DEFS = [
+  { key:'stew',  name:'Harvest Stew' },
+  { key:'trout', name:'Sun-Baked Trout' },
+  { key:'loaf',  name:'Harvest Loaf' },
+  { key:'tart',  name:'Sunberry Tart' },
+];
+function paintDishSprite(key){
+  return px(16,16,(g)=>{
+    g.clearRect(0,0,16,16);
+    if (key==='stew'){
+      g.fillStyle='#8a5a2b'; g.beginPath(); g.ellipse(8,9,7,5,0,0,7); g.fill();   // bowl
+      g.fillStyle='#B96848'; g.beginPath(); g.ellipse(8,10,7,5,0,0,7); g.fill();
+      g.fillStyle='#fffbe8'; g.beginPath(); g.ellipse(8,8,6,3,0,0,7); g.fill();    // rim
+      g.fillStyle='#c96a3a'; g.beginPath(); g.ellipse(8,8,5,2.4,0,0,7); g.fill();  // stew
+      g.fillStyle='#e08a3c'; g.fillRect(5,7,2,1); g.fillRect(9,7,2,2);             // chunks
+      g.fillStyle='#6aa84f'; g.fillRect(7,8,1,1);
+    } else if (key==='trout'){
+      paintPlate(g,2,4);                                                            // plate
+      g.fillStyle='#d9a840'; g.fillRect(4,6,8,4);                                  // baked body
+      g.fillStyle='#f2d06b'; g.fillRect(5,6,6,2);
+      g.fillStyle='#b57e22'; g.fillRect(12,6,3,2); g.fillRect(14,5,2,4);            // tail
+      g.fillStyle='#1a2340'; g.fillRect(5,7,1,1);                                  // eye
+      g.fillStyle='#6aa84f'; g.fillRect(7,9,1,1); g.fillRect(10,9,1,1);             // herbs
+      g.fillStyle='#ffe9a8'; g.fillRect(8,5,2,2);                                  // lemon wedge
+    } else if (key==='loaf'){
+      g.fillStyle='#8a5a2b'; g.fillRect(1,10,14,3);                                // board
+      g.fillStyle='#c99a5a'; g.fillRect(1,10,14,1);
+      g.fillStyle='#c98d4e'; g.beginPath(); g.ellipse(8,8,6,4,0,0,7); g.fill();    // loaf
+      g.fillStyle='#e0a860'; g.beginPath(); g.ellipse(8,7,5,3,0,0,7); g.fill();
+      g.fillStyle='#8F6B4F'; g.fillRect(5,5,2,2); g.fillRect(8,5,2,2);              // scores
+    } else {                                                                      // tart
+      g.fillStyle='#d9a860'; g.beginPath(); g.ellipse(8,10,7,4,0,0,7); g.fill();   // shell
+      g.fillStyle='#b57e22'; g.beginPath(); g.ellipse(8,11,7,2.5,0,0,7); g.fill();
+      g.fillStyle='#f2d06b'; g.beginPath(); g.ellipse(8,9,5.5,3,0,0,7); g.fill();  // custard
+      paintBerry(g,4,6); paintBerry(g,8,5); paintBerry(g,6,8);
+      g.fillStyle='#fff'; g.fillRect(6,6,2,1);                                    // glaze shine
+    }
+  });
+}
+const DISH_SPRITES = {};
+function dishSprite(key){ return DISH_SPRITES[key] || (DISH_SPRITES[key] = paintDishSprite(key)); }
+// ---- market stall produce piles (drawn over each stall's counter; kind
+// matches the stall: A produce / B fish on ice / C breads & cheese) ----
+function stallProduceTile(kind){
+  return px(TILE,TILE,(g)=>{
+    g.clearRect(0,0,TILE,TILE);
+    if (kind==='produce'){                                       // apple piles + berry basket + carrots
+      paintApple(g,7,17); paintApple(g,11,18); paintApple(g,9,14);
+      paintApple(g,14,17); paintApple(g,16,14);
+      g.fillStyle='#8a5a2b'; g.fillRect(20,17,7,6);              // berry basket
+      g.fillStyle='#6b4423'; g.fillRect(20,17,7,1);
+      paintBerry(g,21,15); paintBerry(g,24,15); paintBerry(g,22,13);
+      paintCarrot(g,4,17); paintCarrot(g,26,16);
+    } else if (kind==='fish'){                                   // fish on crushed ice
+      paintIce(g,6,18,20,5);
+      paintFish(g,7,18,false); paintFish(g,15,19,true); paintFish(g,11,17,false);
+      g.fillStyle='#fff'; g.fillRect(9,16,2,2);                  // ice glint
+    } else {                                                    // bread loaves + cheese wheels
+      paintBreadLoaf(g,6,17); paintBreadLoaf(g,17,16);
+      paintCheeseWheel(g,22,15);
+      g.fillStyle='#f2d06b'; g.beginPath(); g.moveTo(13,22); g.lineTo(17,18); g.lineTo(17,22); g.closePath(); g.fill();
+      g.fillStyle='#b57e22'; g.fillRect(14,20,1,1);
+    }
+  });
+}
+const stallProduceTiles = [stallProduceTile('produce'), stallProduceTile('fish'), stallProduceTile('bread')];
+// ---- farm harvest crates (transparent; drawn over grass beside the fence) ----
+function harvestCrateTile(kind){
+  return px(TILE,TILE,(g)=>{
+    g.clearRect(0,0,TILE,TILE);
+    g.fillStyle='rgba(0,0,0,.15)'; g.fillRect(5,27,22,3);
+    g.fillStyle='#8a5a2b'; g.fillRect(6,16,20,11);
+    g.fillStyle='#a06a35'; g.fillRect(6,16,20,2);
+    g.fillStyle='#6b4423'; g.fillRect(6,16,2,11); g.fillRect(24,16,2,11); g.fillRect(6,20,20,2);
+    if (kind===0){                                               // apples heaped high
+      paintApple(g,8,11); paintApple(g,13,11); paintApple(g,18,11);
+      paintApple(g,10,8); paintApple(g,15,8); paintApple(g,12,5);
+    } else if (kind===1){                                        // carrots + greens
+      paintCarrot(g,7,10); paintCarrot(g,12,10); paintCarrot(g,17,10);
+      g.fillStyle=PAL.leaf; g.fillRect(8,7,3,4); g.fillRect(15,7,4,4);
+    } else {                                                    // grain sheaves
+      g.fillStyle='#e8b93c';
+      for (const sx of [9,14,19]){ g.fillRect(sx,8,2,9); g.fillRect(sx-1,6,4,3); }
+      g.fillStyle='#ffd76e'; g.fillRect(9,6,2,3); g.fillRect(14,6,2,3); g.fillRect(19,6,2,3);
+      g.fillStyle='#8F6B4F'; g.fillRect(9,13,2,2); g.fillRect(14,13,2,2); g.fillRect(19,13,2,2);
+    }
+  });
+}
+const harvestCrateTiles = [harvestCrateTile(0), harvestCrateTile(1), harvestCrateTile(2)];
+const HARVEST_CRATES = [[12,15,0],[12,16,1],[12,17,2]];   // east of the farm fence (walkable decor)
+// ---- café table settings: plates, mugs, bread basket (two table variants) ----
+function cafeTableFoodTile(v){
+  return px(TILE,TILE,(g)=>{
+    g.clearRect(0,0,TILE,TILE);
+    paintPlate(g,v?13:3,20);
+    paintMug(g,v?5:21,14,'#fffbe8');
+    paintMug(g,v?22:8,16,'#bfe4ff');
+    paintBreadLoaf(g,v?8:15,18);
+    if (!v){ paintBerry(g,12,21); paintBerry(g,14,20); }     // little berry dish
+  });
+}
+const cafeTableFoodTiles = [cafeTableFoodTile(0), cafeTableFoodTile(1)];
+// ---- home kitchen table: bread, fruit bowl, plate + cup ----
+const homeKitchenFoodTile = px(TILE,TILE,(g)=>{
+  g.clearRect(0,0,TILE,TILE);
+  paintBreadLoaf(g,4,8);                                        // bread beside the runner
+  g.fillStyle='#B96848'; g.beginPath(); g.ellipse(24,11,6,4,0,0,7); g.fill();  // fruit bowl
+  g.fillStyle='#8a4a30'; g.beginPath(); g.ellipse(24,12,6,3,0,0,7); g.fill();
+  paintApple(g,21,7); paintApple(g,25,6); paintBerry(g,23,5);
+  paintPlate(g,10,10);
+  paintMug(g,16,9,'#bfe4ff');
+});
+// ---- market-day picnic blanket in the square (shared food, market day only) ----
+const picnicBlanketTile = px(TILE,TILE,(g)=>{
+  g.clearRect(0,0,TILE,TILE);
+  for (let r=0;r<4;r++) for (let c=0;c<6;c++){                  // checkered blanket
+    g.fillStyle = (r+c)%2 ? '#e88a90' : '#fffbe8';
+    g.fillRect(5+c*4, 11+r*4, 4, 4);
+  }
+  g.fillStyle='#8F6B4F'; g.fillRect(5,11,24,1); g.fillRect(5,26,24,1);
+  paintPlate(g,6,13); paintPlate(g,20,17);
+  paintBreadLoaf(g,13,15);
+  paintApple(g,10,20); paintApple(g,16,12);
+  g.fillStyle='#8a5a2b'; g.fillRect(11,19,6,5);                 // shared bread basket
+  g.fillStyle='#6b4423'; g.fillRect(11,19,6,1);
+  paintBreadLoaf(g,11,15);
+  paintMug(g,22,13,'#fffbe8'); paintMug(g,8,20,'#e8b93c');
+});
+// ---- transient food fx (render-only; driven off existing cooked/ate/gift messages) ----
+const foodFx = [];
+function pushFoodFx(kind,x,y){ foodFx.push({kind,x,y,t:0,ph:Math.random()*7}); }
+function foodPlayerByName(name){
+  for (const p of players.values()) if (p.name===name) return p;
+  return null;
+}
+function foodCookFx(by){ const p=foodPlayerByName(by); if (p && !p.inside) pushFoodFx('cook', p.x, p.y-26); }
+function foodEatFx(by){ const p=foodPlayerByName(by); if (p) pushFoodFx('eat', p.x, p.y-30); }
+function foodGiftFx(to){ const p=foodPlayerByName(to); if (p) pushFoodFx('gift', p.x, p.y-30); }
+function drawFoodFx(ctx,now){
+  for (let i=foodFx.length-1;i>=0;i--){
+    const f = foodFx[i]; f.t++;
+    const rise = f.t*0.35, alpha = Math.max(0, 1 - f.t/220);
+    if (f.t > 220) { foodFx.splice(i,1); continue; }
+    ctx.save(); ctx.globalAlpha = Math.min(1, alpha*1.4);
+    const fy = f.y - rise;
+    if (f.kind==='cook'){                                        // rising dish + steam + sparkles
+      ctx.drawImage(dishSprite('stew'), Math.round(f.x-8), Math.round(fy-8));
+      paintSteam(ctx, f.x, fy-10, now);
+      ctx.fillStyle='#ffd76e';
+      for (let s=0;s<4;s++){
+        const sa = f.ph + now/300 + s*1.7;
+        ctx.fillRect(Math.round(f.x + Math.cos(sa)*14), Math.round(fy + Math.sin(sa)*10), 2, 2);
+      }
+    } else if (f.kind==='eat'){                                  // crumbs + warm steam
+      paintBreadLoaf(ctx, f.x-5, fy);
+      ctx.fillStyle='#e0a860';
+      for (let c=0;c<5;c++) ctx.fillRect(Math.round(f.x-6 + ((c*7+f.t*2)%14)), Math.round(fy+6 + ((c*11+f.t*3)%10)), 2, 2);
+      paintSteam(ctx, f.x, fy-4, now);
+    } else {                                                    // gifted dish, little hearts of thanks
+      ctx.drawImage(dishSprite('stew'), Math.round(f.x-8), Math.round(fy-8));
+      ctx.fillStyle='#e88a90';
+      ctx.fillRect(Math.round(f.x-10+Math.sin(now/300+f.ph)*3), Math.round(fy-12), 2, 2);
+      ctx.fillRect(Math.round(f.x+8+Math.cos(now/340+f.ph)*3), Math.round(fy-9), 2, 2);
+    }
+    ctx.restore();
+  }
+}
+// Villager lunch: bread in hand, a small plate set beside them, steam + crumbs.
+function drawLunchFood(ctx,n,now){
+  const bob = Math.sin(now/500 + n.x)*1.2;
+  paintBreadLoaf(ctx, n.x+6, n.y-16+bob*0.3);                    // bread in hand
+  paintPlate(ctx, n.x-16, n.y-12);                               // small plate beside
+  paintApple(ctx, n.x-14, n.y-15);
+  paintSteam(ctx, n.x-10, n.y-16, now);
+  ctx.fillStyle='#e0a860';
+  ctx.fillRect(Math.round(n.x+10), Math.round(n.y-8 + Math.abs(bob)), 2, 2);
+  ctx.fillRect(Math.round(n.x+13), Math.round(n.y-6 - Math.abs(bob)*0.5), 1, 1);
+}
+
 // TOWN-LIFE: shop hours — Open/Closed hanging signs (board idiom: navy board,
 // gold frame, cream text) and a pulled timber shutter for closed stalls and
 // counters. Living feel only; no transaction changes.
@@ -5209,6 +5471,8 @@ function drawWorld(g, now) {
     if (fb !== undefined) g.drawImage(fb === 0 ? farmBloomA : farmBloomB, x, y);
     if (tx === FARM_CAN.tx && ty === FARM_CAN.ty) g.drawImage(wateringCanTile, x, y);
     if (FARM_EDGE.get(tx + ',' + ty)) g.drawImage(farmEdgeTuft, x, y);
+    // FOOD-ART (2026-10-03): harvest crates east of the fence, visible crops
+    for (const hc of HARVEST_CRATES) if (hc[0]===tx && hc[1]===ty) g.drawImage(harvestCrateTiles[hc[2]], x, y);
     if (isTree(tx,ty)) {
       // BATCH7: tall pines in the forest bands, pink blossoms at the lane clusters
       let tv = ((tx+ty)%2===0) ? treeA : (hash2(tx*11+3, ty*7+1) < 0.5 ? treeB : treeRoundAlt);
@@ -5314,9 +5578,22 @@ function drawWorld(g, now) {
       if (!cafeOpen) g.drawImage(stallShutterTile, x, y);
       g.drawImage(cafeOpen ? signOpenTile : signShutTile, x+3, y+1);
     }
-    if ((tx===23||tx===25) && ty===17) g.drawImage(tableTile, x, y);
+    if ((tx===23||tx===25) && ty===17) {
+      g.drawImage(tableTile, x, y);
+      // FOOD-ART (2026-10-03): table settings — plates, mugs, bread (variant per table)
+      const tv = tx===23 ? 0 : 1;
+      g.drawImage(cafeTableFoodTiles[tv], x, y);
+      const cafeOpen = !day.shops || day.shops.cafe !== 'closed';
+      if (cafeOpen) { paintSteam(g, x+(tv?10:26), y+12, now); paintSteam(g, x+(tv?27:13), y+14, now); }
+    }
     // market stalls
     for (const s of STALLS) if (s.tx===tx && s.ty===ty) g.drawImage(s.s, x, y);
+    // FOOD-ART (2026-10-03): produce piles on each stall counter (produce /
+    // fish on ice / breads & cheese); covered by the pulled shutter when closed
+    STALLS.forEach((s,i)=>{ if (s.tx===tx && s.ty===ty) {
+      const stallsOpen = !day.shops || day.shops.stalls !== 'closed';
+      if (stallsOpen) g.drawImage(stallProduceTiles[i], x, y);
+    }});
     // TOWN-LIFE: stalls keep shop hours — Open/Closed hanging sign, and a
     // pulled shutter over the counter when closed (living feel only)
     for (const s of STALLS) if (s.tx===tx && s.ty===ty) {
@@ -5373,6 +5650,9 @@ function drawWorld(g, now) {
     // (pure decor; every tile stays walkable, collision constants untouched)
     for (const s of PLAZA_BEDS) if (s[0]===tx && s[1]===ty) g.drawImage(s[2], x, y);
     for (const s of PLAZA_BENCHES) if (s[0]===tx && s[1]===ty) g.drawImage(benchTile, x, y);
+    // FOOD-ART (2026-10-03): market-day picnic blanket in the square — shared
+    // food on a checkered blanket (market day only; the square is empty otherwise)
+    if (tx===20 && ty===16 && day.marketDay) g.drawImage(picnicBlanketTile, x, y);
     for (const s of PLANTERS) if (s[0]===tx && s[1]===ty) g.drawImage(planterTile, x, y);
     for (const s of SHRUBS) if (s[0]===tx && s[1]===ty) g.drawImage(shrubTile, x, y-4);
     for (const s of ROCKS) if (s[0]===tx && s[1]===ty) g.drawImage(rockTile, x, y);
@@ -5578,7 +5858,11 @@ function drawHomeInterior(g, tx, ty, x, y, now) {
   if (tx>=28 && tx<=29 && ty>=20 && ty<=21) g.drawImage(rugTiles[homeRug % 4], x, y); // rug (decorate)
   if (tx===32 && ty===21) g.drawImage(wardrobeTile, x, y);    // change clothes
   if (tx===35 && ty===21) g.drawImage(chairTile, x, y);        // sit
-  if (tx===35 && ty===24) g.drawImage(tableInTile, x, y);      // side table (decor)
+  if (tx===35 && ty===24) {
+    g.drawImage(tableInTile, x, y);      // side table (decor)
+    // FOOD-ART (2026-10-03): home kitchen table — bread, fruit bowl, plate + cup
+    g.drawImage(homeKitchenFoodTile, x, y);
+  }
   if (tx===37 && ty===24) g.drawImage(kitchenCounterTile, x, y); // kitchen corner (decor)
   if (tx===37 && ty===25) g.drawImage(crateTile, x, y);         // storage crate (decor)
   if (tx===29 && ty===25) g.drawImage(plantPotHerb, x, y);      // herb pot (decor)
@@ -5829,6 +6113,9 @@ function loop(now) {
       ctx.font = '13px monospace'; ctx.textAlign = 'center';
       ctx.fillStyle = '#fff'; ctx.fillText(actEmoji, n.x + 14, n.y - 30 + Math.sin(now/400 + n.x)*1.5);
     }
+    // FOOD-ART (2026-10-03): villagers eat at lunch — bread in hand, a small
+    // plate set beside them, steam + crumbs (render layer only)
+    if (idleAct === 'lunch') drawLunchFood(ctx, n, now);
   }
   // players sorted by y
   const list = [...players.values()].sort((a,b)=>a.y-b.y);
@@ -5887,6 +6174,8 @@ function loop(now) {
     ctx.fillStyle = `rgba(${pt.c},${Math.min(1, pt.life/100)})`;
     ctx.fillRect(pt.x, pt.y, 3, 3);
   }
+  // FOOD-ART (2026-10-03): transient food fx (cook reveal, eating, gifts)
+  drawFoodFx(ctx, now);
   // lamp + window glow at night (world space), flickering in with the night
   if (nightF > 0.02 && !inside) {
     LAMPS.forEach((l, li) => { if (lampLit(li)) drawGlow(ctx, l.tx*TILE+16, l.ty*TILE+8, 46, 'rgba(255,232,163,A)', now, l.tx*2, nightF); });

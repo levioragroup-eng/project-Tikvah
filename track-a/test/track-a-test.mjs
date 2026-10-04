@@ -1683,6 +1683,44 @@ try {
   ];
   for (const [label, needle] of rhythmChecks) ok('page contains ' + label, pageHtml.includes(needle));
 
+  // ---------- FOOD-ART (2026-10-03): visible food, storybook style (static page) ----------
+  console.log('food-art (static page):');
+  const foodChecks = [
+    ['food-art marker', 'FOOD-ART-2026-10-03'],
+    ['food painter lib', 'function paintApple'],
+    ['bread painter', 'function paintBreadLoaf'],
+    ['cheese wheel painter', 'function paintCheeseWheel'],
+    ['fish painter', 'function paintFish'],
+    ['steam painter', 'function paintSteam'],
+    ['stall produce painter', 'function stallProduceTile'],
+    ['stall produce variants', 'stallProduceTiles[i]'],
+    ['stall produce render gate', 'day.shops.stalls'],
+    ['harvest crate painter', 'function harvestCrateTile'],
+    ['harvest crate spots', '[12,15,0]'],
+    ['cafe table food painter', 'function cafeTableFoodTile'],
+    ['cafe tables render gate', 'cafeTableFoodTiles'],
+    ['home kitchen food tile', 'homeKitchenFoodTile'],
+    ['home kitchen table gate', 'tx===35 && ty===24'],
+    ['dish sprite painter', 'function dishSprite'],
+    ['dish stew', 'Harvest Stew'],
+    ['dish trout', 'Sun-Baked Trout'],
+    ['dish loaf', 'Harvest Loaf'],
+    ['dish tart', 'Sunberry Tart'],
+    ['cook panel dish strip', 'function dishStripHtml'],
+    ['cook fx hook', 'function foodCookFx'],
+    ['eat fx hook', 'function foodEatFx'],
+    ['gift fx hook', 'function foodGiftFx'],
+    ['food fx draw', 'function drawFoodFx'],
+    ['food fx in render loop', 'drawFoodFx(ctx, now)'],
+    ['villager lunch visuals', 'function drawLunchFood'],
+    ['lunch act gate', "idleAct === 'lunch'"],
+    ['picnic blanket tile', 'picnicBlanketTile'],
+    ['picnic market-day gate', 'tx===20 && ty===16 && day.marketDay'],
+    ['placement rule: no food on random tiles', 'NO food scattered'],
+    ['placement rule: church stays clean', 'in the church, in the Garden of Hope'],
+  ];
+  for (const [label, needle] of foodChecks) ok('page contains ' + label, pageHtml.includes(needle));
+
   [a, b, c, d, k, v2, v3, i2, h2, f1, ...fillers].forEach(x => x.close());
 } finally {
   srv.kill('SIGTERM');
