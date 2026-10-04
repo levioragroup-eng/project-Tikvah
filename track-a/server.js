@@ -347,6 +347,230 @@ export const NPC_DEFS = [
   ]},
 ];
 
+// ---------- TOWN-LIFE (2026-10-03): a living town ----------
+// Ariel: "the whole town should be like Harvest Town". Every named villager
+// keeps a deterministic daily schedule keyed off the already-synced day
+// counter + phase, so both travelers see the same village with no new sync
+// architecture. Priority each tick: weekly sermon (shipped, untouched) >
+// restoration gathering (shipped, untouched) > daily schedule (new).
+// Homes are porch tiles on the lane edges and work spots sit on walkable
+// tiles; every route leg is lane-routed and the suite verifies no leg
+// crosses a solid tile, so villagers can never get stuck.
+// NOTE (Ariel): every name, home, and line below is renameable — say the word.
+
+// Time-of-day greetings: the first talk of each day to each traveler.
+// Warmer once befriended (hearts >= 3). The heart mechanic itself is unchanged.
+export const TOWN_GREETS = {
+  morning: [
+    'Good morning! The village is just waking up — I am glad you are here.',
+    'Good morning, dear friend! It is always brighter when you are around.',
+  ],
+  day: [
+    'Good day, traveler! Fine weather for living the village rhythm.',
+    'Good day, friend! Come sit a while — the day is kind.',
+  ],
+  sunset: [
+    'Evening settles soft here. Stay a while.',
+    'Evening, friend. You made the day better just by being in it.',
+  ],
+  night: [
+    'The lamps are lit and the village is quiet. Rest well.',
+    'Night blessings, dear friend. Sleep in peace.',
+  ],
+};
+export function townGreeting(phase, warm) {
+  const g = TOWN_GREETS[phase] || TOWN_GREETS.day;
+  return warm ? g[1] : g[0];
+}
+
+// Short ambient lines when two villagers cross paths and pause to chat.
+export const NPC_CHAT_LINES = [
+  'Mind the marigolds — they are showing off today.',
+  'The café has something warm if you stop by.',
+  'Have you seen the garden? It is waking up, I swear it.',
+  'Pastor Naomi preaches on sermon day, morning till afternoon. Do not forget.',
+  'Evening lamps, morning birds — this village takes care of us.',
+  'I saved you the sunny bench by the fountain.',
+  'Small faithfulness, day after day. That is the whole secret.',
+];
+
+// Per-villager schedule geography: [tx, ty] tiles. Roles: Hannah keeps the
+// garden and plaza flowers; Elias vendors the market stall; Miriam keeps the
+// café; Pastor Naomi welcomes at the church door.
+// Every leg — including slot-transition legs — is lane-routed around the
+// fountain, the café, and the trees; the suite walks every full-day route and
+// fails if any leg crosses a solid tile.
+export const TOWN_SCHEDULE = {
+  'Hannah': { home: [11,11],
+    goWork: [[13,12],[17,14],[19,16]],
+    workWp: [[19,16],[21,16],[17,16]], workAct: 'tend',
+    lunchWp: [[19,15]],
+    aftA: [[19,16],[22,16],[17,16]], aftActA: 'tend',
+    aftB: [[19,14],[19,12],[20,11]], aftActB: 'stroll',
+    marketWp: [[19,12],[16,11],[14,11],[16,11],[18,11],[15,11],[17,11]],
+    evening: [[19,14],[15,12],[11,11]] },
+  'Elias': { home: [20,11],
+    goWork: [[19,11],[17,11],[16,11]],
+    workWp: [[16,11]], workAct: 'serve',
+    lunchWp: [[22,14],[21,15]],
+    aftA: [[21,16],[18,16],[18,14],[22,14],[22,13],[18,13]], aftActA: 'stroll',
+    aftB: [[22,16],[24,16],[26,16],[26,18]], aftActB: 'stroll',
+    marketWp: [[18,12],[16,11],[14,11],[18,11],[15,11],[17,11]],
+    evening: [[20,18],[18,18],[18,12],[20,11]] },
+  'Miriam': { home: [26,18],
+    goWork: [[24,18],[25,17],[24,16]],
+    workWp: [[24,16]], workAct: 'serve',
+    lunchWp: [[23,16],[23,17]],
+    aftA: [[24,18],[20,18],[13,18],[13,12],[11,11]], aftActA: 'stroll',
+    aftB: [[24,18],[20,18],[16,16],[16,14]], aftActB: 'tend',
+    marketWp: [[20,18],[19,14],[16,12],[14,11],[16,11],[18,11],[15,11],[17,11]],
+    evening: [[20,18],[24,18],[26,18]] },
+  'Pastor Naomi': { home: [27,17],
+    goWork: [[29,16],[30,16]],
+    workWp: [[30,16]], workAct: 'idle',
+    lunchWp: [[29,16]],
+    aftA: [[31,16],[28,16],[33,16]], aftActA: 'tend',
+    aftB: [[28,17],[22,16],[18,16]], aftActB: 'stroll',
+    marketWp: [[28,17],[24,18],[20,18],[19,14],[16,12],[14,11],[16,11],[18,11],[15,11],[17,11]],
+    marketEve: [[24,18],[28,17],[27,17]],
+    evening: [[24,18],[28,17],[27,17]] },
+};
+// Market-day bustle: on market day every villager browses the stalls in the
+// afternoon instead of their usual activity.
+
+export function dayFrac(room, now = Date.now()) {
+  return ((((now - room.day.start) % DAY_MS) + DAY_MS) % DAY_MS) / DAY_MS;
+}
+// TOWN-LIFE: the weekly market day. Day 1 is the sermon day (shipped); the
+// market gathers mid-week on day 4 (mod 7). Ariel: rename/re-day freely.
+export function marketDayActive(room) { return room.day.n % 7 === 4; }
+// TOWN-LIFE: shop hours, derived from the synced clock — living feel only,
+// no transaction changes. Stalls keep morning+day hours (plus sunset on
+// market day); the café stays open through sunset.
+export function shopHours(room, now = Date.now()) {
+  const phase = dayPhase(room, now);
+  const market = marketDayActive(room);
+  return {
+    stalls: (phase === 'morning' || phase === 'day' || (market && phase === 'sunset')) ? 'open' : 'closed',
+    cafe: (phase === 'morning' || phase === 'day' || phase === 'sunset') ? 'open' : 'closed',
+  };
+}
+// Deterministic schedule slot for one villager: pure function of the villager
+// name, day number, phase, and within-day fraction. Returns null for unknown
+// names (never happens for the four villagers).
+export function townSlot(npcName, dayN, phase, frac) {
+  const S = TOWN_SCHEDULE[npcName];
+  if (!S) return null;
+  const idx = NPC_DEFS.findIndex(d => d.name === npcName);
+  let slot, waypoints, act;
+  if (phase === 'morning') {
+    if (frac < 0.055) { slot = 'wake'; waypoints = [S.home]; act = 'wake'; }
+    else { slot = 'gowork'; waypoints = S.goWork; act = 'carry'; }
+  } else if (phase === 'day') {
+    const t = (frac - 0.22) / 0.38;
+    if (t < 1 / 3) {
+      slot = 'work'; waypoints = S.workWp;
+      act = npcName === 'Elias' || npcName === 'Miriam' ? 'serve' : (npcName === 'Hannah' ? 'tend' : 'idle');
+    } else if (t < 2 / 3) { slot = 'lunch'; waypoints = S.lunchWp; act = 'lunch'; }
+    else if (dayN % 7 === 4) { slot = 'bustle'; waypoints = S.marketWp; act = 'browse'; }
+    else {
+      slot = 'afternoon';
+      const alt = ((dayN + idx) % 2 + 2) % 2 === 0;
+      waypoints = alt ? S.aftA : S.aftB;
+      act = alt ? S.aftActA : S.aftActB;
+    }
+  } else if (phase === 'sunset') {
+    slot = 'evening';
+    // on market day Pastor Naomi's return routes around the café crowds
+    waypoints = (dayN % 7 === 4 && S.marketEve) ? S.marketEve : S.evening;
+    act = 'stroll';
+  }
+  else { slot = 'night'; waypoints = [S.home]; act = 'sleep'; }
+  return { key: slot + '|' + dayN, waypoints, act };
+}
+// Full ordered waypoint route for one villager's day — slot transitions
+// included — so the suite can verify no leg ever crosses a solid tile.
+export function townDayRoute(npcName, dayN) {
+  if (!TOWN_SCHEDULE[npcName]) return null;
+  const route = [];
+  route.push(...townSlot(npcName, dayN, 'morning', 0.01).waypoints);  // wake
+  route.push(...townSlot(npcName, dayN, 'morning', 0.15).waypoints);  // gowork
+  route.push(...townSlot(npcName, dayN, 'day', 0.25).waypoints);      // work
+  route.push(...townSlot(npcName, dayN, 'day', 0.45).waypoints);      // lunch
+  route.push(...townSlot(npcName, dayN, 'day', 0.55).waypoints);      // afternoon / bustle
+  route.push(...townSlot(npcName, dayN, 'sunset', 0.65).waypoints);   // evening
+  route.push(...townSlot(npcName, dayN, 'night', 0.85).waypoints);    // night
+  return route;
+}
+
+function newNpc(d, now) {
+  return {
+    name: d.name, lines: d.lines, hx: d.hx, hy: d.hy, r: d.r,
+    x: d.hx*TILE + TILE/2, y: d.hy*TILE + TILE/2,
+    tx: d.hx*TILE + TILE/2, ty: d.hy*TILE + TILE/2,
+    nextMove: now + 1500 + Math.random()*3000,
+    line: 0, hearts: {}, greetDay: {},   // greetDay: uuid -> day n of first greeting
+    act: 'idle', slotKey: '', wpIdx: 0, chatUntil: 0,
+  };
+}
+function setNpcTarget(n, w) { n.tx = w[0]*TILE + TILE/2; n.ty = w[1]*TILE + TILE/2; }
+// TOWN-LIFE: drive every villager along their deterministic daily schedule.
+// Pure-ish: reads room.day + clock, writes npc targets/act. Called from
+// tickRoom when neither the sermon nor the restoration gathering owns the
+// villagers. Exported for the suite.
+export function npcScheduleTick(room, now) {
+  const phase = dayPhase(room, now), frac = dayFrac(room, now);
+  for (const n of room.npcs) {
+    const s = townSlot(n.name, room.day.n, phase, frac);
+    if (!s) continue;
+    if (s.key !== n.slotKey) {
+      n.slotKey = s.key; n.wpIdx = 0;
+      setNpcTarget(n, s.waypoints[0]);
+      room.npcMoved = true;
+    }
+    if (n.act !== s.act) room.npcMoved = true;
+    n.act = s.act;
+    // stroll multi-waypoint slots; settle on the final waypoint.
+    // (gated while chatting — the chat keeps the true target, so the
+    // villager resumes the route afterwards instead of skipping ahead.)
+    const wps = s.waypoints;
+    if (now >= n.chatUntil && Math.hypot(n.tx - n.x, n.ty - n.y) < 14 && n.wpIdx < wps.length - 1) {
+      n.wpIdx++;
+      setNpcTarget(n, wps[n.wpIdx]);
+      room.npcMoved = true;
+    }
+  }
+}
+// TOWN-LIFE: villagers pause to chat when they cross paths — one short warm
+// line per pair per 90 s, broadcast so both travelers share the moment.
+// Chats happen while villagers are settled into their day (working, lunch,
+// strolling, browsing) — never during the morning commute, the evening walk
+// home, or the night rest, so the post-sermon exodus never strands anyone.
+// Exported for the suite.
+const CHAT_SLOTS = new Set(['work', 'lunch', 'afternoon', 'bustle', 'evening']);
+export function npcChatTick(room, now) {
+  if (sermonActive(room, now)) return;
+  if (room.restore.gatherUntil > now) return;
+  const slotOf = (n) => (n.slotKey || '').split('|')[0];
+  for (let i = 0; i < room.npcs.length; i++) {
+    for (let j = i + 1; j < room.npcs.length; j++) {
+      const A = room.npcs[i], B = room.npcs[j];
+      if (!CHAT_SLOTS.has(slotOf(A)) || !CHAT_SLOTS.has(slotOf(B))) continue;
+      if (now < A.chatUntil || now < B.chatUntil) continue;
+      const cdKey = A.name + '|' + B.name;
+      if ((room.npcChatCd[cdKey] || 0) > now - 90000) continue;
+      if (Math.hypot(A.x - B.x, A.y - B.y) > 56) continue;
+      room.npcChatCd[cdKey] = now;
+      A.chatUntil = B.chatUntil = now + 5000;
+      // pause, face each other: movement AND waypoint advance are gated on
+      // chatUntil, so the true schedule target is kept — after the chat the
+      // villager simply resumes walking (never stranded mid-route).
+      const line = NPC_CHAT_LINES[(room.day.n + i * 2 + j) % NPC_CHAT_LINES.length];
+      broadcast(room, { t: 'npc-chat', a: A.name, b: B.name, line });
+    }
+  }
+}
+
 // ---------- Room state ----------
 let roomSeq = 0;
 const rooms = new Map();   // code -> room
@@ -369,13 +593,8 @@ function buildRoom(code, isPublic = false) {
     ruin: newRuin(),   // RESTORE THE LIGHT M4: { open, a, b, gate, hold timers }
     ending: { done: false },
     fox: { x: 15*TILE, y: 18*TILE, tx: 15*TILE, ty: 18*TILE, nextMove: now+2000 },
-    npcs: NPC_DEFS.map(d => ({
-      name: d.name, lines: d.lines, hx: d.hx, hy: d.hy, r: d.r,
-      x: d.hx*TILE + TILE/2, y: d.hy*TILE + TILE/2,
-      tx: d.hx*TILE + TILE/2, ty: d.hy*TILE + TILE/2,
-      nextMove: now + 1500 + Math.random()*3000,
-      line: 0, hearts: {},   // hearts: playerId -> 0..5
-    })),
+    npcs: NPC_DEFS.map(d => newNpc(d, now)),
+    npcChatCd: {},   // TOWN-LIFE: "a|b" -> last ambient chat timestamp
     npcMoved: true,
     day: { n: 1, start: now },
     rhythm: { farm: false, fish: false, cook: false, greet: false, sermon: false },
@@ -490,13 +709,13 @@ function playerPublic(p) {
 }
 
 function npcPublic(n) {
-  return { name: n.name, x: Math.round(n.x), y: Math.round(n.y) };
+  return { name: n.name, x: Math.round(n.x), y: Math.round(n.y), act: n.act || 'idle' };
 }
 
 function dayPublic(room) {
   const phase = dayPhase(room);
   return { n: room.day.n, phase, label: PHASE_LABEL[phase], rhythm: { ...room.rhythm },
-           sermon: sermonActive(room) };
+           sermon: sermonActive(room), shops: shopHours(room), marketDay: marketDayActive(room) };
 }
 
 function farmPublic(room) {
@@ -677,12 +896,20 @@ function handleInteract(room, ws, p) {
   // unaffected.)
   const npc = nearestNpc(room, p);
   if (npc) {
-    const text = npc.lines[npc.line % npc.lines.length];
-    npc.line++;
     // M3: friendship hearts key by the traveler's uuid, so friendships
     // persist across reconnects within the server run.
     const hearts = Math.min(5, (npc.hearts[p.uuid] || 0) + 1);
     npc.hearts[p.uuid] = hearts;
+    let text;
+    // TOWN-LIFE: the first talk of each day is a time-of-day greeting,
+    // warmer once befriended. The heart mechanic itself is unchanged.
+    if (npc.greetDay[p.uuid] !== room.day.n) {
+      npc.greetDay[p.uuid] = room.day.n;
+      text = townGreeting(dayPhase(room, now), hearts >= 3);
+    } else {
+      text = npc.lines[npc.line % npc.lines.length];
+      npc.line++;
+    }
     setRhythm(room, 'greet');
     contribute(room, 'greet');
     broadcast(room, {t:'say', name: npc.name, text, hearts, by: p.name});
@@ -804,27 +1031,25 @@ function tickRoom(room) {
   }
   if (!sermon && room.sermonOn) {
     room.sermonOn = false;
-    for (const n of room.npcs) n.nextMove = now;   // pick up wandering again
+    for (const n of room.npcs) { n.nextMove = now; n.slotKey = ''; }   // schedule re-syncs
   }
   for (const n of room.npcs) {
-    if (now >= n.nextMove) {
-      if (sermon) { n.nextMove = now + 5000; }   // seated for the service
-      else if (gathering) {
-        n.tx = (20 + (Math.random()-0.5)*5)*TILE;
-        n.ty = (16.5 + (Math.random()-0.5)*2)*TILE;
-        if (Math.floor(n.tx/TILE) === FOUNTAIN_TILE.tx && Math.floor(n.ty/TILE) === FOUNTAIN_TILE.ty) n.tx += TILE;
-        n.nextMove = now + 4000 + Math.random()*4000;
-      } else {
-        const hx = n.hx*TILE+TILE/2, hy = n.hy*TILE+TILE/2;
-        n.tx = Math.max((n.hx-n.r)*TILE, Math.min((n.hx+n.r)*TILE, n.x + (Math.random()-0.5)*4*TILE));
-        n.ty = Math.max((n.hy-n.r)*TILE, Math.min((n.hy+n.r)*TILE, n.y + (Math.random()-0.5)*4*TILE));
-        n.tx = Math.max(hx - n.r*TILE, Math.min(hx + n.r*TILE, n.tx));
-        n.ty = Math.max(hy - n.r*TILE, Math.min(hy + n.r*TILE, n.ty));
-        n.nextMove = now + 4000 + Math.random()*6000;
-      }
+    if (sermon) { n.nextMove = now + 5000; if (n.act !== 'idle') { n.act = 'idle'; room.npcMoved = true; } }   // seated for the service
+    else if (gathering && now >= n.nextMove) {
+      n.tx = (20 + (Math.random()-0.5)*5)*TILE;
+      n.ty = (16.5 + (Math.random()-0.5)*2)*TILE;
+      if (Math.floor(n.tx/TILE) === FOUNTAIN_TILE.tx && Math.floor(n.ty/TILE) === FOUNTAIN_TILE.ty) n.tx += TILE;
+      n.nextMove = now + 4000 + Math.random()*4000;
+      if (n.act !== 'stroll') { n.act = 'stroll'; room.npcMoved = true; }
     }
+    // TOWN-LIFE: when neither the sermon nor the gathering owns the
+    // villagers, their deterministic daily schedule does (npcScheduleTick).
+  }
+  if (!sermon && !gathering) npcScheduleTick(room, now);
+  npcChatTick(room, now);   // villagers pause to chat when they cross paths
+  for (const n of room.npcs) {
     const dx = n.tx - n.x, dy = n.ty - n.y, l = Math.hypot(dx, dy);
-    if (l > 4) { n.x += dx/l*28*dt; n.y += dy/l*28*dt; room.npcMoved = true; }
+    if (l > 4 && now >= n.chatUntil) { n.x += dx/l*28*dt; n.y += dy/l*28*dt; room.npcMoved = true; }
   }
   // M3: persist identity each tick (in-memory, per room) — inventory, look,
   // name, and last position keyed by uuid, so a returning traveler restores
@@ -1124,13 +1349,8 @@ wss.on('connection', (ws, req) => {
           room.garden.bloomed = false;
           room.restore = newRestore();   // RESTORE THE LIGHT: the town dims again
           room.home.rug = 0;
-          room.npcs = NPC_DEFS.map(d => ({
-            name: d.name, lines: d.lines, hx: d.hx, hy: d.hy, r: d.r,
-            x: d.hx*TILE + TILE/2, y: d.hy*TILE + TILE/2,
-            tx: d.hx*TILE + TILE/2, ty: d.hy*TILE + TILE/2,
-            nextMove: now2 + 1500 + Math.random()*3000,
-            line: 0, hearts: {},
-          }));
+          room.npcs = NPC_DEFS.map(d => newNpc(d, now2));
+          room.npcChatCd = {};
           room.npcMoved = true;
           for (const [, p] of room.players) {
             p.x = SPAWN.tx*TILE + TILE/2; p.y = SPAWN.ty*TILE + TILE/2;

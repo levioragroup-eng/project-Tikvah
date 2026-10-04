@@ -1430,6 +1430,185 @@ try {
      JSON.stringify(rr?.restore));
   s1.close(); s2.close();
 
+  // ---------- TOWN-LIFE (a): daily schedules + work spots ----------
+  // Deterministic per-day schedules keyed off the synced day counter + phase.
+  console.log('town-life schedules:');
+  process.env.PORT = '18791';   // the imported module binds its own listener
+  const TL = await import('../server.js');
+  const DAYMS = 480000; // default DAY_MS inside the imported module
+  const fakeRoomAt = (n, frac) => ({ day: { n, start: Date.now() - frac * DAYMS } });
+  const slotEq = (a, b) => JSON.stringify(a) === JSON.stringify(b);
+  ok('schedule is deterministic (same inputs, same slot)',
+     slotEq(TL.townSlot('Hannah', 2, 'day', 0.30), TL.townSlot('Hannah', 2, 'day', 0.30)));
+  const wake = TL.townSlot('Hannah', 2, 'morning', 0.01);
+  ok('morning wake: at home', wake.key === 'wake|2' && wake.act === 'wake' &&
+     JSON.stringify(wake.waypoints) === JSON.stringify([[11,11]]), JSON.stringify(wake));
+  const gowork = TL.townSlot('Elias', 2, 'morning', 0.15);
+  ok('morning commute: to the work spot', gowork.key === 'gowork|2' && gowork.act === 'carry' &&
+     JSON.stringify(gowork.waypoints[gowork.waypoints.length-1]) === JSON.stringify([16,11]), JSON.stringify(gowork));
+  const workE = TL.townSlot('Elias', 2, 'day', 0.30), workH = TL.townSlot('Hannah', 2, 'day', 0.30),
+        workM = TL.townSlot('Miriam', 2, 'day', 0.30), workN = TL.townSlot('Pastor Naomi', 2, 'day', 0.30);
+  ok('day work: vendor behind the stall', workE.key === 'work|2' && workE.act === 'serve' &&
+     JSON.stringify(workE.waypoints) === JSON.stringify([[16,11]]), JSON.stringify(workE));
+  ok('day work: café keeper behind the counter', workM.act === 'serve' &&
+     JSON.stringify(workM.waypoints) === JSON.stringify([[24,16]]), JSON.stringify(workM));
+  ok('day work: gardener tends the beds', workH.act === 'tend', JSON.stringify(workH));
+  ok('day work: pastor welcomes at the church door', workN.act === 'idle' &&
+     JSON.stringify(workN.waypoints) === JSON.stringify([[30,16]]), JSON.stringify(workN));
+  const lunch = TL.townSlot('Hannah', 2, 'day', 0.45);
+  ok('midday lunch break (sit, eat)', lunch.key === 'lunch|2' && lunch.act === 'lunch' &&
+     JSON.stringify(lunch.waypoints) === JSON.stringify([[19,15]]), JSON.stringify(lunch));
+  const bustle = TL.townSlot('Elias', 4, 'day', 0.55);
+  ok('market day (day 4): afternoon bustle at the stalls', bustle.key === 'bustle|4' && bustle.act === 'browse' &&
+     JSON.stringify(bustle.waypoints) === JSON.stringify(TL.TOWN_SCHEDULE['Elias'].marketWp), JSON.stringify(bustle));
+  const aft2 = TL.townSlot('Hannah', 2, 'day', 0.55), aft3 = TL.townSlot('Hannah', 3, 'day', 0.55);
+  ok('ordinary afternoons alternate deterministically', aft2.key === 'afternoon|2' && aft3.key === 'afternoon|3' &&
+     !slotEq(aft2, aft3), JSON.stringify(aft2.waypoints) + ' vs ' + JSON.stringify(aft3.waypoints));
+  const eve = TL.townSlot('Miriam', 2, 'sunset', 0.65);
+  ok('sunset: heading home', eve.key === 'evening|2' && eve.act === 'stroll' &&
+     JSON.stringify(eve.waypoints[eve.waypoints.length-1]) === JSON.stringify([26,18]), JSON.stringify(eve));
+  const night = TL.townSlot('Miriam', 2, 'night', 0.85);
+  ok('night: home, asleep', night.key === 'night|2' && night.act === 'sleep' &&
+     JSON.stringify(night.waypoints) === JSON.stringify([[26,18]]), JSON.stringify(night));
+  ok('unknown villager -> null slot', TL.townSlot('Nobody', 2, 'day', 0.3) === null);
+  // every full-day route: waypoints walkable, every leg (transitions included)
+  // clear of solids — villagers can never get stuck
+  let wpBad = [], legBad = [];
+  for (const name of Object.keys(TL.TOWN_SCHEDULE)) {
+    for (const dayN of [2, 3, 4]) {
+      const route = TL.townDayRoute(name, dayN);
+      for (const [tx, ty] of route) {
+        if (tx < 0 || ty < 0 || tx >= 40 || ty >= 28 || TL.isSolid(tx, ty, null)) wpBad.push(`${name} day${dayN} [${tx},${ty}]`);
+      }
+      for (let i = 0; i + 1 < route.length; i++) {
+        const ax = route[i][0]*32+16, ay = route[i][1]*32+16, bx = route[i+1][0]*32+16, by = route[i+1][1]*32+16;
+        const len = Math.hypot(bx-ax, by-ay), steps = Math.max(1, Math.ceil(len / 6));
+        for (let k = 0; k <= steps; k++) {
+          const px = ax + (bx-ax)*k/steps, py = ay + (by-ay)*k/steps;
+          const tx = Math.floor(px/32), ty = Math.floor(py/32);
+          if (TL.isSolid(tx, ty, null)) { legBad.push(`${name} day${dayN} leg ${i} [${route[i]}]->[${route[i+1]}] hits [${tx},${ty}]`); break; }
+        }
+      }
+    }
+  }
+  ok('all schedule waypoints sit on walkable tiles', wpBad.length === 0, wpBad.slice(0,3).join('; '));
+  ok('no schedule leg crosses a solid tile (villagers never get stuck)', legBad.length === 0, legBad.slice(0,3).join('; '));
+  ok('day routes start and end at home', Object.keys(TL.TOWN_SCHEDULE).every(name => {
+    const r2 = TL.townDayRoute(name, 2), home = TL.TOWN_SCHEDULE[name].home;
+    return JSON.stringify(r2[r2.length-1]) === JSON.stringify(home);
+  }));
+  // sermon schedule is untouched: day 1 and day 8 are sermon days, day 2/4 are not
+  const nowS = Date.now();
+  ok('sermon day 1 morning: service active (preserved)', TL.sermonActive(fakeRoomAt(1, 0.05), nowS) === true);
+  ok('sermon day 8 morning: service active (preserved)', TL.sermonActive(fakeRoomAt(8, 0.30), nowS) === true);
+  ok('day 2 is not a sermon day', TL.sermonActive(fakeRoomAt(2, 0.10), nowS) === false);
+  ok('market day 4 is not a sermon day', TL.sermonActive(fakeRoomAt(4, 0.30), nowS) === false);
+  // shop hours + market day flag
+  ok('market day is day 4 (mod 7)', TL.marketDayActive({ day: { n: 4 } }) === true && TL.marketDayActive({ day: { n: 11 } }) === true);
+  ok('day 1/2 are not market days', TL.marketDayActive({ day: { n: 1 } }) === false && TL.marketDayActive({ day: { n: 2 } }) === false);
+  const sh = (n, frac) => TL.shopHours(fakeRoomAt(n, frac), Date.now());
+  ok('stalls open mornings + days', sh(2, 0.10).stalls === 'open' && sh(2, 0.40).stalls === 'open');
+  ok('stalls closed at sunset (ordinary day), café open', sh(2, 0.65).stalls === 'closed' && sh(2, 0.65).cafe === 'open');
+  ok('both closed at night', sh(2, 0.85).stalls === 'closed' && sh(2, 0.85).cafe === 'closed');
+  ok('market day: stalls stay open into sunset', sh(4, 0.65).stalls === 'open');
+  // npcScheduleTick drives targets + act
+  const schedRoom = { day: { n: 2, start: Date.now() }, npcMoved: false,
+    npcs: [{ name: 'Hannah', x: 0, y: 0, tx: 0, ty: 0, act: 'idle', slotKey: '', wpIdx: 0 }] };
+  TL.npcScheduleTick(schedRoom, Date.now());
+  const hn = schedRoom.npcs[0];
+  ok('schedule tick sends Hannah home to wake (morning)', hn.act === 'wake' && hn.tx === 11*32+16 && hn.ty === 11*32+16,
+     `act=${hn.act} tx=${hn.tx} ty=${hn.ty}`);
+  // npcChatTick: close villagers pause and share a warm line (settled slots only)
+  const chatRoom = { day: { n: 2, start: Date.now() }, restore: { gatherUntil: 0 }, npcChatCd: {}, sockets: new Set(),
+    npcs: [
+      { name: 'Hannah', x: 100, y: 100, tx: 100, ty: 100, chatUntil: 0, slotKey: 'work|2' },
+      { name: 'Elias', x: 120, y: 110, tx: 120, ty: 110, chatUntil: 0, slotKey: 'work|2' },
+    ] };
+  TL.npcChatTick(chatRoom, Date.now());
+  ok('villagers crossing paths pause to chat', chatRoom.npcs[0].chatUntil > Date.now() && chatRoom.npcs[1].chatUntil > Date.now());
+  ok('chat cooldown recorded per pair', Object.keys(chatRoom.npcChatCd).length === 1);
+  const commuteRoom = { day: { n: 2, start: Date.now() }, restore: { gatherUntil: 0 }, npcChatCd: {}, sockets: new Set(),
+    npcs: [
+      { name: 'Hannah', x: 100, y: 100, tx: 100, ty: 100, chatUntil: 0, slotKey: 'gowork|2' },
+      { name: 'Elias', x: 120, y: 110, tx: 120, ty: 110, chatUntil: 0, slotKey: 'gowork|2' },
+    ] };
+  TL.npcChatTick(commuteRoom, Date.now());
+  ok('no chats during the morning commute (villagers hurry to work)', commuteRoom.npcs[0].chatUntil === 0 &&
+     Object.keys(commuteRoom.npcChatCd).length === 0);
+  const farRoom = { day: { n: 2, start: Date.now() }, restore: { gatherUntil: 0 }, npcChatCd: {}, sockets: new Set(),
+    npcs: [
+      { name: 'Hannah', x: 100, y: 100, tx: 100, ty: 100, chatUntil: 0, slotKey: 'work|2' },
+      { name: 'Elias', x: 900, y: 800, tx: 900, ty: 800, chatUntil: 0, slotKey: 'work|2' },
+    ] };
+  TL.npcChatTick(farRoom, Date.now());
+  ok('distant villagers do not chat', farRoom.npcs[0].chatUntil === 0 && Object.keys(farRoom.npcChatCd).length === 0);
+  const sermonRoom = { day: { n: 1, start: Date.now() }, restore: { gatherUntil: 0 }, npcChatCd: {}, sockets: new Set(),
+    npcs: [
+      { name: 'Hannah', x: 100, y: 100, tx: 100, ty: 100, chatUntil: 0 },
+      { name: 'Elias', x: 120, y: 110, tx: 120, ty: 110, chatUntil: 0 },
+    ] };
+  TL.npcChatTick(sermonRoom, Date.now());
+  ok('no ambient chats during the sermon (reverent quiet)', sermonRoom.npcs[0].chatUntil === 0);
+  // greetings picker
+  ok('morning greeting is warm and plain by tier',
+     TL.townGreeting('morning', false) === TL.TOWN_GREETS.morning[0] &&
+     TL.townGreeting('morning', true) === TL.TOWN_GREETS.morning[1]);
+  ok('unknown phase falls back to day greeting', TL.townGreeting('eclipse', false) === TL.TOWN_GREETS.day[0]);
+  ok('no greeting invents Scripture', Object.values(TL.TOWN_GREETS).flat().every(t => !/jeremiah|psalm|john \d|saith the lord/i.test(t)));
+
+  // over the wire: on an ordinary day the vendor works the stall
+  const tl = new C('Towny'); await tl.connect();
+  tl.send({ t: 'create', name: 'Towny' });
+  ok('town-life room created', await tl.waitFor(() => !!tl.state.code, 3000));
+  ok('sleep advances to ordinary day 2', await (async () => {
+    await walkTo(tl, 13*TILE+16, 12*TILE+16, 8000);
+    await walkTo(tl, 8*TILE+16, 12*TILE+16, 8000);
+    tl.send({ t: 'interact' });
+    if (!await tl.waitFor(() => tl.me()?.inside === true, 3000)) return false;
+    await walkTo(tl, 29*TILE+16, 18*TILE+16, 8000);
+    tl.send({ t: 'interact' });
+    return tl.waitFor(() => (tl.lastOf('day')?.n || 0) === 2, 4000);
+  })());
+  ok('day payload carries shop hours + market-day flag', await tl.waitFor(() => {
+    const d = tl.lastOf('day');
+    return !!d && d.shops && (d.shops.stalls === 'open' || d.shops.stalls === 'closed') &&
+      (d.shops.cafe === 'open' || d.shops.cafe === 'closed') && typeof d.marketDay === 'boolean';
+  }, 4000), JSON.stringify(tl.lastOf('day')?.shops));
+  ok('day 2 is not market day', tl.lastOf('day')?.marketDay === false);
+  ok('npc payload carries the idle activity', tl.state.npcs.size === 4 &&
+     [...tl.state.npcs.values()].every(n => typeof n.act === 'string'), JSON.stringify([...tl.state.npcs.values()].map(n => n.act)));
+  ok('vendor works the stall in the day phase', await (async () => {
+    if (!await tl.waitFor(() => tl.lastOf('day')?.phase === 'day', 30000)) return false;
+    return tl.waitFor(() => {
+      const e = tl.state.npcs.get('Elias');
+      return !!e && e.act === 'serve' && Math.hypot(e.x - (16*TILE+16), e.y - (11*TILE+16)) < 90;
+    }, 25000);
+  })(), JSON.stringify({ x: tl.state.npcs.get('Elias')?.x, y: tl.state.npcs.get('Elias')?.y, act: tl.state.npcs.get('Elias')?.act }));
+  // greeting: first talk of the day uses the time-of-day greeting, heart mechanic untouched.
+  // (the traveler is still inside the home after sleeping — step out first)
+  ok('exit home after sleeping', await (async () => {
+    await walkTo(tl, 32*TILE+16, 24*TILE+16, 8000);
+    tl.send({ t: 'interact' });
+    return tl.waitFor(() => tl.me()?.inside === false, 3000);
+  })());
+  ok('first talk of the day greets (time-of-day)', await (async () => {
+    const phase = tl.lastOf('day')?.phase || 'day';
+    let sayG = null;
+    for (let attempt = 0; attempt < 3 && !sayG; attempt++) {
+      const h = tl.state.npcs.get('Hannah');
+      if (!h) return false;
+      await walkTo(tl, h.x, h.y, 8000);
+      const before = tl.msgs.filter(m => m.t === 'say').length;
+      tl.send({ t: 'interact' });
+      sayG = await tl.waitFor(() => tl.msgs.filter(m => m.t === 'say').length > before, 2500) ? tl.lastOf('say') : null;
+    }
+    if (!sayG) return false;
+    const greets = Object.values(TL.TOWN_GREETS).flat();
+    tl._greetSay = sayG; tl._greetPhase = phase;
+    return greets.includes(sayG.text) && sayG.hearts === 1;
+  })(), JSON.stringify(tl._greetSay));
+  tl.close();
+
   [a, b, c, d, k, v2, v3, i2, h2, f1, ...fillers].forEach(x => x.close());
 } finally {
   srv.kill('SIGTERM');
