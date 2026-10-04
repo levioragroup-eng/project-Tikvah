@@ -1519,7 +1519,9 @@ try {
   ok('schedule tick sends Hannah home to wake (morning)', hn.act === 'wake' && hn.tx === 11*32+16 && hn.ty === 11*32+16,
      `act=${hn.act} tx=${hn.tx} ty=${hn.ty}`);
   // npcChatTick: close villagers pause and share a warm line (settled slots only)
-  const chatRoom = { day: { n: 2, start: Date.now() }, restore: { gatherUntil: 0 }, npcChatCd: {}, sockets: new Set(),
+  const sent = [];
+  const mockWs = { readyState: 1, send: (s) => sent.push(JSON.parse(s)) };
+  const chatRoom = { day: { n: 2, start: Date.now() }, restore: { gatherUntil: 0 }, npcChatCd: {}, sockets: new Set([mockWs]),
     npcs: [
       { name: 'Hannah', x: 100, y: 100, tx: 100, ty: 100, chatUntil: 0, slotKey: 'work|2' },
       { name: 'Elias', x: 120, y: 110, tx: 120, ty: 110, chatUntil: 0, slotKey: 'work|2' },
@@ -1527,6 +1529,12 @@ try {
   TL.npcChatTick(chatRoom, Date.now());
   ok('villagers crossing paths pause to chat', chatRoom.npcs[0].chatUntil > Date.now() && chatRoom.npcs[1].chatUntil > Date.now());
   ok('chat cooldown recorded per pair', Object.keys(chatRoom.npcChatCd).length === 1);
+  const ncMsg = sent.find(m => m.t === 'npc-chat');
+  ok('npc-chat broadcast names both villagers + a warm line',
+     !!ncMsg && ncMsg.a === 'Hannah' && ncMsg.b === 'Elias' && typeof ncMsg.line === 'string' && ncMsg.line.length > 10,
+     JSON.stringify(ncMsg));
+  ok('ambient chat lines are warm, never preachy',
+     !!ncMsg && !/repent|sin|hell|damn/i.test(ncMsg.line) && TL.NPC_CHAT_LINES.every(l => !/repent|sin|hell|damn/i.test(l)));
   const commuteRoom = { day: { n: 2, start: Date.now() }, restore: { gatherUntil: 0 }, npcChatCd: {}, sockets: new Set(),
     npcs: [
       { name: 'Hannah', x: 100, y: 100, tx: 100, ty: 100, chatUntil: 0, slotKey: 'gowork|2' },
@@ -1629,6 +1637,23 @@ try {
     ['no transaction changes', 'Living feel only'],
   ];
   for (const [label, needle] of shopChecks) ok('page contains ' + label, pageHtml.includes(needle));
+
+  // ---------- TOWN-LIFE (c): greetings + ambient chats + idle life (static page) ----------
+  console.log('town-life idle life (static page):');
+  const idleChecks = [
+    ['npc-chat message handler', "case 'npc-chat':"],
+    ['npc chat state', 'let npcChat = null'],
+    ['ambient chat toast', "m.a + ' & ' + m.b"],
+    ['idle activity glyph', 'actEmoji'],
+    ['carry basket glyph', "'🧺'"],
+    ['serve bread glyph', "'🍞'"],
+    ['tend sprout glyph', "'🌿'"],
+    ['lunch meal glyph', "'🍲'"],
+    ['sleep glyph', "'💤'"],
+    ['resting seated render', 'seatedStill'],
+    ['chat bubble for npc chats', 'chattingNpc'],
+  ];
+  for (const [label, needle] of idleChecks) ok('page contains ' + label, pageHtml.includes(needle));
 
   [a, b, c, d, k, v2, v3, i2, h2, f1, ...fillers].forEach(x => x.close());
 } finally {

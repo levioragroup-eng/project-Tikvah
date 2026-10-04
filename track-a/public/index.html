@@ -805,6 +805,7 @@ let day = { n: 1, phase: 'morning', label: 'Morning', sermon: false, rhythm: { f
 let gardenBloomed = false, homeRug = 0;
 let restore = null;   // RESTORE THE LIGHT: synced town-restoration state (stage + world effects only)
 let sayFlash = null;       // {name, until} — dialogue bubble over NPC
+let npcChat = null;        // TOWN-LIFE: {a, b, until} — two villagers pausing to chat
 let worshipFlash = 0, peaceFlash = 0;
 // ================= Persistent identity (M3) =================
 // No logins, no passwords, no accounts — one invisible traveler token,
@@ -943,6 +944,9 @@ function onMsg(m) {
     case 'bite': if (m.player === myId) { biteFlash = Date.now(); toast('❗ TAP E NOW!'); } break;
     case 'pet': toast('🦊 ' + m.by + ' petted the fox'); break;
     case 'say': sayFlash = { name: m.name, until: Date.now() + 6000 }; showDialogue(m.name, m.text, m.hearts); break;
+    // TOWN-LIFE: two villagers pause to chat when they cross paths — a short
+    // warm line, shared with both travelers
+    case 'npc-chat': npcChat = { a: m.a, b: m.b, until: Date.now() + 6000 }; toast('💬 ' + m.a + ' & ' + m.b + ': ' + m.line); break;
     case 'quickchat': qcBubbles.set(m.byId, { text: m.text, until: Date.now() + 4000 }); tone(660, 0, 0.2, 'sine', 0.06); break;
     case 'menu': if (m.kind === 'cook') openCookPanel(); else if (m.kind === 'creator') openCreator(); break;
     case 'cooked': toast('🍲 ' + m.by + ' cooked Harvest Stew!'); chime(); break;
@@ -5781,22 +5785,35 @@ function loop(now) {
     if (inside) { if (!(me.place === 'church' && inChurchRect)) continue; }
     else if (inChurchRect) continue;   // seated congregation stays a church sight
     const seated = inside && sermonActiveClient();
-    const nBob = seated ? 0 : Math.sin(now/650 + n.x*0.5)*1.2 + Math.sin(now/1300 + n.y)*0.5;
-    const nDrift = seated ? 0 : Math.sin(now/800 + n.x)*1.2;
-    const chatting = !seated && sayFlash && sayFlash.name === n.name && Date.now() < sayFlash.until;
+    // TOWN-LIFE: villagers at lunch or asleep render seated and still, and
+    // carry a small activity glyph (same visual language as the chat bubble)
+    const idleAct = n.act || 'idle';
+    const resting = idleAct === 'lunch' || idleAct === 'sleep';
+    const seatedStill = seated || resting;
+    const nBob = seatedStill ? 0 : Math.sin(now/650 + n.x*0.5)*1.2 + Math.sin(now/1300 + n.y)*0.5;
+    const nDrift = seatedStill ? 0 : Math.sin(now/800 + n.x)*1.2;
+    const chattingSay = !seatedStill && sayFlash && sayFlash.name === n.name && Date.now() < sayFlash.until;
+    const chattingNpc = !seatedStill && npcChat && (npcChat.a === n.name || npcChat.b === n.name) && Date.now() < npcChat.until;
+    const chatting = chattingSay || chattingNpc;
     const nHop = chatting ? Math.abs(Math.sin(now/140))*2.5 : 0;
     // Hannah's storybook spotlight while her greeting is up
-    if (n.name === 'Hannah' && !seated && Date.now() < hannahGreetUntil) {
+    if (n.name === 'Hannah' && !seatedStill && Date.now() < hannahGreetUntil) {
       ctx.fillStyle = 'rgba(255,225,150,' + (0.32 + 0.14*Math.sin(now/300)).toFixed(2) + ')';
       ctx.beginPath(); ctx.ellipse(Math.round(n.x), Math.round(n.y+1), 15, 6, 0, 0, 7); ctx.fill();
     }
     ctx.fillStyle = 'rgba(0,0,0,.16)';
     ctx.beginPath(); ctx.ellipse(Math.round(n.x), Math.round(n.y+1), 7, 3, 0, 0, 7); ctx.fill();
-    ctx.drawImage(npcSprite(n.name), Math.round(n.x-8+nDrift), Math.round(n.y-22+(seated?6:0)+nBob-nHop));
+    ctx.drawImage(npcSprite(n.name), Math.round(n.x-8+nDrift), Math.round(n.y-22+(seatedStill?6:0)+nBob-nHop));
     drawNameTag(ctx, n.x, n.y, n.name, '#ffe9a8');
     if (chatting) {
       ctx.font = '16px monospace'; ctx.textAlign = 'center';
       ctx.fillStyle = '#fff'; ctx.fillText('💬', n.x, n.y - 44 + Math.sin(now/300)*2);
+    }
+    // TOWN-LIFE: idle activity glyph — baskets, wares, tending, meals, rest
+    const actEmoji = { carry: '🧺', serve: '🍞', tend: '🌿', lunch: '🍲', sleep: '💤' }[idleAct];
+    if (actEmoji && !chatting) {
+      ctx.font = '13px monospace'; ctx.textAlign = 'center';
+      ctx.fillStyle = '#fff'; ctx.fillText(actEmoji, n.x + 14, n.y - 30 + Math.sin(now/400 + n.x)*1.5);
     }
   }
   // players sorted by y
