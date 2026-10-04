@@ -444,14 +444,14 @@
       <div id="roomcode">····</div>
       <div id="dayInfo">Day 1 · Morning</div>
       <div id="rhythm" title="Today's village rhythm">
-        <span data-k="farm">🌾</span><span data-k="fish">🎣</span><span data-k="cook">🍲</span><span data-k="greet">👋</span><span data-k="candle">🕯️</span>
+        <span data-k="farm">🌾</span><span data-k="fish">🎣</span><span data-k="cook">🍲</span><span data-k="greet">👋</span><span data-k="sermon">🙏</span>
       </div>
     </div>
     <div id="hudHint">E = interact · 1 wave · 2 heart</div>
     <button id="muteBtn" title="Sound on/off">🔊</button>
   </div>
   <div id="toast"></div>
-  <div id="tutorial">Walk with <b>WASD / arrows</b> · Press <b>E</b> to interact<br>Live the village rhythm each day — <b>farm, fish, cook, greet, light a candle</b> —<br>and the <b>Garden of Hope</b> will bloom 🌸<br>Find the <b>ancient ruin</b> with a friend: stand on both glowing stones together ✨</div>
+  <div id="tutorial">Walk with <b>WASD / arrows</b> · Press <b>E</b> to interact<br>Live the village rhythm each day — <b>farm, fish, cook, greet, say a prayer</b> —<br>and the <b>Garden of Hope</b> will bloom 🌸<br>Find the <b>ancient ruin</b> with a friend: stand on both glowing stones together ✨</div>
 
   <div id="intro">
     <video id="introVid" src="assets/intro.mp4" playsinline preload="metadata"></video>
@@ -499,7 +499,7 @@
         <button class="big" id="btnJoin">Join</button>
       </div>
       <div id="err"></div>
-      <div class="hint">Each day, live the rhythm — tend the farm, catch a fish, cook a meal, greet a friend, light a candle — and the Garden of Hope will bloom. 🌸</div>
+      <div class="hint">Each day, live the rhythm — tend the farm, catch a fish, cook a meal, greet a friend, say a prayer — and the Garden of Hope will bloom. 🌸</div>
       <button class="backlink" data-back>← Back to title</button>
     </div>
 
@@ -508,7 +508,7 @@
       <div class="howcard">
         <b>Move</b> — WASD / arrow keys, or the joystick on your phone.<br>
         <b>Interact</b> — E, or tap the E button. 👋 wave with 1 · ❤️ heart with 2.<br>
-        <b>The rhythm</b> — each day: 🌾 tend the farm · 🎣 catch a fish · 🍲 cook a meal · 👋 greet a neighbor · 🕯️ light a candle — and the <b>Garden of Hope</b> will bloom 🌸<br>
+        <b>The rhythm</b> — each day: 🌾 tend the farm · 🎣 catch a fish · 🍲 cook a meal · 👋 greet a neighbor · 🙏 say a prayer at the church — and the <b>Garden of Hope</b> will bloom 🌸<br>
         <b>The ruin</b> — find the ancient ruin with a friend: stand on both glowing stones together ✨<br>
         <b>The village</b> — it persists while the server runs; a server restart resets it. 🏡
       </div>
@@ -795,11 +795,11 @@ let ws = null, myId = null, code = null;
 let players = new Map(), npcs = new Map(), farm = [], ruinOpen = false, fox = {x:0,y:0};
 let ruinA = false, ruinB = false, ruinGate = false;   // RESTORE THE LIGHT M4: synced ruin-puzzle state
 let fishing = null, biteFlash = 0;
-let day = { n: 1, phase: 'morning', label: 'Morning', rhythm: { farm:false, fish:false, cook:false, greet:false, candle:false } };
-let candles = 0, gardenBloomed = false, homeRug = 0;
+let day = { n: 1, phase: 'morning', label: 'Morning', sermon: false, rhythm: { farm:false, fish:false, cook:false, greet:false, sermon:false } };
+let gardenBloomed = false, homeRug = 0;
 let restore = null;   // RESTORE THE LIGHT: synced town-restoration state (stage + world effects only)
 let sayFlash = null;       // {name, until} — dialogue bubble over NPC
-let worshipFlash = 0;
+let worshipFlash = 0, peaceFlash = 0;
 // ================= Persistent identity (M3) =================
 // No logins, no passwords, no accounts — one invisible traveler token,
 // generated on the first visit and kept in localStorage. The server keys
@@ -870,7 +870,7 @@ function onMsg(m) {
       players = new Map(m.players.map(p => [p.id, p]));
       npcs = new Map(m.npcs.map(n => [n.name, n]));
       farm = m.farm; ruinOpen = m.ruin.open; ruinA = !!m.ruin.a; ruinB = !!m.ruin.b; ruinGate = !!m.ruin.gate; fox = m.fox;
-      day = m.day; candles = m.candles; gardenBloomed = m.garden.bloomed; homeRug = m.home.rug;
+      day = m.day; gardenBloomed = m.garden.bloomed; homeRug = m.home.rug;
       restore = m.restore || null;
       document.getElementById('menu').style.display = 'none';
       document.getElementById('game').style.display = 'block';
@@ -880,7 +880,7 @@ function onMsg(m) {
       if (isTouch) {
         document.getElementById('joy').style.display='block'; document.getElementById('btnE').style.display='block'; document.getElementById('emotes').style.display='flex';
         document.getElementById('hudHint').textContent = 'Joystick = walk · E = interact';
-        document.getElementById('tutorial').innerHTML = 'Walk with the <b>joystick</b> · Tap <b>E</b> to interact<br>Live the village rhythm — <b>farm, fish, cook, greet, light a candle</b> —<br>and the <b>Garden of Hope</b> will bloom 🌸<br>Find the <b>ancient ruin</b> with a friend ✨';
+        document.getElementById('tutorial').innerHTML = 'Walk with the <b>joystick</b> · Tap <b>E</b> to interact<br>Live the village rhythm — <b>farm, fish, cook, greet, say a prayer</b> —<br>and the <b>Garden of Hope</b> will bloom 🌸<br>Find the <b>ancient ruin</b> with a friend ✨';
       }
       updateMuteIcon();
       document.getElementById('qcBtn').style.display = 'block';
@@ -904,13 +904,8 @@ function onMsg(m) {
     case 'farm': farm = m.farm; break;
     case 'fox': fox = m; break;
     case 'day': day = m; updateDayHud(); break;
-    case 'candle': {
-      candles = m.count; toast('🕯️ ' + m.by + ' lit a candle'); candleGlow();
-      const litBy = playerByName(m.by);
-      if (litBy) sparkleAt(litBy.x, litBy.y, '255,200,90', 8);
-      break;
-    }
     case 'worship': worshipFlash = Date.now(); worshipChord(); toast('🙏 A moment of worship'); break;
+    case 'sermon-peace': peaceFlash = Date.now(); chime(); toast('🕊️ ' + m.by + ' feels refreshed and at peace.'); break;
     case 'garden-bloom':
       gardenBloomed = true; burst = 200;
       toast('🌸 ' + m.message); bloomChime(); break;
@@ -979,7 +974,7 @@ function onMsg(m) {
       players = new Map(m.players.map(p => [p.id, p]));
       npcs = new Map(m.npcs.map(n => [n.name, n]));
       farm = m.farm; ruinOpen = m.ruin.open; ruinA = !!m.ruin.a; ruinB = !!m.ruin.b; ruinGate = !!m.ruin.gate; fox = m.fox;
-      day = m.day; candles = m.candles; gardenBloomed = m.garden.bloomed; homeRug = m.home.rug;
+      day = m.day; gardenBloomed = m.garden.bloomed; homeRug = m.home.rug;
       restore = m.restore || null;
       updateDayHud();
       document.getElementById('ending').style.display = 'none';
@@ -1013,6 +1008,36 @@ function updateDayHud() {
     s.classList.toggle('done', !!(day.rhythm && day.rhythm[s.dataset.k]));
   });
 }
+
+// ================= Weekly sermon =================
+// CHURCH-REDESIGN (2026-10-03): every 7th day (day 1 is a sermon day),
+// morning until afternoon, Pastor Naomi preaches at the altar. Derived from
+// the already-synced day payload — both travelers share the event. Lines are
+// reverent and light/restoration themed; no new Scripture verses.
+const SERMON_LINES = [
+  'Hope is a seed. We plant it every morning, and it grows.',
+  'The light we lost is coming back — I can feel it in this village.',
+  'Come as you are. This church always has a seat for you.',
+  'Rest is holy too. Sit a while; let peace find you.',
+  'Every meal shared, every neighbor greeted — that is worship.',
+  'The garden will bloom again. Small faithfulness, day after day.',
+  'You are not forgotten here. None of us are.',
+  'Let your light be gentle today. Gentle is enough.',
+  'We were made for mornings like this — together, and at peace.',
+  'Go in kindness. The village is brighter because you are in it.',
+];
+function sermonActiveClient() {
+  if (typeof day.sermon === 'boolean') return day.sermon;   // server-synced flag
+  return day.n % 7 === 1 && (day.phase === 'morning' || day.phase === 'day');
+}
+let lastSermonIdx = -1;
+setInterval(() => {
+  const me = myId && players.get(myId);
+  if (me && me.inside && me.place === 'church' && sermonActiveClient()) {
+    const idx = Math.floor(Date.now() / 30000) % SERMON_LINES.length;
+    if (idx !== lastSermonIdx) { lastSermonIdx = idx; toast('🕊️ Pastor Naomi: ' + SERMON_LINES[idx]); }
+  } else lastSermonIdx = -1;
+}, 5000);
 
 // ================= Character creator =================
 const LOOK_OPTS = {
@@ -1152,7 +1177,7 @@ const HANNAH_CHOICES = [
   { label: '🌿 This place is beautiful', reply: "Isn't it? Every corner of Tikvah holds a little hope." },
   { label: '🌸 Tell me about the garden', reply: 'Ah… the Garden of Hope. It withered long ago, before you came.' },
 ];
-const HANNAH_STORY = 'But I believe this: when we live the village rhythm together — tend the farm, catch a fish, cook a meal, greet a neighbor, light a candle — the Garden will bloom again. Will you help it grow?';
+const HANNAH_STORY = 'But I believe this: when we live the village rhythm together — tend the farm, catch a fish, cook a meal, greet a neighbor, share a prayer — the Garden will bloom again. Will you help it grow?';
 function maybeHannah() {
   let seen = false;
   try { seen = sessionStorage.getItem('tikvah_hannah_seen') === '1'; } catch (e) {}
@@ -1187,7 +1212,10 @@ function maybeHannah() {
 // Mirrors the server's interact priority order; the server still enforces range.
 const IR = 56; // px — matches server INTERACT_RANGE
 const CH_EXIT = { tx: 20, ty: 24 }, CH_PRAY = { tx: 20, ty: 20 },
-      CH_VERSE = { tx: 16, ty: 20 }, CH_CANDLE = { tx: 24, ty: 20 };
+      CH_VERSE = { tx: 16, ty: 20 };
+// CHURCH-REDESIGN (2026-10-03): designated pew sit gaps — walkable tiles in
+// the pew rows, aisle-adjacent, where travelers can sit (mirrors the server).
+const CH_PEW_SITS = [ { tx: 19, ty: 21 }, { tx: 21, ty: 21 }, { tx: 19, ty: 23 }, { tx: 21, ty: 23 } ];
 const HM_EXIT = { tx: 32, ty: 24 }, HM_SLEEP = { tx: 29, ty: 18 }, HM_HEARTH = { tx: 35, ty: 18 },
       HM_WARD = { tx: 32, ty: 21 }, HM_RUG = { tx: 29, ty: 21 }, HM_SIT = { tx: 35, ty: 21 },
       HM_NOOK = { tx: 32, ty: 18 };
@@ -1195,11 +1223,19 @@ const DOCK_T = { tx: 17, ty: 20 };
 function tDist(ax, ay, tx, ty) { return Math.hypot(ax - (tx*TILE+16), ay - (ty*TILE+16)); }
 function promptFor(me) {
   if (me.inside && me.place === 'church') {
-    if (tDist(me.x, me.y, CH_EXIT.tx, CH_EXIT.ty) <= IR) return 'Step outside';
-    if (tDist(me.x, me.y, CH_PRAY.tx, CH_PRAY.ty) <= IR) return 'Pray';
-    if (tDist(me.x, me.y, CH_VERSE.tx, CH_VERSE.ty) <= IR) return 'Read the verse';
-    if (tDist(me.x, me.y, CH_CANDLE.tx, CH_CANDLE.ty) <= IR) return 'Light a candle';
-    return null;
+    // CHURCH-REDESIGN (2026-10-03): nearest-candidate priority, mirroring the
+    // server (ties keep exit > pray > verse > pew seats). Pew seats use a
+    // tight range: stand in the gap to sit.
+    const cands = [
+      ['Step outside', CH_EXIT, IR], ['Pray', CH_PRAY, IR], ['Read the verse', CH_VERSE, IR],
+      ...CH_PEW_SITS.map(s => ['Sit in the pew', s, 20]),
+    ];
+    let best = null, bd = IR;
+    for (const [label, t, r] of cands) {
+      const d = tDist(me.x, me.y, t.tx, t.ty);
+      if (d <= r && d < bd) { bd = d; best = label; }
+    }
+    return best;
   }
   if (me.inside && me.place === 'home') {
     if (tDist(me.x, me.y, HM_EXIT.tx, HM_EXIT.ty) <= IR) return 'Step outside';
@@ -1218,12 +1254,12 @@ function promptFor(me) {
   for (const f of farm) { const d = tDist(me.x, me.y, f.tx, f.ty); if (d < bd) { bd = d; best = f; } }
   if (best) return best.stage === 'empty' ? 'Plant' : best.stage === 'planted' ? 'Water' :
                  best.stage === 'ready' ? 'Harvest' : 'Growing…';
-  if (tDist(me.x, me.y, DOCK_T.tx, DOCK_T.ty) <= IR)
-    return me.fishing ? (me.fishing === 'bite' ? 'Catch!' : 'Waiting…') : 'Fish';
   if (Math.hypot(me.x - fox.x, me.y - fox.y) <= IR) return 'Pet the fox';
   let bn = null; bd = IR;
   for (const n of npcs.values()) { const d = Math.hypot(me.x - n.x, me.y - n.y); if (d < bd) { bd = d; bn = n; } }
   if (bn) return 'Talk to ' + bn.name;
+  if (tDist(me.x, me.y, DOCK_T.tx, DOCK_T.ty) <= IR)
+    return me.fishing ? (me.fishing === 'bite' ? 'Catch!' : 'Waiting…') : 'Fish';
   return null;
 }
 setInterval(() => {
@@ -1285,7 +1321,6 @@ function tone(freq, delay, dur, type, vol) {
 }
 function chime() { tone(659.25, 0, 0.5); tone(987.77, 0.12, 0.7); }
 function bloomChime() { [523.25, 659.25, 783.99, 1046.5].forEach((f, i) => tone(f, i * 0.15, 1.2, 'sine', 0.1)); }
-function candleGlow() { tone(880, 0, 0.8, 'sine', 0.06); tone(1174.66, 0.1, 1.0, 'sine', 0.05); }
 function worshipChord() { [196.0, 261.63, 329.63, 392.0].forEach((f, i) => tone(f, i * 0.25, 3.5, 'triangle', 0.07)); }
 function ruinPad() { [130.81, 196.0, 261.63, 329.63].forEach((f, i) => tone(f, i * 0.18, 4.0, 'triangle', 0.07)); }
 function endingMotif() { [261.63, 329.63, 392.0, 523.25, 392.0, 523.25, 659.25].forEach((f, i) => tone(f, i * 0.4, 1.4, 'sine', 0.11)); }
@@ -1858,6 +1893,8 @@ const npcLooks = {
   Hannah: { skin:'#9a6540', hair:'long', hairColor:'#241610', outfit:'#c96a4a', dress:true, accessory:'flower', apron:true },
   Elias:  { skin:'#e0ac7e', hair:'short', hairColor:'#5a3a1e', outfit:'#6aa84f', dress:false, accessory:'none' },
   Miriam: { skin:'#f2c99a', hair:'bun', hairColor:'#d9c08a', outfit:'#9a6ac9', dress:true, accessory:'none' },
+  // CHURCH-REDESIGN (2026-10-03): the village pastor (Ariel may rename).
+  'Pastor Naomi': { skin:'#6e452a', hair:'bun', hairColor:'#d9c08a', outfit:'#f5efdd', dress:true, accessory:'none' },
 };
 const npcSprites = {};
 function npcSprite(name) {
@@ -3801,25 +3838,33 @@ const churchFloor = px(TILE,TILE,(g)=>{
   for(let x=2;x<TILE;x+=16) for(let y=2;y<TILE;y+=16) g.fillRect(x,y,12,1);
   g.fillStyle='rgba(0,0,0,.07)'; g.fillRect(0,30,TILE,2);
 });
+// CHURCH-REDESIGN (2026-10-03): storybook pews — deepened with carved arch
+// panels, a turned top rail with gold sheen, seat cushions, and carved ends.
 const pewTile = px(TILE,TILE,(g)=>{ g.drawImage(churchFloor,0,0);
   g.fillStyle='rgba(0,0,0,.14)'; g.fillRect(2,28,28,3);        // floor shadow
   g.fillStyle='#5d3a17'; g.fillRect(2,24,28,3);                // kneeler base
   g.fillStyle='#a8555f'; g.fillRect(2,22,28,3);                // kneeler cushion
   g.fillStyle='#c97a85'; g.fillRect(2,22,28,1);
   g.fillStyle='#6b4423'; g.fillRect(3,12,3,11); g.fillRect(26,12,3,11); // pew ends
+  g.fillStyle='#8a5a2b'; g.fillRect(3,11,3,2); g.fillRect(26,11,3,2);   // end caps
   g.fillStyle='#4a2c14';                                       // carved cross on each end
   g.fillRect(4,14,1,5); g.fillRect(3,15,3,1);
   g.fillRect(27,14,1,5); g.fillRect(26,15,3,1);
   g.fillStyle='#8a5a2b'; g.fillRect(3,14,26,6);                // seat
   g.fillStyle='#a8743a'; g.fillRect(3,14,26,2);                // seat highlight
+  g.fillStyle='#a8555f'; g.fillRect(5,15,10,4);                // seat cushion
+  g.fillStyle='#c97a85'; g.fillRect(5,15,10,1);
   g.fillStyle='#7a2f3a'; g.fillRect(18,12,6,3);                // hymnal left on the seat
   g.fillStyle='#a85460'; g.fillRect(18,12,6,1);
   g.fillStyle='#f5efdd'; g.fillRect(23,12,1,3);                // page edge
   g.fillStyle='#6b4423'; g.fillRect(3,4,26,9);                 // backrest
   g.fillStyle='#7a4f28'; g.fillRect(4,5,24,3);                 // back panel inset
   g.fillStyle='#5d3a17'; g.fillRect(6,6,20,1);                 // inset shade line
-  g.fillStyle='#5d3a17'; g.fillRect(2,1,28,4);                 // top rail
+  g.fillStyle='#a8743a'; g.fillRect(7,7,4,3); g.fillRect(21,7,4,3);  // carved arches
+  g.fillStyle='#5d3a17'; g.fillRect(8,8,2,1); g.fillRect(22,8,1,1);
+  g.fillStyle='#5d3a17'; g.fillRect(2,1,28,4);                 // turned top rail
   g.fillStyle='#ffd76e'; g.fillRect(3,2,26,1);                 // rail sheen
+  g.fillStyle='#8a5a2b'; g.fillRect(5,0,2,2); g.fillRect(25,0,2,2);  // rail finials
 });
 const altarTile = px(TILE,TILE,(g)=>{ g.drawImage(churchFloor,0,0);
   g.fillStyle='rgba(0,0,0,.16)'; g.fillRect(5,27,22,3);
@@ -3833,8 +3878,12 @@ const altarTile = px(TILE,TILE,(g)=>{ g.drawImage(churchFloor,0,0);
   g.fillStyle='#ffd76e'; g.fillRect(15,0,2,9); g.fillRect(12,3,8,2);  // gold cross
   g.fillStyle='#fff3c4'; g.fillRect(15,0,1,9);
   g.fillStyle='#b8912f'; g.fillRect(13,9,6,2);                  // cross base
-  g.fillStyle='#fffbe8'; g.fillRect(8,6,2,5); g.fillRect(22,6,2,5);   // altar candles
-  g.fillStyle='#ffca55'; g.fillRect(8,4,2,2); g.fillRect(22,4,2,2);
+  // CHURCH-REDESIGN (2026-10-03): altar candles removed with the candle stand —
+  // a small vase of white lilies stands in their place.
+  g.fillStyle='#8a5a2b'; g.fillRect(8,9,2,3); g.fillRect(22,9,2,3);   // vase stems
+  g.fillStyle='#f5efdd'; g.fillRect(7,4,4,5); g.fillRect(21,4,4,5);   // white lilies
+  g.fillStyle='#fffdf4'; g.fillRect(8,5,2,2); g.fillRect(22,5,2,2);
+  g.fillStyle='#8fbf6a'; g.fillRect(8,9,2,1); g.fillRect(22,9,1,1);   // leaves
 });
 // VISUAL-PASS-CHURCH: wooden lectern with an open book — the "Read the verse"
 // stand (VERSE_STAND 16,20). Small gold cross above, warm reading light.
@@ -5007,6 +5056,11 @@ function drawWorld(g, now) {
     g.fillStyle = `rgba(255,236,170,${0.22 * (1 - (Date.now()-worshipFlash)/4000)})`;
     g.fillRect(14*TILE, 17*TILE, 13*TILE, 10*TILE);
   }
+  // CHURCH-REDESIGN (2026-10-03): the peaceful wash after sermon attendance.
+  if (peaceFlash && Date.now() - peaceFlash < 4000 && inside) {
+    g.fillStyle = `rgba(255,240,200,${0.18 * (1 - (Date.now()-peaceFlash)/4000)})`;
+    g.fillRect(14*TILE, 17*TILE, 13*TILE, 10*TILE);
+  }
 }
 
 function drawChurchInterior(g, tx, ty, x, y, now) {
@@ -5014,13 +5068,21 @@ function drawChurchInterior(g, tx, ty, x, y, now) {
   if (border) g.drawImage(churchWall, x, y);
   else g.drawImage(churchFloor, x, y);
   // VISUAL-PASS-CHURCH: stained-glass light pooling on the floor beside the
-  // side walls — soft colored washes breathing gently with the candlelight
+  // side walls — soft colored washes breathing gently with the lamplight
   if (!border && (tx===15||tx===25) && ty>=18 && ty<=25) {
     const cols = ['rgba(74,138,217,.15)','rgba(232,185,60,.13)','rgba(232,122,160,.13)'];
     g.fillStyle = cols[(ty+tx)%3];
     g.fillRect(x+4, y+6, 24, 20);
   }
-  if ((tx===17||tx===23) && (ty===20||ty===22)) g.drawImage(pewTile, x, y);
+  // CHURCH-REDESIGN (2026-10-03): pew rows flanking the center aisle — solid
+  // banks at tx 16-18 / 22-24 (ty 21, 23), walkable sit gaps at tx 19/21
+  // marked with a red cushion so travelers know where to sit.
+  if ((ty===21||ty===23) && ((tx>=16&&tx<=18)||(tx>=22&&tx<=24))) g.drawImage(pewTile, x, y);
+  if ((ty===21||ty===23) && (tx===19||tx===21)) {
+    g.fillStyle='#a8555f'; g.fillRect(x+6,y+14,20,6);           // sit-gap cushion
+    g.fillStyle='#c97a85'; g.fillRect(x+6,y+14,20,2);
+    g.fillStyle='rgba(0,0,0,.10)'; g.fillRect(x+6,y+20,20,2);
+  }
   // VISUAL-PASS-CHURCH: center-aisle runner down to the altar (walkable decor)
   if (tx===20 && (ty===21||ty===22||ty===23)) {
     g.fillStyle='#7a2f3a'; g.fillRect(x+9,y,14,TILE);
@@ -5030,24 +5092,7 @@ function drawChurchInterior(g, tx, ty, x, y, now) {
   }
   if (tx===20 && ty===20) { g.drawImage(altarTile, x, y); drawGlow(g, x+16, y+12, 30, 'rgba(255,220,150,A)', now, 11, 0.55); drawDust(g, x+16, y+12, now); }
   if (tx===16 && ty===20) g.drawImage(lecternTile, x, y);   // VISUAL-PASS-CHURCH: verse stand
-  if (tx===24 && ty===20) { // candle stand
-    g.drawImage(churchFloor, x, y);
-    g.fillStyle='#5d3a17'; g.fillRect(8,18,16,10); g.fillRect(13,10,6,10);
-    g.fillStyle='#e8e0cc'; g.fillRect(6,8,20,4);
-    const n = Math.min(candles, 12);
-    for (let i=0;i<n;i++) {
-      const cx = 5 + i*1.95;
-      g.fillStyle='#fffbe8'; g.fillRect(cx, 4, 2, 5);
-      const fl = 2 + Math.sin(now/150 + i*1.3)*0.9;
-      g.fillStyle='#ffca55'; g.fillRect(cx, 2-fl, 2, 2+fl);
-      g.fillStyle='#fff3c4'; g.fillRect(cx, 2-fl, 2, 1);
-    }
-    if (n>0) {
-      drawGlow(g, x+16, y+8, 48, 'rgba(255,200,90,A)', now, 3);        // halo
-      drawGlow(g, x+16, y+6, 20, 'rgba(255,232,160,A)', now, 7, 0.8);  // hot core
-      drawDust(g, x+16, y+10, now);
-    }
-  }
+  // CHURCH-REDESIGN (2026-10-03): the candle stand is gone — (24,20) is open floor.
   if (tx===20 && ty===24) g.drawImage(doorMat, x, y);
 }
 
@@ -5134,7 +5179,7 @@ const nightFlies = [];
 for (let i = 0; i < NIGHT_FLIES; i++) nightFlies.push({ bx: Math.random(), by: Math.random(), ph: Math.random()*7, sp: 0.3 + Math.random()*0.7 });
 
 // ================= Beauty pass: shared light & atmosphere helpers =================
-// candleHalo: soft flickering radial light pools (world space). The color uses
+// warmHalo: soft flickering radial light pools (world space). The color uses
 // an 'A' placeholder for the peak alpha so one call serves every warm light.
 function drawGlow(g, x, y, r, color, now, seed, scale) {
   const s = (scale === undefined ? 1 : scale);
@@ -5276,26 +5321,6 @@ function loop(now) {
       ctx.font = '12px monospace'; ctx.textAlign = 'center'; ctx.fillStyle = '#fff';
       ctx.fillText('\uD83D\uDC9B', Math.round(foxSm.x), Math.round(foxSm.y - 26 + Math.sin(now/300)*2));
     }
-    // villagers — gentle idle sway, happy hop while chatting
-    for (const n of npcs.values()) {
-      const nBob = Math.sin(now/650 + n.x*0.5)*1.2 + Math.sin(now/1300 + n.y)*0.5;
-      const nDrift = Math.sin(now/800 + n.x)*1.2;
-      const chatting = sayFlash && sayFlash.name === n.name && Date.now() < sayFlash.until;
-      const nHop = chatting ? Math.abs(Math.sin(now/140))*2.5 : 0;
-      // Hannah's storybook spotlight while her greeting is up
-      if (n.name === 'Hannah' && Date.now() < hannahGreetUntil) {
-        ctx.fillStyle = 'rgba(255,225,150,' + (0.32 + 0.14*Math.sin(now/300)).toFixed(2) + ')';
-        ctx.beginPath(); ctx.ellipse(Math.round(n.x), Math.round(n.y+1), 15, 6, 0, 0, 7); ctx.fill();
-      }
-      ctx.fillStyle = 'rgba(0,0,0,.16)';
-      ctx.beginPath(); ctx.ellipse(Math.round(n.x), Math.round(n.y+1), 7, 3, 0, 0, 7); ctx.fill();
-      ctx.drawImage(npcSprite(n.name), Math.round(n.x-8+nDrift), Math.round(n.y-22+nBob-nHop));
-      drawNameTag(ctx, n.x, n.y, n.name, '#ffe9a8');
-      if (chatting) {
-        ctx.font = '16px monospace'; ctx.textAlign = 'center';
-        ctx.fillStyle = '#fff'; ctx.fillText('💬', n.x, n.y - 44 + Math.sin(now/300)*2);
-      }
-    }
     // falling leaves drifting through the village
     for (const l of leaves) {
       l.x += (0.22 + 0.3*Math.sin(now/1600 + l.ph)) * l.sp;
@@ -5304,6 +5329,33 @@ function loop(now) {
       if (l.y > WH*TILE) l.y = 0;
       ctx.fillStyle = l.c;
       ctx.fillRect(l.x + Math.sin(now/500 + l.ph)*4, l.y, 3, 2);
+    }
+  }
+  // villagers — gentle idle sway, happy hop while chatting.
+  // CHURCH-REDESIGN (2026-10-03): during the weekly sermon the congregation
+  // gathers in the church pews, so villagers inside the church rect also
+  // render while the traveler is inside the church (seated, still, reverent).
+  for (const n of npcs.values()) {
+    const inChurchRect = n.x >= 14*TILE && n.x <= 27*TILE && n.y >= 17*TILE && n.y <= 27*TILE;
+    if (inside) { if (!(me.place === 'church' && inChurchRect)) continue; }
+    else if (inChurchRect) continue;   // seated congregation stays a church sight
+    const seated = inside && sermonActiveClient();
+    const nBob = seated ? 0 : Math.sin(now/650 + n.x*0.5)*1.2 + Math.sin(now/1300 + n.y)*0.5;
+    const nDrift = seated ? 0 : Math.sin(now/800 + n.x)*1.2;
+    const chatting = !seated && sayFlash && sayFlash.name === n.name && Date.now() < sayFlash.until;
+    const nHop = chatting ? Math.abs(Math.sin(now/140))*2.5 : 0;
+    // Hannah's storybook spotlight while her greeting is up
+    if (n.name === 'Hannah' && !seated && Date.now() < hannahGreetUntil) {
+      ctx.fillStyle = 'rgba(255,225,150,' + (0.32 + 0.14*Math.sin(now/300)).toFixed(2) + ')';
+      ctx.beginPath(); ctx.ellipse(Math.round(n.x), Math.round(n.y+1), 15, 6, 0, 0, 7); ctx.fill();
+    }
+    ctx.fillStyle = 'rgba(0,0,0,.16)';
+    ctx.beginPath(); ctx.ellipse(Math.round(n.x), Math.round(n.y+1), 7, 3, 0, 0, 7); ctx.fill();
+    ctx.drawImage(npcSprite(n.name), Math.round(n.x-8+nDrift), Math.round(n.y-22+(seated?6:0)+nBob-nHop));
+    drawNameTag(ctx, n.x, n.y, n.name, '#ffe9a8');
+    if (chatting) {
+      ctx.font = '16px monospace'; ctx.textAlign = 'center';
+      ctx.fillStyle = '#fff'; ctx.fillText('💬', n.x, n.y - 44 + Math.sin(now/300)*2);
     }
   }
   // players sorted by y

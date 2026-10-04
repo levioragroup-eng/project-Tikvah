@@ -251,7 +251,7 @@ const b4Checks = [
   ['pew top rail', '// top rail'],
   ['altar white cloth', 'white cloth'],
   ['altar gold cross', 'gold cross'],
-  ['altar candles', 'altar candles'],
+  ['altar lily vase', 'white lilies'],
   ['verse stand lectern', 'const lecternTile'],
   ['lectern open book', 'open book'],
   ['lectern cross', 'small gold cross'],
@@ -301,8 +301,10 @@ const b4Checks = [
   ['church floor call site kept', 'g.drawImage(churchFloor, x, y)'],
   ['hearth flame anim kept', "g.fillStyle='#ff8a3c'"],
   ['hearth glow kept', "drawGlow(g, x+16, y+20, 44, 'rgba(255,150,60,A)', now, 5)"],
-  ['candle stand flames kept', 'Math.min(candles, 12)'],
-  ['candle stand halo kept', "drawGlow(g, x+16, y+8, 48, 'rgba(255,200,90,A)', now, 3)"],
+  ['pew rows with sit gaps', 'CH_PEW_SITS'],
+  ['sermon lines ship in the page', 'SERMON_LINES'],
+  ['pastor npc look defined', 'Pastor Naomi'],
+  ['peace flash wash', 'peaceFlash'],
   ['day/night tint hook kept', 'tintCur'],
 ];
 for (const [label, needle] of b4Checks) ok('art contains ' + label, pageHtml.includes(needle));
@@ -399,8 +401,8 @@ const beautyChecks = [
   ['toast entrance', 'toastIn'],
   ['ending star twinkle', 'twinkle'],
   ['hannah card glow', 'hannahGlow'],
-  ['flickering candle halo', 'candleHalo'],
-  ['12 candle flames', 'Math.min(candles, 12)'],
+  ['flickering warm halo', 'warmHalo'],
+  ['sermon ambient lines', 'SERMON_LINES'],
   ['warm interior wash', 'interiorGlow'],
   ['golden dawn/dusk wash', 'goldF'],
   ['denser fireflies constant', 'NIGHT_FLIES = 40'],
@@ -604,6 +606,22 @@ async function walkTo(c, tx, ty, timeoutMs = 12000) {
   c.send({ t: 'input', x: 0, y: 0 });
   return false;
 }
+// walkToNear: tighter landing tolerance for tight interior geometry
+// (church pray spot vs pew sit gaps).
+async function walkToNear(c, tx, ty, tol, timeoutMs = 12000) {
+  const t0 = Date.now();
+  c.send({ t: 'input', x: 0, y: 0 });
+  while (Date.now() - t0 < timeoutMs) {
+    const me = c.me();
+    if (!me) { await sleep(100); continue; }
+    const dx = tx - me.x, dy = ty - me.y, d = Math.hypot(dx, dy);
+    if (d < tol) { c.send({ t: 'input', x: 0, y: 0 }); return true; }
+    c.send({ t: 'input', x: dx/d, y: dy/d });
+    await sleep(90);
+  }
+  c.send({ t: 'input', x: 0, y: 0 });
+  return false;
+}
 
 try {
   // ---------- 1. create + join same room ----------
@@ -737,9 +755,9 @@ try {
   ok('walk to the west aisle', await walkTo(a, 15*TILE+16, 24*TILE+16, 8000));
   const wallPushIn = await walkTo(a, 15*TILE+16, 10*TILE+16, 3500);
   ok('church interior walls hold', wallPushIn === false && a.me().y >= 18*TILE - 1, `y=${a.me()?.y?.toFixed(0)}`);
-  ok('walk north of the pew', await walkTo(a, 17*TILE+16, 19*TILE+16, 8000));
-  const pewPush = await walkTo(a, 17*TILE+16, 21*TILE+16, 3500);
-  ok('pews are solid', pewPush === false && a.me().y < 20*TILE, `y=${a.me()?.y?.toFixed(0)}`);
+  ok('walk north of the pew', await walkTo(a, 17*TILE+16, 20*TILE+16, 8000));
+  const pewPush = await walkTo(a, 17*TILE+16, 22*TILE+16, 3500);
+  ok('pews are solid', pewPush === false && a.me().y < 21*TILE + 8, `y=${a.me()?.y?.toFixed(0)}`);
   ok('walk to altar', await walkTo(a, 20*TILE+16, 20*TILE+16));
   a.send({ t: 'interact' }); // pray
   ok('pray -> pray emote visible to other', await b.waitFor(() => b.state.players.get(a.state.you.id)?.emote === 'pray', 2000));
@@ -809,22 +827,22 @@ try {
   ok('give shares the meal with the nearby player', !!gift && gift.from === 'Friend' && gift.to === 'Ariel', JSON.stringify(gift));
   ok('A received the meal', await a.waitFor(() => a.me()?.inv?.meals === 1, 2000));
 
-  // ---------- 6d. church candle + worship -> garden blooms ----------
-  console.log('candle & worship:');
+  // ---------- 6d. church worship + pew sit -> garden blooms ----------
+  // CHURCH-REDESIGN (2026-10-03): the candle stand is gone. Sincere prayer at
+  // the altar is the worship moment; sitting in a pew is the new pew verb.
+  console.log('worship & pews:');
   ok('A walks back to church door', await walkTo(a, CHURCH_DOOR.x, CHURCH_DOOR.y + 8, 15000));
   a.send({ t: 'interact' }); // enter
   ok('re-enter church', await a.waitFor(() => a.me()?.inside === true, 2000));
-  const CANDLE = { x: 24*TILE+16, y: 20*TILE+16 };
-  ok('walk to candle stand', await walkTo(a, CANDLE.x, CANDLE.y));
-  a.send({ t: 'interact' }); // light candle
-  const candle = await a.waitFor(() => a.msgs.some(m => m.t === 'candle'), 2000) ? a.lastOf('candle') : null;
-  ok('candle lit and shared', !!candle && candle.count === 1, 'count=' + candle?.count);
-  ok('candle visible to B', await b.waitFor(() => b.msgs.some(m => m.t === 'candle'), 2000));
-  ok('walk around the pew to the altar', await walkTo(a, 20*TILE+16, 22*TILE+16));
-  ok('walk to altar', await walkTo(a, 20*TILE+16, 20*TILE+16));
-  a.send({ t: 'interact' }); // pray -> worship (candles are lit)
+  ok('A walks down the center aisle', await walkTo(a, 20*TILE+16, 22*TILE+16));
+  ok('A steps into a pew sit gap', await walkToNear(a, 21*TILE+16, 23*TILE+16, 12));
+  a.send({ t: 'interact' }); // sit in the pew
+  ok('sitting in the pew shows for B', await b.waitFor(() => b.state.players.get(a.state.you.id)?.emote === 'sit', 3000));
+  ok('A kneels before the altar', await walkToNear(a, 20*TILE+16, 20*TILE+16+16, 10));
+  a.send({ t: 'interact' }); // pray -> worship moment (no candles needed)
   ok('worship moment fires for both', await b.waitFor(() => b.msgs.some(m => m.t === 'worship'), 3000));
-  // rhythm now complete: farm (4), fish (5), cook (6c), greet (6b), candle (6d)
+  ok('worship completes the day rhythm', await a.waitFor(() => a.lastOf('day')?.rhythm?.sermon === true, 3000));
+  // rhythm now complete: farm (4), fish (5), cook (6c), greet (6b), worship (6d)
   ok('garden blooms when the day rhythm is complete (A)', await a.waitFor(() => a.msgs.some(m => m.t === 'garden-bloom'), 4000));
   ok('garden blooms when the day rhythm is complete (B)', await b.waitFor(() => b.msgs.some(m => m.t === 'garden-bloom'), 4000));
   const bloom = a.lastOf('garden-bloom');
@@ -872,6 +890,37 @@ try {
   ok('walk to home exit', await walkTo(a, HOME_EXIT.x, HOME_EXIT.y));
   a.send({ t: 'interact' }); // exit home
   ok('exit home', await a.waitFor(() => a.me()?.inside === false && a.me()?.place === null, 2000));
+
+  // ---------- 6f. WEEKLY SERMON: pastor preaches, congregation gathers ----------
+  // CHURCH-REDESIGN (2026-10-03): day 1 is a sermon day; from morning till
+  // afternoon the pastor takes the pulpit and the villagers sit in the pews.
+  // A traveler sitting through it is gently acknowledged — synced to everyone.
+  console.log('weekly sermon:');
+  const w1 = new C('Worshiper'); await w1.connect();
+  w1.send({ t: 'create', name: 'Worshiper' });
+  ok('sermon room created', await w1.waitFor(() => !!w1.state.code, 3000));
+  ok('day 1 is a sermon day (synced flag)', await w1.waitFor(() => w1.lastOf('day')?.sermon === true, 5000),
+     'sermon=' + w1.lastOf('day')?.sermon + ' phase=' + w1.lastOf('day')?.phase);
+  const nearTile = (n, tx, ty) => n && Math.abs(n.x - (tx*TILE+16)) < 40 && Math.abs(n.y - (ty*TILE+16)) < 40;
+  ok('pastor takes the pulpit', await w1.waitFor(() => nearTile(w1.state.npcs.get('Pastor Naomi'), 20, 19), 15000));
+  ok('Hannah sits in a pew', await w1.waitFor(() => nearTile(w1.state.npcs.get('Hannah'), 19, 21), 15000));
+  ok('Elias sits in a pew', await w1.waitFor(() => nearTile(w1.state.npcs.get('Elias'), 21, 21), 15000));
+  ok('Miriam sits in a pew', await w1.waitFor(() => nearTile(w1.state.npcs.get('Miriam'), 19, 23), 15000));
+  ok('W walks north to the market lane', await walkTo(w1, 13*TILE+16, 12*TILE+16, 8000));
+  ok('W walks east to the east lane', await walkTo(w1, 27*TILE+16, 12*TILE+16, 15000));
+  ok('W walks south down the east lane', await walkTo(w1, 27*TILE+16, 15*TILE+16, 8000));
+  ok('W walks to the church door', await walkTo(w1, CHURCH_DOOR.x, CHURCH_DOOR.y + 8, 8000));
+  w1.send({ t: 'interact' });
+  ok('W enters the church', await w1.waitFor(() => w1.me()?.inside === true, 2000));
+  ok('W walks down the center aisle', await walkTo(w1, 20*TILE+16, 22*TILE+16));
+  ok('W sits in a free pew', await walkToNear(w1, 21*TILE+16, 23*TILE+16, 12));
+  w1.send({ t: 'interact' });
+  ok('sermon attendance brings peace (shared beat)', await w1.waitFor(() => w1.msgs.some(m => m.t === 'sermon-peace'), 3000));
+  ok('sermon attendance counts toward the day rhythm', await w1.waitFor(() => w1.lastOf('day')?.rhythm?.sermon === true, 3000));
+  ok('sermon-peace fires once per sermon', await sleep(600).then(() => w1.msgs.filter(m => m.t === 'sermon-peace').length === 1),
+     'count=' + w1.msgs.filter(m => m.t === 'sermon-peace').length);
+  ok('page carries the sermon lines', pageHtml.includes('SERMON_LINES') && pageHtml.includes('Pastor Naomi: '));
+  w1.close();
 
   // ---------- 7. SIGNATURE: ruin opens when both stand on stones ----------
   console.log('ruin:');
@@ -941,10 +990,10 @@ try {
   const rd = a.lastOf('reset');
   ok('reset restores day 1', rd.day.n === 1, 'day=' + rd.day.n);
   ok('reset clears the day rhythm', Object.values(rd.day.rhythm).every(v => v === false), JSON.stringify(rd.day.rhythm));
-  ok('reset clears candles', rd.candles === 0, 'candles=' + rd.candles);
+  ok('reset carries no candle state', rd.candles === undefined, 'candles=' + rd.candles);
   ok('reset un-blooms the garden', rd.garden.bloomed === false);
   ok('reset clears inventories', rd.players.every(p => p.inv.produce === 0 && p.inv.fish === 0 && p.inv.meals === 0));
-  ok('villagers still present after reset', rd.npcs.length === 3, rd.npcs.map(n=>n.name).join(','));
+  ok('villagers still present after reset', rd.npcs.length === 4, rd.npcs.map(n=>n.name).join(','));
 
   // ---------- 7c. ENDING with 3 players: only 2 in the garden ----------
   // Mini-MMO: the ending needs 2+ outside players in the garden plaza,
@@ -1271,7 +1320,7 @@ try {
 
   // ---------- RESTORE THE LIGHT: the quiet restoration engine ----------
   // A fresh private room: the town starts dimmed and dark-lanterned. Ordinary
-  // life — farming, greeting, candles, fishing — quietly moves it. No score,
+  // life — farming, greeting, worship, fishing — quietly moves it. No score,
   // no checklist, no progress bar is ever synced to the client.
   console.log('restore the light (quiet engine):');
   ok('page renders the waking garden beds', pageHtml.includes("gardenBed('waking'"));
@@ -1335,14 +1384,17 @@ try {
   ok('S walks to church door', await walkTo(s1, CHURCH_DOOR.x, CHURCH_DOOR.y + 8, 8000));
   s1.send({ t: 'interact' }); // enter
   ok('S enters the church', await s1.waitFor(() => s1.me()?.inside === true, 2000));
-  const CANDLE_S = { x: 24*TILE+16, y: 20*TILE+16 };
-  ok('S walks to the candle stand', await walkTo(s1, CANDLE_S.x, CANDLE_S.y, 8000));
-  s1.send({ t: 'interact' }); // light candle 1
-  ok('S lights a candle', await s1.waitFor(() => s1.msgs.some(m => m.t === 'candle' && m.count === 1), 2000));
-  s1.send({ t: 'interact' }); // light candle 2
-  ok('S lights a second candle', await s1.waitFor(() => s1.msgs.some(m => m.t === 'candle' && m.count === 2), 2000));
-  ok('candles alone do not yet wake the garden', (s1.lastOf('restore')?.restore?.stage || '') === 'stirring',
+  // CHURCH-REDESIGN (2026-10-03): no candle stand. Sincere worship at the
+  // altar is the warmth source now (same semantics: doing it twice counts fully).
+  const ALTAR_S = { x: 20*TILE+16, y: 20*TILE+16+16 };   // kneel before the altar
+  ok('S walks down the aisle to the altar', await walkToNear(s1, ALTAR_S.x, ALTAR_S.y, 10, 8000));
+  s1.send({ t: 'interact' }); // pray -> worship moment
+  ok('S worships at the altar (no candles needed)', await s1.waitFor(() => s1.msgs.some(m => m.t === 'worship'), 3000));
+  ok('worship alone does not yet wake the garden', (s1.lastOf('restore')?.restore?.stage || '') === 'stirring',
      s1.lastOf('restore')?.restore?.stage);
+  await sleep(21000); // worship cooldown, so the second prayer counts too
+  s1.send({ t: 'interact' }); // pray again -> worship again
+  ok('S worships again', await s1.waitFor(() => s1.msgs.filter(m => m.t === 'worship').length >= 2, 3000));
   ok('S walks to the church exit', await walkTo(s1, 20*TILE+16, 24*TILE+16, 8000));
   s1.send({ t: 'interact' }); // exit
   ok('S exits the church', await s1.waitFor(() => s1.me()?.inside === false, 2000));

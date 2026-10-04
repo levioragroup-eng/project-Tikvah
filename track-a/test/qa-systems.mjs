@@ -65,6 +65,22 @@ async function walkTo(c, tx, ty, timeoutMs = 12000) {
   return false;
 }
 const PX = (tx, ty) => ({ x: tx*TILE+16, y: ty*TILE+16 });
+// walkToNear: tighter landing tolerance for tight interior geometry
+// (church pray spot vs pew sit gaps).
+async function walkToNear(c, x, y, tol, timeoutMs = 12000) {
+  const t0 = Date.now();
+  c.send({ t: 'input', x: 0, y: 0 });
+  while (Date.now() - t0 < timeoutMs) {
+    const me = c.me();
+    if (!me) { await sleep(100); continue; }
+    const dx = x - me.x, dy = y - me.y, d = Math.hypot(dx, dy);
+    if (d < tol) { c.send({ t: 'input', x: 0, y: 0 }); return true; }
+    c.send({ t: 'input', x: dx/d, y: dy/d });
+    await sleep(90);
+  }
+  c.send({ t: 'input', x: 0, y: 0 });
+  return false;
+}
 
 console.log('starting server...');
 const srv = spawn('node', ['server.js'], {
@@ -203,34 +219,29 @@ try {
   sys('villager-greet', !!say && say.hearts === 1, `said="${say?.text?.slice(0, 40)}..." hearts=${say?.hearts}`);
 
   // ---- S10: church verbs (waypoints copied from the main suite) ----
+  // CHURCH-REDESIGN (2026-10-03): no candle stand. Prayer at the altar is the
+  // worship moment; sitting in a pew is the new pew verb.
   await walkTo(a, 27*TILE+16, 12*TILE+16, 15000); await walkTo(a, 27*TILE+16, 15*TILE+16);
   await walkTo(a, 30*TILE+16, 15*TILE+16 + 8);
   a.send({ t: 'interact' });
   const entered = await a.waitFor(() => a.me()?.inside === true && a.me()?.place === 'church', 3000);
-  await walkTo(a, 20*TILE+16, 20*TILE+16); // altar / pray spot
-  a.send({ t: 'interact' }); // pray (no candles yet -> no worship)
+  await walkToNear(a, 20*TILE+16, 20*TILE+16+16, 10); // kneel before the altar / pray spot
+  a.send({ t: 'interact' }); // pray -> worship (no candles needed)
   const prayed = await b.waitFor(() => b.state.players.get(a.state.you.id)?.emote === 'pray', 3000);
+  const worship = await b.waitFor(() => b.msgs.some(m => m.t === 'worship'), 3000);
   await walkTo(a, 16*TILE+16, 19*TILE+16); await walkTo(a, 16*TILE+16, 20*TILE+16); // verse stand
   const seenTexts = new Set(), seenRefs = new Set();
   for (let i = 0; i < 6; i++) { a.send({ t: 'interact' }); await sleep(300); const v = a.lastOf('verse'); if (v) { seenTexts.add(v.text); seenRefs.add(v.ref); } }
   const versesExact = seenTexts.size === 2 && [...seenTexts].every(t => VERSE_TEXTS.has(t)) && [...seenRefs].every(r => VERSE_REFS.has(r));
-  await walkTo(a, 20*TILE+16, 24*TILE+16);
-  a.send({ t: 'interact' }); // exit, then re-enter (proven main-suite approach to the candle stand)
-  await a.waitFor(() => a.me()?.inside === false, 3000);
-  a.send({ t: 'interact' }); // enter again
-  await a.waitFor(() => a.me()?.inside === true, 3000);
-  await walkTo(a, 24*TILE+16, 20*TILE+16); // candle stand, from the entrance
-  a.send({ t: 'interact' }); // candle
-  const candle = await a.waitFor(() => a.msgs.some(m => m.t === 'candle'), 3000) ? a.lastOf('candle') : null;
-  await walkTo(a, 20*TILE+16, 22*TILE+16); await walkTo(a, 20*TILE+16, 20*TILE+16); // altar
-  a.send({ t: 'interact' }); // pray with candle lit -> worship
-  const worship = await b.waitFor(() => b.msgs.some(m => m.t === 'worship'), 3000);
+  await walkToNear(a, 21*TILE+16, 23*TILE+16, 12); // pew sit gap
+  a.send({ t: 'interact' }); // sit in the pew
+  const sat = await b.waitFor(() => b.state.players.get(a.state.you.id)?.emote === 'sit', 3000);
   const bloom = await a.waitFor(() => a.msgs.some(m => m.t === 'garden-bloom'), 4000);
   await walkTo(a, 20*TILE+16, 24*TILE+16);
   a.send({ t: 'interact' }); // exit
   const exited = await a.waitFor(() => a.me()?.inside === false, 3000);
-  sys('church-verbs', entered && prayed && versesExact && candle?.count === 1 && worship && exited,
-    `enter=${entered} pray=${prayed} verses-exact-2=${versesExact} candle=${candle?.count} worship=${worship} leave=${exited}`);
+  sys('church-verbs', entered && prayed && worship && versesExact && sat && exited,
+    `enter=${entered} pray=${prayed} worship=${worship} verses-exact-2=${versesExact} sit-in-pew=${sat} leave=${exited}`);
   sys('garden-bloom', bloom, bloom ? a.lastOf('garden-bloom')?.message?.slice(0, 60) : 'no bloom event');
 
   // ---- S11: character creator save ----
@@ -306,7 +317,7 @@ try {
   a.send({ t: 'play-again' });
   const reset = await a.waitFor(() => a.msgs.some(m => m.t === 'reset'), 3000) ? a.lastOf('reset') : null;
   const resetOk = !!reset && reset.farm.every(f => f.stage === 'empty') && reset.ruin.open === false &&
-    reset.candles === 0 && reset.garden.bloomed === false && reset.day.n === 1 &&
+    reset.candles === undefined && reset.garden.bloomed === false && reset.day.n === 1 &&
     Object.values(reset.day.rhythm).every(v => v === false);
   sys('ending-reset', !!ending && resetOk, `ending="${ending?.title}" discovery-seen=${sawDiscovery} reset-clears-world=${resetOk}`);
 

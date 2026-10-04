@@ -2,8 +2,9 @@
 // Serves the static client from ./public and hosts game rooms with short codes.
 //
 // Life-sim layer (2026-09-27 sprint): character looks, home interior, day/night,
-// cooking, church candles + worship, villager NPCs with dialogue, and a gentle
-// shared day rhythm (farm, fish, cook, greet, candle) that blooms the Garden of Hope.
+// cooking, church prayer + worship, a weekly sermon, villager NPCs with dialogue,
+// and a gentle shared day rhythm (farm, fish, cook, greet, worship) that blooms
+// the Garden of Hope.
 import http from 'http';
 import fs from 'fs';
 import path from 'path';
@@ -41,7 +42,7 @@ export const QUICK_CHAT_COOLDOWN_MS = 2000;
 // ---------- Mini-MMO (M2): persistent public village ----------
 // The public room lives at a fixed code, is created once at server startup,
 // and is NEVER reaped (exempt from the empty-room cleanup). Its world state
-// (farm crops, garden bloom, candles, day phase, NPC hearts) persists in
+// (farm crops, garden bloom, worship, day phase, NPC hearts) persists in
 // server memory while the server runs. Railway's disk is ephemeral, so a
 // server restart resets the village.
 export const PUBLIC_CODE = 'TIKVAH';
@@ -54,7 +55,9 @@ export const CHURCH_DOOR = { tx: 30, ty: 15 };    // press E near door -> enter
 export const CHURCH_EXIT = { tx: 20, ty: 24 };    // interior exit spot
 export const PRAY_SPOT = { tx: 20, ty: 20 };      // interior: pray / worship
 export const VERSE_STAND = { tx: 16, ty: 20 };    // interior: read one verse
-export const CANDLE_STAND = { tx: 24, ty: 20 };   // interior: light a candle
+// CHURCH-REDESIGN (2026-10-03): the candle stand is gone. Pews run in two rows
+// (ty 21 and 23) flanking a center aisle (tx 20); the aisle-adjacent tiles
+// (19/21) of each bank are walkable sit gaps — press E there to sit.
 export const STONE_A = { tx: 6, ty: 5 };          // forest clearing
 export const STONE_B = { tx: 34, ty: 5 };         // ruins clearing
 // RESTORE THE LIGHT (M4): fallen stones bar every approach to the ruins
@@ -98,6 +101,10 @@ export const PRAY_NOOK = { tx: 32, ty: 18 };       // pray at home
 export const CAFE_COUNTER = { tx: 24, ty: 16 };
 
 // ---------- Collision (server-authoritative) ----------
+// Pew layout (CHURCH-REDESIGN 2026-10-03): rows at ty 21/23, banks tx 16..18 and
+// tx 22..24 are solid; the aisle-adjacent tiles (tx 19/21) of each bank stay
+// walkable as designated sit gaps so players can sit in a pew.
+export const PEW_SIT_SPOTS = [ {tx:19,ty:21}, {tx:21,ty:21}, {tx:19,ty:23}, {tx:21,ty:23} ];
 // The client renders server positions (no client-side prediction), so the server
 // is the single decider: a player's center may never enter a solid tile.
 // Tile predicates mirror the client's drawing layout (baseTile/isTree/isFence)
@@ -165,7 +172,9 @@ export function isSolid(tx, ty, place) {
   if (tx < 0 || ty < 0 || tx >= WORLD_W || ty >= WORLD_H) return true;
   if (place === 'church') {
     if (!(tx >= 15 && tx <= 25 && ty >= 18 && ty <= 25)) return true; // walls: stay in the room
-    if ((tx === 17 || tx === 23) && (ty === 20 || ty === 22)) return true; // pews
+    // CHURCH-REDESIGN (2026-10-03): pew rows (ty 21/23, banks 16-18 / 22-24)
+    // are solid; the aisle-adjacent sit gaps (tx 19/21) stay walkable.
+    if ((ty === 21 || ty === 23) && ((tx >= 16 && tx <= 18) || (tx >= 22 && tx <= 24))) return true;
     if (tx === 20 && ty === 20) return true; // altar
     return false;
   }
@@ -202,14 +211,17 @@ const FISH_WAIT_MAX = parseInt(process.env.FISH_WAIT_MAX || '7000', 10);
 const FISH_CATCH_WINDOW = parseInt(process.env.FISH_CATCH_WINDOW || '2500', 10);
 const DAY_MS = parseInt(process.env.DAY_MS || '480000', 10); // one full day/night cycle (8 min)
 const WORSHIP_COOLDOWN_MS = 20000;
-const MAX_CANDLES = 12;
 
 // ---------- RESTORE THE LIGHT: quiet town-restoration engine ----------
 // Free life-sim play quietly restores the town. There is NO checklist and NO
 // progress bar — players feel progress through the world changing. Only the
 // stage and its world-effects are synced; the raw contribution counts are
 // server-private and never leave this file.
-export const RESTORE_KINDS = ['farm','fish','cook','give','greet','candle','fox','explore'];
+// CHURCH-REDESIGN (2026-10-03): 'candle' was removed as a warmth kind and
+// replaced by 'sermon' — sincere worship at the church (prayer at the altar,
+// sitting through the weekly sermon). Same thresholds/semantics as before:
+// each kind counts up to twice toward the town's warmth.
+export const RESTORE_KINDS = ['farm','fish','cook','give','greet','sermon','fox','explore'];
 export const RESTORE_STAGES = ['dimmed','stirring','awake','discovered','relight','complete'];
 export const LANTERN_TOTAL = 6;   // mirrors the client's LAMPS list (count only;
 // the client owns the tile positions and lights nearest-the-plaza first)
@@ -220,7 +232,7 @@ const RESTORE_GATHER_MS = parseInt(process.env.RESTORE_GATHER_MS || '90000', 10)
 function newRestore() {
   return {
     stage: 'dimmed',          // RESTORE_STAGES ladder; only moves forward
-    acts: { farm: 0, fish: 0, cook: 0, give: 0, greet: 0, candle: 0, fox: 0, explore: 0 },
+    acts: { farm: 0, fish: 0, cook: 0, give: 0, greet: 0, sermon: 0, fox: 0, explore: 0 },
     explorers: new Set(),     // uuids that have reached the wild north (counts once each)
     discoverySeen: false,     // the ruin has been opened and its writing witnessed
     gardenWoke: false,        // the Old Garden has come back to life (beds waking)
@@ -258,7 +270,7 @@ function advanceRestore(room) {
   const r = room.restore;
   const key = () => r.stage + '|' + r.gardenWoke + '|' + r.gatherUntil;
   const before = key();
-  const rhythmDone = room.rhythm.farm && room.rhythm.fish && room.rhythm.cook && room.rhythm.greet && room.rhythm.candle;
+  const rhythmDone = room.rhythm.farm && room.rhythm.fish && room.rhythm.cook && room.rhythm.greet && room.rhythm.sermon;
   const warmth = restoreWarmth(room);
   if (r.stage === 'dimmed' && warmth >= RESTORE_STIR) r.stage = 'stirring';
   if ((r.stage === 'dimmed' || r.stage === 'stirring') && (warmth >= RESTORE_AWAKE || rhythmDone)) r.stage = 'awake';
@@ -306,7 +318,7 @@ export const NPC_DEFS = [
   { name: 'Hannah', hx: 21, hy: 12, r: 2.5, lines: [
     "It's always good to see you around. The town feels brighter when you're here.",
     'I planted marigolds by the plaza this morning. Small things grow, you know.',
-    'If you ever need a quiet moment, the church candles are always lit for you.',
+    'If you ever need a quiet moment, the church door is always open for you.',
     'I dreamt the garden bloomed again last night. Maybe today is the day.',
     'You have a kind way about you. This village is lucky to have you.',
     'The Old Garden by the fountain was our gathering place once. Nobody tends it anymore.',
@@ -322,6 +334,16 @@ export const NPC_DEFS = [
     'Cooking for someone is my favorite way to say I care.',
     'Evening settles soft here. Stay a while.',
     'When the lamps went out, we all drifted home early. I miss the evenings together.',
+  ]},
+  // CHURCH-REDESIGN (2026-10-03): the village pastor. Present in the church at
+  // scheduled sermon times (see sermonActive), otherwise near the church.
+  // NOTE (Ariel): rename freely — this name is a placeholder she may change.
+  { name: 'Pastor Naomi', hx: 28, hy: 16, r: 2, lines: [
+    'Welcome, traveler. The church is open to all — come as you are.',
+    'On sermon days, from morning till afternoon, I preach at the altar. Come sit a while.',
+    'Hope is a seed. We plant it every morning, and it grows.',
+    'The light we lost is coming back — I can feel it in the village.',
+    'Peace to you. You are always welcome here.',
   ]},
 ];
 
@@ -356,9 +378,10 @@ function buildRoom(code, isPublic = false) {
     })),
     npcMoved: true,
     day: { n: 1, start: now },
-    rhythm: { farm: false, fish: false, cook: false, greet: false, candle: false },
-    candles: 0,
+    rhythm: { farm: false, fish: false, cook: false, greet: false, sermon: false },
     lastWorship: 0,
+    sermonOn: false,    // weekly sermon currently gathering (derived each tick)
+    sermonPeace: {},    // uuid -> 'sermon-<day n>' already acknowledged this sermon
     garden: { bloomed: false },
     restore: newRestore(),   // RESTORE THE LIGHT: hidden town-restoration state (per room)
     home: { rug: 0 },
@@ -388,7 +411,18 @@ export function dayPhase(room, now = Date.now()) {
   if (frac < 0.78) return 'sunset';
   return 'night';
 }
-const PHASE_LABEL = { morning: 'Morning', day: 'Day', sunset: 'Sunset', night: 'Night' };
+const PHASE_LABEL = { morning: 'Morning', day: 'Day', sunset: 'Sunset', night: 'Night' }
+
+// CHURCH-REDESIGN (2026-10-03): the weekly sermon. Every 7th day (day 1 is a
+// sermon day so travelers meet it quickly), from morning until afternoon, the
+// pastor preaches and the villagers gather in the pews. Derived purely from
+// the already-synced day counter + phase — both players share the event with
+// no new sync architecture; the flag also ships additively in dayPublic.
+export function sermonActive(room, now = Date.now()) {
+  if (room.day.n % 7 !== 1) return false;
+  const phase = dayPhase(room, now);
+  return phase === 'morning' || phase === 'day';
+};
 
 // ---------- Messaging helpers ----------
 function send(ws, msg) { if (ws.readyState === 1) ws.send(JSON.stringify(msg)); }
@@ -461,7 +495,8 @@ function npcPublic(n) {
 
 function dayPublic(room) {
   const phase = dayPhase(room);
-  return { n: room.day.n, phase, label: PHASE_LABEL[phase], rhythm: { ...room.rhythm } };
+  return { n: room.day.n, phase, label: PHASE_LABEL[phase], rhythm: { ...room.rhythm },
+           sermon: sermonActive(room) };
 }
 
 function farmPublic(room) {
@@ -508,7 +543,7 @@ function setRhythm(room, key) {
 
 function checkBloom(room) {
   const r = room.rhythm;
-  if (!room.garden.bloomed && r.farm && r.fish && r.cook && r.greet && r.candle) {
+  if (!room.garden.bloomed && r.farm && r.fish && r.cook && r.greet && r.sermon) {
     room.garden.bloomed = true;
     broadcast(room, { t: 'garden-bloom',
       message: 'The Garden of Hope blooms — tended with love, day after day. 🌸' });
@@ -537,27 +572,51 @@ function handleInteract(room, ws, p) {
   const now = Date.now();
   // ---- interiors ----
   if (p.inside && p.place === 'church') {
-    if (near(p, CHURCH_EXIT.tx, CHURCH_EXIT.ty)) { exitInterior(room, ws, p, CHURCH_DOOR.tx, CHURCH_DOOR.ty); return {ok:true, action:'exit-church'}; }
-    if (near(p, PRAY_SPOT.tx, PRAY_SPOT.ty)) {
+    // CHURCH-REDESIGN (2026-10-03): no candle stand. Nearest-candidate
+    // priority (ties keep the old order: exit, pray, verse, then pew seats).
+    // Pew seats use a tight SIT_RANGE: you sit by standing in the pew gap,
+    // so praying at the altar never misfires from the aisle.
+    const SIT_RANGE = 20;
+    const cands = [
+      { kind: 'exit',  tx: CHURCH_EXIT.tx, ty: CHURCH_EXIT.ty },
+      { kind: 'pray',  tx: PRAY_SPOT.tx, ty: PRAY_SPOT.ty },
+      { kind: 'verse', tx: VERSE_STAND.tx, ty: VERSE_STAND.ty },
+      ...PEW_SIT_SPOTS.map(s => ({ kind: 'sit', tx: s.tx, ty: s.ty, range: SIT_RANGE })),
+    ];
+    let best = null, bd = INTERACT_RANGE;
+    for (const c of cands) {
+      const range = c.range || INTERACT_RANGE;
+      const d = dist(p.x, p.y, c.tx*TILE+TILE/2, c.ty*TILE+TILE/2);
+      if (d <= range && d < bd) { bd = d; best = c; }
+    }
+    if (!best) return {ok:false, reason:'nothing-nearby'};
+    if (best.kind === 'exit') { exitInterior(room, ws, p, CHURCH_DOOR.tx, CHURCH_DOOR.ty); return {ok:true, action:'exit-church'}; }
+    if (best.kind === 'pray') {
       p.emote='pray'; p.emoteAt=now; broadcast(room, {t:'player', p: playerPublic(p)});
-      // Worship moment: candles are lit -> a shared gentle beat
-      if (room.candles > 0 && now - room.lastWorship > WORSHIP_COOLDOWN_MS) {
+      // Worship moment: sincere prayer at the altar is a shared gentle beat.
+      // (CHURCH-REDESIGN: no longer gated on lit candles — the stand is gone.)
+      if (now - room.lastWorship > WORSHIP_COOLDOWN_MS) {
         room.lastWorship = now;
-        contribute(room, 'candle');   // prayer among the candles feeds the light too
+        setRhythm(room, 'sermon');   // worship completes the day's rhythm
+        contribute(room, 'sermon');  // worship attendance feeds the light too
         broadcast(room, {t:'worship', by: p.name});
       }
       return {ok:true, action:'pray'};
     }
-    if (near(p, VERSE_STAND.tx, VERSE_STAND.ty)) { const v = VERSES[Math.floor(Math.random()*VERSES.length)]; broadcast(room, {t:'verse', ref: v.ref, text: v.text, by: p.name}); return {ok:true, action:'read'}; }
-    if (near(p, CANDLE_STAND.tx, CANDLE_STAND.ty)) {
-      if (room.candles >= MAX_CANDLES) return {ok:false, reason:'candles-full'};
-      room.candles++;
-      setRhythm(room, 'candle');
-      contribute(room, 'candle');
-      broadcast(room, {t:'candle', count: room.candles, by: p.name});
-      return {ok:true, action:'candle'};
+    if (best.kind === 'verse') { const v = VERSES[Math.floor(Math.random()*VERSES.length)]; broadcast(room, {t:'verse', ref: v.ref, text: v.text, by: p.name}); return {ok:true, action:'read'}; }
+    // pew seat: sit a while; during the weekly sermon, attending is a shared
+    // peaceful beat (once per sermon per traveler).
+    p.emote='sit'; p.emoteAt=now; broadcast(room, {t:'player', p: playerPublic(p)});
+    if (sermonActive(room, now)) {
+      setRhythm(room, 'sermon');
+      const skey = 'sermon-' + room.day.n;
+      if (room.sermonPeace[p.uuid] !== skey) {
+        room.sermonPeace[p.uuid] = skey;
+        contribute(room, 'sermon');
+        broadcast(room, { t: 'sermon-peace', by: p.name });
+      }
     }
-    return {ok:false, reason:'nothing-nearby'};
+    return {ok:true, action:'sit'};
   }
   if (p.inside && p.place === 'home') {
     if (near(p, HOME_EXIT.tx, HOME_EXIT.ty)) { exitInterior(room, ws, p, HOME_DOOR.tx, HOME_DOOR.ty); return {ok:true, action:'exit-home'}; }
@@ -604,6 +663,31 @@ function handleInteract(room, ws, p) {
     broadcast(room, {t:'farm', farm: farmPublic(room)});
     return {ok:true, action:'farm-' + plot.stage};
   }
+  // fox -> pet
+  if (dist(p.x, p.y, room.fox.x, room.fox.y) <= INTERACT_RANGE) {
+    p.emote='heart'; p.emoteAt=now; broadcast(room, {t:'player', p: playerPublic(p)});
+    contribute(room, 'fox');
+    broadcast(room, {t:'pet', by: p.name});
+    return {ok:true, action:'pet'};
+  }
+  // villager -> talk. Checked before the dock: during the weekly sermon the
+  // congregation sits in the pews (whose tiles overlap the river bend near
+  // the dock), and a nearby villager is the more sensible interact target.
+  // (Villagers never wander within dock range in normal play, so fishing is
+  // unaffected.)
+  const npc = nearestNpc(room, p);
+  if (npc) {
+    const text = npc.lines[npc.line % npc.lines.length];
+    npc.line++;
+    // M3: friendship hearts key by the traveler's uuid, so friendships
+    // persist across reconnects within the server run.
+    const hearts = Math.min(5, (npc.hearts[p.uuid] || 0) + 1);
+    npc.hearts[p.uuid] = hearts;
+    setRhythm(room, 'greet');
+    contribute(room, 'greet');
+    broadcast(room, {t:'say', name: npc.name, text, hearts, by: p.name});
+    return {ok:true, action:'talk'};
+  }
   // dock -> fishing
   if (near(p, DOCK.tx, DOCK.ty)) {
     if (!p.fishing) {
@@ -621,27 +705,6 @@ function handleInteract(room, ws, p) {
       return {ok:true, action:'catch'};
     }
     return {ok:false, reason:'no-bite'};
-  }
-  // fox -> pet
-  if (dist(p.x, p.y, room.fox.x, room.fox.y) <= INTERACT_RANGE) {
-    p.emote='heart'; p.emoteAt=now; broadcast(room, {t:'player', p: playerPublic(p)});
-    contribute(room, 'fox');
-    broadcast(room, {t:'pet', by: p.name});
-    return {ok:true, action:'pet'};
-  }
-  // villager -> talk
-  const npc = nearestNpc(room, p);
-  if (npc) {
-    const text = npc.lines[npc.line % npc.lines.length];
-    npc.line++;
-    // M3: friendship hearts key by the traveler's uuid, so friendships
-    // persist across reconnects within the server run.
-    const hearts = Math.min(5, (npc.hearts[p.uuid] || 0) + 1);
-    npc.hearts[p.uuid] = hearts;
-    setRhythm(room, 'greet');
-    contribute(room, 'greet');
-    broadcast(room, {t:'say', name: npc.name, text, hearts, by: p.name});
-    return {ok:true, action:'talk'};
   }
   return {ok:false, reason:'nothing-nearby'};
 }
@@ -718,9 +781,35 @@ function tickRoom(room) {
   // gathering (the garden waking, the Return), they drift out to the garden
   // and plaza instead of staying by their homes.
   const gathering = room.restore.gatherUntil > now;
+  // CHURCH-REDESIGN (2026-10-03): the weekly sermon. When the service begins,
+  // the pastor takes the pulpit and the villagers gather in the pews; they
+  // stay seated until the service ends, then resume wandering.
+  const sermon = sermonActive(room, now);
+  if (sermon && !room.sermonOn) {
+    room.sermonOn = true;
+    const seats = { 'Pastor Naomi': [20,19], 'Hannah': [19,21], 'Elias': [21,21], 'Miriam': [19,23] };
+    for (const n of room.npcs) {
+      const s = seats[n.name]; if (!s) continue;
+      const sx = s[0]*TILE+TILE/2, sy = s[1]*TILE+TILE/2;
+      // don't snap onto a traveler already sitting in that pew gap
+      let taken = false;
+      for (const [, pl] of room.players) {
+        if (pl.inside && pl.place === 'church' && Math.hypot(pl.x - sx, pl.y - sy) < TILE) { taken = true; break; }
+      }
+      if (taken) { n.tx = n.x; n.ty = n.y; }
+      else { n.x = sx; n.y = sy; n.tx = sx; n.ty = sy; }
+      n.nextMove = now + 5000;
+    }
+    room.npcMoved = true;
+  }
+  if (!sermon && room.sermonOn) {
+    room.sermonOn = false;
+    for (const n of room.npcs) n.nextMove = now;   // pick up wandering again
+  }
   for (const n of room.npcs) {
     if (now >= n.nextMove) {
-      if (gathering) {
+      if (sermon) { n.nextMove = now + 5000; }   // seated for the service
+      else if (gathering) {
         n.tx = (20 + (Math.random()-0.5)*5)*TILE;
         n.ty = (16.5 + (Math.random()-0.5)*2)*TILE;
         if (Math.floor(n.tx/TILE) === FOUNTAIN_TILE.tx && Math.floor(n.ty/TILE) === FOUNTAIN_TILE.ty) n.tx += TILE;
@@ -868,7 +957,6 @@ function joinedPayload(room, p, code) {
            fox: {x: Math.round(room.fox.x), y: Math.round(room.fox.y)},
            npcs: room.npcs.map(npcPublic),
            day: dayPublic(room),
-           candles: room.candles,
            garden: { bloomed: room.garden.bloomed },
            restore: restorePublic(room),
            home: { rug: room.home.rug } };
@@ -1009,7 +1097,7 @@ wss.on('connection', (ws, req) => {
           const room = ws.room;
           if (room.isPublic) {
             // PUBLIC VILLAGE: play-again is a personal fresh start only. The
-            // shared world state (farm, ruin, day, rhythm, candles, garden,
+            // shared world state (farm, ruin, day, rhythm, garden,
             // NPC hearts) is NEVER wiped here — the village carries on.
             const self = room.players.get(ws);
             if (!self) return;
@@ -1029,9 +1117,10 @@ wss.on('connection', (ws, req) => {
           room.ruin = newRuin();
           room.ending.done = false;
           room.day = { n: 1, start: now2 };
-          room.rhythm = { farm: false, fish: false, cook: false, greet: false, candle: false };
-          room.candles = 0;
+          room.rhythm = { farm: false, fish: false, cook: false, greet: false, sermon: false };
           room.lastWorship = 0;
+          room.sermonOn = false;
+          room.sermonPeace = {};
           room.garden.bloomed = false;
           room.restore = newRestore();   // RESTORE THE LIGHT: the town dims again
           room.home.rug = 0;
@@ -1054,7 +1143,7 @@ wss.on('connection', (ws, req) => {
             players: [...room.players.values()].map(playerPublic),
             farm: farmPublic(room), ruin: ruinPublic(room),
             fox: { x: Math.round(room.fox.x), y: Math.round(room.fox.y) },
-            npcs: r.npcs, day: r.day, candles: room.candles,
+            npcs: r.npcs, day: r.day,
             garden: r.garden, restore: r.restore, home: r.home });
           break;
         }
