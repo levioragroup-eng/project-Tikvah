@@ -5410,6 +5410,114 @@ function drawLabel(g, tx, ty, text) {
   g.fillStyle = '#302A2A'; g.fillText(text, x, y + 3);
 }
 
+// ============================================================
+// VISUAL-PASS-4 (2026-10-05): storybook render layers — the 5 priorities,
+// implemented in our own code painters. Render-only; no gameplay changes.
+// ============================================================
+// Priority 1: continuous painted ground texture — large-scale painterly meadow
+// clusters so grass reads as one continuous meadow, not repeated 32x32 tiles.
+function drawGroundDepth(g, tx, ty, x, y) {
+  const h = hash2(tx*17+41, ty*31+97);
+  if (h < 0.30) {   // large soft meadow shadow clusters
+    const ox = 4 + ((hash2(tx+71, ty+19)*20)|0), oy = 5 + ((hash2(tx+13, ty+83)*18)|0);
+    g.fillStyle = 'rgba(48,82,40,.10)'; g.fillRect(x+ox, y+oy, 10, 5);
+    g.fillStyle = 'rgba(32,65,34,.07)'; g.fillRect(x+ox+4, y+oy+4, 8, 3);
+  }
+  if (h > 0.58) {   // warm sunlit clusters
+    const ox = 3 + ((hash2(tx+91, ty+27)*22)|0), oy = 4 + ((hash2(tx+44, ty+61)*20)|0);
+    g.fillStyle = 'rgba(224,239,170,.10)'; g.fillRect(x+ox, y+oy, 8, 3);
+    g.fillStyle = 'rgba(255,246,200,.08)'; g.fillRect(x+ox+3, y+oy-1, 5, 2);
+  }
+  if (h > 0.70) {   // hand-placed-looking grass tuft cluster
+    const gx = x+5+((hash2(tx+9, ty+7)*20)|0), gy = y+23+((hash2(tx+17, ty+3)*5)|0);
+    g.fillStyle = PAL.meadowDark;
+    g.fillRect(gx, gy-4, 1, 4); g.fillRect(gx+3, gy-6, 1, 6); g.fillRect(gx+6, gy-3, 1, 3);
+    g.fillStyle = PAL.meadowLight; g.fillRect(gx+3, gy-6, 1, 2);
+  }
+  if (h > 0.92) {   // tiny wildflower cluster
+    const fx = x+7+((hash2(tx+101, ty+33)*18)|0), fy = y+8+((hash2(tx+27, ty+101)*17)|0);
+    const fl = [PAL.flowerPink, PAL.flowerCream, PAL.flowerLavender, PAL.flowerBlue];
+    g.fillStyle = PAL.leafDark; g.fillRect(fx, fy+3, 5, 1);
+    g.fillStyle = fl[(hash2(tx+5, ty+12)*fl.length)|0]; g.fillRect(fx+1, fy, 2, 2);
+    g.fillStyle = '#FFF7D6'; g.fillRect(fx+1, fy, 1, 1);
+  }
+}
+// Priority 3: organic path edges — stray grass, pebbles, wildflowers breaking
+// the hard tile boundary so paths feel grown into the landscape.
+function drawStoryPathEdge(g, tx, ty, x, y) {
+  const n = baseTile(tx, ty-1), s = baseTile(tx, ty+1),
+        w = baseTile(tx-1, ty), e = baseTile(tx+1, ty);
+  const h = hash2(tx*53+7, ty*29+11);
+  const tuft = (px, py, flip) => {
+    g.save(); if (flip) { g.translate(px+5, py); g.scale(-1, 1); px = 0; }
+    g.fillStyle = PAL.meadowDark;
+    g.fillRect(px, py, 1, 4); g.fillRect(px+2, py-2, 1, 5); g.fillRect(px+4, py, 1, 3);
+    g.fillStyle = PAL.meadowLight; g.fillRect(px+2, py-2, 1, 1);
+    g.restore();
+  };
+  if (n === 'grass' && h > 0.28) tuft(x+5, y+2, false);
+  if (s === 'grass' && h < 0.82) tuft(x+21, y+29, true);
+  if (w === 'grass' && h > 0.42) {
+    g.fillStyle = 'rgba(183,157,120,.42)';
+    g.fillRect(x+1, y+8, 3, 2); g.fillRect(x+2, y+21, 2, 2);
+  }
+  if (e === 'grass' && h < 0.70) {
+    g.fillStyle = 'rgba(183,157,120,.42)';
+    g.fillRect(x+28, y+12, 3, 2); g.fillRect(x+27, y+24, 2, 2);
+  }
+  if (h > 0.88) {   // wildflower beside the trail
+    const fx = x+4+((h*17)|0), fy = y+5+(((h*23)|0)%22);
+    g.fillStyle = PAL.leafDark; g.fillRect(fx, fy+2, 1, 4);
+    g.fillStyle = h > 0.94 ? PAL.flowerPink : PAL.flowerCream;
+    g.fillRect(fx-1, fy, 3, 2);
+    g.fillStyle = '#FFF8D8'; g.fillRect(fx, fy, 1, 1);
+  }
+}
+// Priority 2: large environmental grounding shadows — soft irregular painted
+// shadows under structures so buildings sit IN the world, not on top of it.
+// Drawn AFTER the tile loop (never at the start of drawWorld — terrain would
+// cover them), BEFORE entities.
+function drawStructureShadows(g) {
+  const sh = (tx0, ty0, tx1, ty1, a) => {
+    const x = tx0*TILE, y = ty0*TILE, w = (tx1-tx0+1)*TILE, h = (ty1-ty0+1)*TILE;
+    g.fillStyle = 'rgba(38,45,32,'+a.toFixed(2)+')';
+    g.fillRect(x+6, y+h-3, w-10, 5);
+    g.fillStyle = 'rgba(38,45,32,'+(a*0.55).toFixed(2)+')';
+    g.fillRect(x+12, y+h+2, w-24, 3);
+  };
+  sh(HOME.x0, HOME.y0, HOME.x1, HOME.y1, 0.20);
+  sh(CAFE.x0, CAFE.y0, CAFE.x1, CAFE.y1, 0.18);
+  sh(CHURCH.x0, CHURCH.y0, CHURCH.x1, CHURCH.y1, 0.22);
+  sh(FARM_RECT.x0, FARM_RECT.y0, FARM_RECT.x1, FARM_RECT.y1, 0.14);
+  for (const s of STALLS) sh(s.tx, s.ty, s.tx, s.ty, 0.16);
+  sh(FOUNTAIN.tx, FOUNTAIN.ty, FOUNTAIN.tx, FOUNTAIN.ty, 0.18);
+  // town square grounding wash
+  g.fillStyle = 'rgba(55,52,38,.08)';
+  g.fillRect(17*TILE+4, 17*TILE+5, 6*TILE-8, 6);
+}
+// Priority 4: world-space atmospheric depth — extremely subtle warm foreground /
+// cooler distance separation. Deliberately faint: painted depth, not a filter.
+function drawWorldDepthWash(g, now) {
+  const worldH = WH*TILE, worldW = WW*TILE;
+  const north = g.createLinearGradient(0, 0, 0, worldH*0.58);
+  north.addColorStop(0, 'rgba(210,225,210,.11)');
+  north.addColorStop(0.45, 'rgba(210,225,210,.035)');
+  north.addColorStop(1, 'rgba(210,225,210,0)');
+  g.fillStyle = north; g.fillRect(0, 0, worldW, worldH*0.60);
+  const south = g.createLinearGradient(0, worldH*0.52, 0, worldH);
+  south.addColorStop(0, 'rgba(255,232,190,0)');
+  south.addColorStop(1, 'rgba(255,220,170,.065)');
+  g.fillStyle = south; g.fillRect(0, worldH*0.45, worldW, worldH*0.55);
+  // drifting dust motes in daylight
+  const t = now/1000;
+  g.fillStyle = 'rgba(255,247,210,.10)';
+  for (let i=0; i<14; i++) {
+    const px = ((i*173 + t*(4 + i%3)*8) % worldW + worldW) % worldW;
+    const py = ((i*97 + Math.sin(t*0.35+i)*22) % worldH + worldH) % worldH;
+    g.fillRect(px, py, 1, 1);
+  }
+}
+
 function drawWorld(g, now) {
   const me = players.get(myId);
   const inside = me && me.inside, place = me && me.place;
@@ -5457,6 +5565,8 @@ function drawWorld(g, now) {
       // VISUAL-PASS-TOWN: soft grass fringe where the path meets grass
       const fr = PATH_FRINGE.get(tx + ',' + ty);
       if (fr) for (const d of fr) g.drawImage(pathFringe[d], x, y);
+      // VISUAL-PASS-4 Priority 3: organic path edges
+      drawStoryPathEdge(g, tx, ty, x, y);
     }
     else if (b === 'plaza') {
       g.drawImage(plazaTile, x, y);
@@ -5474,6 +5584,8 @@ function drawWorld(g, now) {
         drawGlow(g, x+16, y + (ty===20 ? 4 : 28), 24, 'rgba(255,205,110,A)', now, tx*7+ty);
     }
     else { const gh = hash2(tx, ty); g.drawImage(gh < 0.42 ? grassA : gh < 0.72 ? grassB : grassC, x, y); }
+    // VISUAL-PASS-4 Priority 1: continuous painted ground texture
+    if (b === 'grass') drawGroundDepth(g, tx, ty, x, y);
     // VISUAL-PASS-FOREST: dappled light shafts, leaf litter, rocks, mushrooms
     // on walkable forest-floor grass — pure decor overlays, collision untouched
     if (b === 'grass') {
@@ -5777,6 +5889,9 @@ function drawWorld(g, now) {
       }
     }
   }
+  // VISUAL-PASS-4 Priority 2+4: grounding shadows + atmospheric depth wash.
+  // AFTER the tile loop (terrain would cover them at the start), BEFORE entities.
+  if (!inside) { drawStructureShadows(g); drawWorldDepthWash(g, now); }
   // zone labels
   if (!inside) {
     // waterfalls + ruin arch (taller than one tile: drawn over the base terrain)
@@ -6099,11 +6214,22 @@ const EMOJI = { wave: '👋', heart: '❤️', pray: '🙏' };
 // when praying, never the old sleep emoji.
 
 function drawNameTag(g, x, y, name, color) {
-  g.font = '10px monospace'; g.textAlign = 'center';
+  // VISUAL-PASS-4 Priority 5: storybook parchment nameplates (were black
+  // rectangles). Signature unchanged; ink is always dark for parchment contrast.
   const label = name.slice(0, 12);
-  const w = g.measureText(label).width + 8;
-  g.fillStyle = 'rgba(0,0,0,.6)'; g.fillRect(x - w/2, y - 38, w, 12);
-  g.fillStyle = color || '#fff'; g.fillText(label, x, y - 29);
+  g.save();
+  g.font = '10px Georgia, "Times New Roman", serif';
+  g.textAlign = 'center'; g.textBaseline = 'middle';
+  const w = g.measureText(label).width + 12, h = 14;
+  const bx = x - w/2, by = y - 37;
+  g.fillStyle = 'rgba(35,35,25,.18)'; g.fillRect(bx+2, by+2, w, h);  // soft shadow
+  g.fillStyle = 'rgba(247,240,221,.94)'; g.fillRect(bx, by, w, h);   // parchment
+  g.strokeStyle = 'rgba(213,173,84,.85)'; g.lineWidth = 1;
+  g.strokeRect(bx+.5, by+.5, w-1, h-1);                              // gold border
+  g.fillStyle = '#D5AD54';
+  g.fillRect(bx+2, by+2, 2, 2); g.fillRect(bx+w-4, by+2, 2, 2);       // corner pixels
+  g.fillStyle = '#302A2A'; g.fillText(label, x, by+h/2+0.5);         // ink
+  g.restore();
 }
 
 function loop(now) {
