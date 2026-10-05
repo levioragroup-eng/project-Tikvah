@@ -6849,6 +6849,12 @@ function loop(now) {
   }
   // vignette warmth (cached — rebuilt on resize only)
   if (vignetteGrad) { ctx.fillStyle = vignetteGrad; ctx.fillRect(0,0,vw,vh); }
+  // PAINTERLY-PASS item 3: paper grain over the frame — barely perceptible,
+  // never dirty. Alpha stays tiny; the pattern does the work.
+  if (grainPattern) {
+    ctx.save(); ctx.globalAlpha = 0.045; ctx.fillStyle = grainPattern;
+    ctx.fillRect(0, 0, vw, vh); ctx.restore();
+  }
   // footsteps
   if (me) maybeStep(now, me.moving);
   // bite flash banner
@@ -6875,6 +6881,21 @@ function resize() {
 // VISUAL-PASS-TITLE: screen-space atmosphere gradients, built once per resize
 // instead of every frame (perf: no per-frame gradient allocation on the game loop).
 let goldGrad = null, duskGrad = null, vignetteGrad = null;
+// PAINTERLY-PASS item 3: paper grain — pre-rendered 128px noise tile, drawn
+// as a repeating pattern at very low alpha for a tactile storybook finish.
+// Built once; one fillRect per frame.
+let grainPattern = null;
+function buildGrain() {
+  const c = document.createElement('canvas'); c.width = c.height = 128;
+  const g = c.getContext('2d');
+  const img = g.createImageData(128, 128);
+  for (let i = 0; i < img.data.length; i += 4) {
+    const v = 110 + ((Math.random()*36)|0);
+    img.data[i] = v; img.data[i+1] = v; img.data[i+2] = v; img.data[i+3] = 255;
+  }
+  g.putImageData(img, 0, 0);
+  grainPattern = ctx.createPattern(c, 'repeat');
+}
 function buildAtmoGrads() {
   const vw = cv.width, vh = cv.height;
   goldGrad = ctx.createRadialGradient(vw/2, vh*0.22, 10, vw/2, vh*0.22, vh*0.95);
@@ -6891,6 +6912,7 @@ function buildAtmoGrads() {
 addEventListener('resize', resize);
 requestAnimationFrame(loop);
 resize();
+buildGrain();
 </script>
 </body>
 </html>
