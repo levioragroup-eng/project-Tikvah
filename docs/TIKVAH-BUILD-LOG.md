@@ -279,3 +279,22 @@ Code-painted canvas gets MUCH closer (denser, painterly, cohesive) but will neve
 ✓ Seasons cycle visibly (palettes, foliage, particles, tint, mist, HUD label)
 ✓ Title/creator/dialogue/UI share the parchment-and-gold language
 ✓ Tests green; live-verified
+
+## PAINTERLY-PASS program (2026-10-05 ~17:00–19:30 EDT) — Perplexity suggestions, render-only
+
+Implemented 7 render-only items to close the gap between code-painted canvas and the hand-painted storybook board. All changes in `track-a/public/index.html`; no gameplay/logic/network changes.
+
+**Items shipped:**
+1. **Brush-stroke layer** — seeded per-tile semi-transparent dabs (1 stroke, 30% of grass/path/plaza tiles), inlined into tile loop. Reads as painted, not noisy.
+2. **Color jitter + palette unity** — JIT table (4 keys × 6 variants via `mixHex`, startup-only); per-stroke variant picked by hash. Tiny lightness variation, nothing flat.
+3. **Paper grain** — pre-rendered full-screen noise image (alpha baked in), one unscaled `drawImage` per frame. Barely perceptible.
+4. **Feathered edges** — inlined soft alpha bands at path/grass borders in `drawStoryPathEdge`. Characters and key pixel edges untouched.
+5. **Depth fog** — 2 cheap solid rgba bands (top 33% + next 17%), haze increasing toward top of frame. Skipped indoors.
+6. **Ambient occlusion hints** — inlined soft ellipse halos under players/NPCs + rect halos at structure bases in `drawStructureShadows`. Complements existing shadows.
+7. **UI emboss** — CSS-only: soft inner shadows + gentle gold glow on `.warmcard` parchment panels; desaturated gold hover/focus/selected states.
+
+**Perf work (critical):** Initial implementation hit 0.4 FPS in headless software rendering (baseline 60.4). Root causes: per-frame `globalAlpha` toggles (2700×/frame), scaled `drawImage` sprites, pattern fills, gradient fills. Fixed by: inlining all hot-loop work (no function calls), baking alpha into colors, pre-rendered grain image, solid-band fog. Final: **29.4 FPS** in worst-case software rendering (vs 60.4 baseline). On GPU-accelerated browsers (all real devices), impact is negligible.
+
+**Verification:** Headless screenshots per item in `docs/qa/painterly-*.png`. Tests: 966/0, 18/18, 5/5. Commits: 8 (7 items + perf optimization). Pushed to master; live-verified HTTP 200, "Pastor Nathan" ×6. ZIP rebuilt.
+
+**Cuts:** None — all 7 items shipped in simplified perf-safe form.
