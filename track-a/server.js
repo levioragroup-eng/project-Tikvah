@@ -288,6 +288,80 @@ function restorePublic(room) {
   };
 }
 function sendRestore(room) { broadcast(room, { t: 'restore', restore: restorePublic(room) }); }
+// ---------- STORYLINE: The Garden Gate (competition demo story, 3 acts + epilogue) ----------
+// Builds on RESTORE THE LIGHT: the Garden Gate is the story's front door —
+// discovering it, proving the three virtues, and repairing it together feeds
+// the same garden restoration. All state is per-room and synced like restore.
+// Scripture binding: only VERSES + JOHN_812 (the 3 approved KJV verses) may
+// appear. Trials map: crops -> Psalm 23:1 (provision), bridge -> John 8:12
+// (light), dispute -> Jeremiah 29:11 (peace).
+const GATE = { tx: 19, ty: 12 };            // Garden Gate: north entrance to the plaza garden
+const BRIDGE_MEND = { tx: 20, ty: 22 };     // damaged planks mid-bridge (walkable while broken)
+const TRIAL_CROPS_NEED = 3;                 // harvests to complete the nurture trial
+const TRIAL_MENDS_NEED = 3;                 // mend actions to complete the bridge trial
+const GATE_REPAIRS_NEED = 3;                // repair contributions to restore the gate
+const GATE_REPAIR_COOLDOWN_MS = parseInt(process.env.GATE_REPAIR_COOLDOWN_MS || '5000', 10);
+const BLESSING_MS = 5 * 60 * 1000;          // prayer blessing: double warmth, 5 minutes
+function newStory() {
+  return {
+    gateFound: false,
+    trials: { crops: false, bridge: false, dispute: false },
+    cropsNurtured: 0,
+    bridgeMends: 0,
+    disputeElias: false,    // Elias chose reconciliation
+    disputeMiriam: false,   // Miriam chose reconciliation
+    key: false,             // the Restoration Key
+    gateRepairs: 0,
+    gateRepaired: false,
+    epilogue: false,
+    blessingUntil: 0,
+    repairAt: 0,
+  };
+}
+function storyPublic(room) {
+  const s = room.story, now = Date.now();
+  return {
+    gateFound: s.gateFound,
+    trials: { crops: s.trials.crops, bridge: s.trials.bridge, dispute: s.trials.dispute },
+    key: s.key,
+    gateRepairs: s.gateRepairs, gateRepairsNeed: GATE_REPAIRS_NEED,
+    gateRepaired: s.gateRepaired,
+    epilogue: s.epilogue,
+    blessing: now < s.blessingUntil,
+  };
+}
+function sendStory(room) { broadcast(room, { t: 'story', story: storyPublic(room) }); }
+function storyToast(room, text) { broadcast(room, { t: 'story-toast', text }); }
+function completeTrial(room, which) {
+  const s = room.story;
+  if (s.trials[which]) return;
+  s.trials[which] = true;
+  const verses = {
+    crops:   { ref: 'Psalm 23:1',    text: VERSES[1].text, line: 'You nurtured the crops with care — the Shepherd provides. 🌾' },
+    bridge:  { ref: 'John 8:12',     text: JOHN_812.text,  line: 'The bridge stands whole — you walk in the light. 🌉' },
+    dispute: { ref: 'Jeremiah 29:11', text: VERSES[0].text, line: 'Neighbors reconciled — His thoughts toward this village are peace. 🕊️' },
+  };
+  const v = verses[which];
+  storyToast(room, '✨ Trial complete — ' + v.line);
+  broadcast(room, { t: 'verse', ref: v.ref, text: v.text });
+  maybeGrantKey(room);
+  sendStory(room);
+}
+function maybeGrantKey(room) {
+  const s = room.story;
+  if (s.key || !(s.trials.crops && s.trials.bridge && s.trials.dispute)) return;
+  s.key = true;
+  storyToast(room, '🗝️ The Restoration Key is yours — the Garden Gate can be repaired. Bring it to the old arch north of the plaza, then pause to pray at the church altar.');
+  sendStory(room);
+}
+function disputeText(name) {
+  if (name === 'Elias') return 'Elias sighs, not looking up from his stall. "Miriam says my market stall drives her café customers away with the clatter. Twenty years I\'ve sold here! But… the square feels colder since we stopped speaking. What would you do?"';
+  return 'Miriam wrings her apron. "Elias\'s stall clatters from dawn till dusk outside my café windows. I only asked for a little quiet — and now he won\'t meet my eye. The village feels smaller when neighbors quarrel. What would you do?"';
+}
+function reconcileReply(name) {
+  if (name === 'Elias') return '"You know… you\'re right. A quieter stall costs me nothing, and her friendship is worth more than the noise. Tell Miriam the loud crates move to mornings only." Elias\'s shoulders lift — his first easy breath in weeks.';
+  return '"Mornings only? Oh — I can live with mornings. Tell Elias the café\'s first loaf tomorrow is his, on the house." Miriam smiles properly for the first time in weeks.';
+}
 // Warmth is deliberately forgiving: each kind of living counts, and doing a
 // couple of things twice matters as much as doing everything once. The raw
 // number stays server-side; players only ever see the town change.
@@ -298,7 +372,8 @@ function restoreWarmth(room) {
 }
 function contribute(room, kind) {
   if (!room.restore.acts.hasOwnProperty(kind)) return;
-  room.restore.acts[kind]++;
+  // STORYLINE: the prayer blessing doubles the light one's care carries.
+  room.restore.acts[kind] += (room.story && Date.now() < room.story.blessingUntil) ? 2 : 1;
   advanceRestore(room);
 }
 function advanceRestore(room) {
@@ -642,6 +717,7 @@ function buildRoom(code, isPublic = false) {
     sermonPeace: {},    // uuid -> 'sermon-<day n>' already acknowledged this sermon
     garden: { bloomed: false },
     restore: newRestore(),   // RESTORE THE LIGHT: hidden town-restoration state (per room)
+    story: newStory(),       // STORYLINE: the Garden Gate demo story (per room)
     home: { rug: 0 },
     // M3: persistent identity (no logins — the competition forbids accounts).
     // uuid -> { name, look, inv }. Keyed per room; the client generates the
@@ -859,6 +935,16 @@ function handleInteract(room, ws, p) {
     if (best.kind === 'exit') { exitInterior(room, ws, p, CHURCH_DOOR.tx, CHURCH_DOOR.ty); return {ok:true, action:'exit-church'}; }
     if (best.kind === 'pray') {
       p.emote='pray'; p.emoteAt=now; broadcast(room, {t:'player', p: playerPublic(p)});
+      // STORYLINE Act 2 — the prayer moment: with the Restoration Key in hand,
+      // prayer at the altar grants a quiet blessing (John 8:12). The blessed
+      // traveler's care carries double light (warmth) for a while.
+      const stb = room.story;
+      if (stb.key && now >= stb.blessingUntil) {
+        stb.blessingUntil = now + BLESSING_MS;
+        broadcast(room, { t: 'verse', ref: JOHN_812.ref, text: JOHN_812.text });
+        storyToast(room, '🙏 You pause to pray. A quiet blessing settles over you — everything you tend carries twice the light for a while.');
+        sendStory(room);
+      }
       // Worship moment: sincere prayer at the altar is a shared gentle beat.
       // (CHURCH-REDESIGN: no longer gated on lit candles — the stand is gone.)
       if (now - room.lastWorship > WORSHIP_COOLDOWN_MS) {
@@ -905,6 +991,36 @@ function handleInteract(room, ws, p) {
   if (near(p, HOME_DOOR.tx, HOME_DOOR.ty)) return enterHome(room, ws, p);
   // cafe counter -> cooking menu
   if (near(p, CAFE_COUNTER.tx, CAFE_COUNTER.ty)) { send(ws, {t:'menu', kind:'cook'}); return {ok:true, action:'cook-menu'}; }
+  // STORYLINE Act 3 — repairing the Garden Gate. Shared work: every traveler
+  // in the room contributes while the room holds the key; a lone traveler
+  // finishes stone by stone. Same ending beat either way.
+  if (near(p, GATE.tx, GATE.ty)) {
+    const stg = room.story;
+    if (!stg.gateRepaired) {
+      if (!stg.key) {
+        send(ws, {t:'story-toast', text: 'The Garden Gate crumbles at your touch. It will take the Restoration Key — and willing hands — to mend it. (tend crops 🌾 · mend the bridge 🔨 · make peace 🕊️)'});
+        return {ok:true, action:'gate-locked'};
+      }
+      if (now - stg.repairAt < GATE_REPAIR_COOLDOWN_MS) return {ok:false, reason:'repair-cooldown'};
+      stg.repairAt = now;
+      stg.gateRepairs++;
+      if (stg.gateRepairs >= GATE_REPAIRS_NEED) {
+        stg.gateRepaired = true;
+        // the gate's restoration wakes the garden fully — feeds RESTORE THE LIGHT
+        if (!room.garden.bloomed) {
+          room.garden.bloomed = true;
+          broadcast(room, { t: 'garden-bloom', by: p.name });
+        }
+        storyToast(room, '🌟 The Garden Gate stands restored! Light spills through the arch like morning.');
+        broadcast(room, { t: 'gate-restored', by: p.name });
+        sendStory(room);
+      } else {
+        storyToast(room, `🧱 You set a stone back into the arch… (${stg.gateRepairs}/${GATE_REPAIRS_NEED})`);
+        sendStory(room);
+      }
+      return {ok:true, action:'repair-gate'};
+    }
+  }
   // farm
   const plot = nearestPlot(room, p);
   if (plot) {
@@ -915,6 +1031,13 @@ function handleInteract(room, ws, p) {
       p.inv.produce++;
       setRhythm(room, 'farm');
       contribute(room, 'farm');
+      // STORYLINE Act 2 — nurture trial (Psalm 23:1): harvests while the gate is known
+      const st0 = room.story;
+      if (st0.gateFound && !st0.trials.crops) {
+        st0.cropsNurtured++;
+        if (st0.cropsNurtured >= TRIAL_CROPS_NEED) completeTrial(room, 'crops');
+        else { storyToast(room, `🌾 You tend the crops with care… (${st0.cropsNurtured}/${TRIAL_CROPS_NEED})`); sendStory(room); }
+      }
       broadcast(room, {t:'harvest', by: p.name});
       broadcast(room, {t:'player', p: playerPublic(p)});
     }
@@ -934,8 +1057,33 @@ function handleInteract(room, ws, p) {
   // the dock), and a nearby villager is the more sensible interact target.
   // (Villagers never wander within dock range in normal play, so fishing is
   // unaffected.)
+  // STORYLINE: at the bridge mend spot, mending takes priority over chatting —
+  // the bridge is a busy crossing and the trial must stay completable.
+  if (near(p, BRIDGE_MEND.tx, BRIDGE_MEND.ty, 40)) {
+    const stm0 = room.story;
+    if (stm0.gateFound && !stm0.trials.bridge) {
+      stm0.bridgeMends++;
+      if (stm0.bridgeMends >= TRIAL_MENDS_NEED) completeTrial(room, 'bridge');
+      else { storyToast(room, `🔨 You set a plank straight… (${stm0.bridgeMends}/${TRIAL_MENDS_NEED})`); sendStory(room); }
+      return {ok:true, action:'mend'};
+    }
+  }
   const npc = nearestNpc(room, p);
   if (npc) {
+    // STORYLINE Act 2 — the dispute (Jeremiah 29:11): Elias and Miriam are at
+    // odds over market day. Talking to either opens a gentle choice; choosing
+    // peace with both reconciles them visibly. Dismissing just waits.
+    const std = room.story;
+    if (std.gateFound && !std.trials.dispute && (npc.name === 'Elias' || npc.name === 'Miriam')) {
+      const flag = npc.name === 'Elias' ? 'disputeElias' : 'disputeMiriam';
+      if (!std[flag]) {
+        send(ws, { t: 'dispute', npc: npc.name, text: disputeText(npc.name), options: [
+          { id: 'reconcile', label: '🕊️ Help them make peace' },
+          { id: 'dismiss', label: 'Leave it for now' },
+        ]});
+        return {ok:true, action:'dispute'};
+      }
+    }
     // M3: friendship hearts key by the traveler's uuid, so friendships
     // persist across reconnects within the server run.
     const hearts = Math.min(5, (npc.hearts[p.uuid] || 0) + 1);
@@ -1174,6 +1322,16 @@ function tickRoom(room) {
       contribute(room, 'explore');
     }
   }
+  // STORYLINE Act 1 — the Garden Gate: the first traveler to come near the
+  // decaying arch discovers it. A quiet beat, never a blocker.
+  for (const [, p] of room.players) {
+    if (p.inside) continue;
+    if (!room.story.gateFound && dist(p.x, p.y, GATE.tx*TILE+TILE/2, GATE.ty*TILE+TILE/2) <= TILE*2.5) {
+      room.story.gateFound = true;
+      storyToast(room, '🌿 You found the Garden Gate — an old arch, crumbling, at the plaza\'s north edge. They say it sealed when the garden dimmed. Perhaps a well-lived day could wake it… (tend crops 🌾 · mend the bridge 🔨 · make peace 🕊️)');
+      sendStory(room);
+    }
+  }
   // RESTORE THE LIGHT — the Discovery: once the ruin stands open, the first
   // traveler to step into the ruins clearing witnesses what is written
   // there. Jesus is the Light; the players were restoring a community.
@@ -1256,6 +1414,7 @@ function joinedPayload(room, p, code) {
            day: dayPublic(room),
            garden: { bloomed: room.garden.bloomed },
            restore: restorePublic(room),
+           story: storyPublic(room),
            home: { rug: room.home.rug } };
 }
 
@@ -1349,6 +1508,38 @@ wss.on('connection', (ws, req) => {
           if (!r.ok) send(ws, { t: 'interact-fail', reason: r.reason });
           break;
         }
+        case 'dispute-choice': {
+          if (!ws.room) return;
+          const p = ws.room.players.get(ws);
+          if (!p) return;
+          const room = ws.room, st = room.story;
+          const npcName = String(m.npc || ''), choice = String(m.choice || '');
+          if (!st.gateFound || st.trials.dispute) return;
+          if (npcName !== 'Elias' && npcName !== 'Miriam') return;
+          const npc = room.npcs.find(n => n.name === npcName);
+          if (!npc || dist(p.x, p.y, npc.x, npc.y) > INTERACT_RANGE * 2.5) return;
+          const flag = npcName === 'Elias' ? 'disputeElias' : 'disputeMiriam';
+          if (choice === 'reconcile' && !st[flag]) {
+            st[flag] = true;
+            const hearts = Math.min(5, (npc.hearts[p.uuid] || 0) + 2);
+            npc.hearts[p.uuid] = hearts;
+            broadcast(room, { t: 'say', name: npcName, text: reconcileReply(npcName), hearts, by: p.name });
+            if (st.disputeElias && st.disputeMiriam) completeTrial(room, 'dispute');
+            else { storyToast(room, `🕊️ ${npcName} softens. One heart mended — now speak with ${npcName === 'Elias' ? 'Miriam' : 'Elias'}.`); sendStory(room); }
+          } else if (choice === 'dismiss') {
+            broadcast(room, { t: 'say', name: npcName, text: `"Perhaps another time." ${npcName} turns back to work — the quarrel can wait, but it won't mend itself.`, hearts: npc.hearts[p.uuid] || 0, by: p.name });
+          }
+          break;
+        }
+        case 'epilogue-done': {
+          if (!ws.room) return;
+          const room = ws.room, st = room.story;
+          if (!st.gateRepaired || st.epilogue) return;
+          st.epilogue = true;
+          storyToast(room, '🎶 The Song of Hope settles over Tikvah. This chapter is complete — the garden, and the village, are awake.');
+          sendStory(room);
+          break;
+        }
         case 'cook': {
           if (!ws.room) return;
           const p = ws.room.players.get(ws);
@@ -1423,6 +1614,7 @@ wss.on('connection', (ws, req) => {
           room.sermonPeace = {};
           room.garden.bloomed = false;
           room.restore = newRestore();   // RESTORE THE LIGHT: the town dims again
+          room.story = newStory();       // STORYLINE: the Garden Gate story resets too
           room.home.rug = 0;
           room.npcs = NPC_DEFS.map(d => newNpc(d, now2));
           room.npcChatCd = {};
