@@ -355,6 +355,43 @@
     font-size:15px; letter-spacing:3px; }
   #dialogue .line { font-size:15px; line-height:1.55; font-style:italic; }
   #dialogue .next { font-size:11px; color:#8a7a5a; margin-top:8px; text-align:right; }
+  /* STORYLINE: dispute choice buttons inside the dialogue card */
+  #dialogue .dopts { display:none; margin-top:10px; gap:8px; }
+  #dialogue .dopts button { flex:1; font-family:Georgia,serif; font-size:13px; padding:8px 10px;
+    border-radius:10px; border:1.5px solid #d4a940; background:#1a2340; color:#f5eeda; cursor:pointer; }
+  #dialogue .dopts button:hover { background:#2a3a68; }
+  /* STORYLINE: TIKVAH JOURNAL modal */
+  #journal { position:absolute; left:50%; top:8%; transform:translateX(-50%); width:min(560px,92vw); max-height:76vh;
+    display:none; z-index:40; background:linear-gradient(#fdf8e7,#f5eeda); border:2px solid #d4a940; border-radius:14px;
+    box-shadow:0 12px 40px rgba(0,0,0,.5); color:#3a2a12; flex-direction:column; }
+  #journal.open { display:flex; }
+  #journal .jhead { display:flex; justify-content:space-between; align-items:center; padding:10px 14px;
+    font-family:Georgia,serif; font-weight:bold; font-size:17px; color:#7a4b1f; border-bottom:1px solid #d4a940; }
+  #journal .jhead button { background:none; border:none; font-size:16px; cursor:pointer; color:#7a4b1f; }
+  #journal .jtabs { display:flex; gap:4px; padding:8px 12px 0; flex-wrap:wrap; }
+  #journal .jtabs button { font-family:Georgia,serif; font-size:12px; padding:6px 10px; border-radius:8px 8px 0 0;
+    border:1px solid #d4a940; border-bottom:none; background:#efe3c8; color:#7a4b1f; cursor:pointer; }
+  #journal .jtabs button.on { background:#fdf8e7; font-weight:bold; }
+  #journal .jbody { padding:12px 14px; overflow-y:auto; font-size:13.5px; line-height:1.6; }
+  #journal .jbody h4 { margin:8px 0 2px; font-family:Georgia,serif; color:#7a4b1f; }
+  #journal .jbody p { margin:2px 0 8px; }
+  #journal .jbody .locked { opacity:.45; font-style:italic; }
+  /* STORYLINE: the Song of Hope epilogue overlay */
+  #songhope { position:absolute; inset:0; display:none; z-index:45; background:rgba(20,16,8,.72);
+    align-items:center; justify-content:center; }
+  #songhope.open { display:flex; }
+  #songhope .card { width:min(520px,90vw); background:linear-gradient(#fdf8e7,#f5eeda); border:2px solid #d4a940;
+    border-radius:16px; padding:26px 28px; text-align:center; color:#3a2a12;
+    box-shadow:0 16px 60px rgba(0,0,0,.6), inset 0 0 0 1.5px rgba(212,169,64,.45); }
+  #songhope .sh-kicker { font-family:Georgia,serif; font-size:20px; font-weight:bold; color:#7a4b1f; margin-bottom:12px; }
+  #songhope .sh-line { font-size:14.5px; line-height:1.65; margin-bottom:12px; }
+  #songhope .sh-verse { font-family:Georgia,serif; font-style:italic; font-size:15px; line-height:1.7;
+    background:rgba(212,169,64,.12); border-radius:10px; padding:12px 14px; margin-bottom:12px; }
+  #songhope .sh-ref { font-style:normal; font-size:12.5px; color:#8a6a2a; margin-top:6px; }
+  #songhope .big { font-family:Georgia,serif; font-size:16px; padding:10px 34px; border-radius:12px;
+    border:1.5px solid #d4a940; background:#1a2340; color:#f5eeda; cursor:pointer; }
+  #journalBtn { background:rgba(26,35,64,.72); border:1px solid rgba(245,238,210,.35); border-radius:8px;
+    color:#f5eeda; font-size:16px; padding:5px 9px; cursor:pointer; }
   /* hannah's greeting: board's cream card + navy name tag */
   #hannah { background:linear-gradient(#fdf8e7, #f5eeda); border:1.5px solid #d4a940; }
   #hannah .who { display:inline-block; background:#1a2340; color:#f5eeda;
@@ -510,6 +547,7 @@
       </div>
     </div>
     <div id="hudHint">E = interact · 1 wave · 2 heart</div>
+    <button id="journalBtn" title="TIKVAH JOURNAL (J)">📓</button>
     <button id="muteBtn" title="Sound on/off">🔊</button>
   </div>
   <div id="toast"></div>
@@ -639,7 +677,13 @@
   <button id="qcBtn" title="Quick chat">💬</button>
   <div id="qcPanel"></div>
 
-  <div id="dialogue" class="warmcard"><div class="who"><canvas id="dPortrait" width="32" height="48"></canvas><div class="wtext"><span id="dName"></span> <span class="hearts" id="dHearts"></span></div></div><div class="line" id="dText"></div><div class="next">Press E to close</div></div>
+  <div id="dialogue" class="warmcard"><div class="who"><canvas id="dPortrait" width="32" height="48"></canvas><div class="wtext"><span id="dName"></span> <span class="hearts" id="dHearts"></span></div></div><div class="line" id="dText"></div><div id="dOptions" class="dopts"></div><div class="next">Press E to close</div></div>
+  <!-- STORYLINE: TIKVAH JOURNAL — the traveler's notebook. Tabs: People, Places,
+       Creatures, Scripture, Discoveries. Scripture holds only the 3 approved KJV
+       verses; Discoveries unlock as the Garden Gate story progresses. -->
+  <div id="journal" class="warmcard"><div class="jhead"><span>📓 TIKVAH JOURNAL</span><button id="jclose" title="Close">✕</button></div><div class="jtabs" id="jtabs"></div><div class="jbody" id="jbody"></div></div>
+  <!-- STORYLINE: the Song of Hope — epilogue moment after the gate is restored -->
+  <div id="songhope"><div class="card"><div class="sh-kicker">🎶 The Song of Hope</div><div class="sh-line">The Garden Gate stands restored, and light spills through the arch like morning. The village gathers — and for a moment, everyone simply sings.</div><div class="sh-verse">"For I know the thoughts that I think toward you, saith the LORD, thoughts of peace, and not of evil, to give you an expected end."<div class="sh-ref">— Jeremiah 29:11 (KJV)</div></div><div class="sh-line">This chapter is complete. The garden is awake, the neighbors are friends again — and the story continues.</div><button class="big" id="shclose">Amen 🙏</button></div></div>
 
   <div id="panel"><div class="card">
     <h3 id="pTitle"></h3>
@@ -860,6 +904,7 @@ let biteFlash = 0;
 let day = { n: 1, phase: 'morning', label: 'Morning', season: 'Spring', sermon: false, rhythm: { farm:false, fish:false, cook:false, greet:false, sermon:false } };
 let gardenBloomed = false, homeRug = 0;
 let restore = null;   // RESTORE THE LIGHT: synced town-restoration state (stage + world effects only)
+let story = null;      // STORYLINE: the Garden Gate demo story (acts + trials + key + gate)
 let sayFlash = null;       // {name, until} — dialogue bubble over NPC
 let npcChat = null;        // TOWN-LIFE: {a, b, until} — two villagers pausing to chat
 let lastPhaseSeen = '';    // TOWN-LIFE: phase-transition detector for the morning wake cue
@@ -938,6 +983,7 @@ function onMsg(m) {
       day = m.day; gardenBloomed = m.garden.bloomed; homeRug = m.home.rug;
       lastPhaseSeen = (m.day && m.day.phase) || '';
       restore = m.restore || null;
+      story = m.story || null;   // STORYLINE: Garden Gate demo story state
       document.getElementById('menu').style.display = 'none';
       document.getElementById('game').style.display = 'block';
       document.getElementById('hud').style.display = 'flex';
@@ -1007,6 +1053,11 @@ function onMsg(m) {
       // RESTORE THE LIGHT M4: the writing in the ruins earns its own panel —
       // the benches, the forgetting, and the one new Scripture of this build
       showDiscovery(m.text, m.ref); break;
+    // STORYLINE: the Garden Gate demo story
+    case 'story': story = m.story; updateStoryHud(); break;
+    case 'story-toast': toast(m.text); break;
+    case 'dispute': showDispute(m.npc, m.text, m.options); break;
+    case 'gate-restored': showSongOfHope(m.by); break;
     case 'harvest': {
       toast('🌾 ' + m.by + ' harvested a crop!'); chime();
       const hp = playerByName(m.by);
@@ -1067,6 +1118,7 @@ function onMsg(m) {
       day = m.day; gardenBloomed = m.garden.bloomed; homeRug = m.home.rug;
       lastPhaseSeen = (m.day && m.day.phase) || '';
       restore = m.restore || null;
+      story = m.story || null;   // STORYLINE: Garden Gate demo story state
       updateDayHud();
       document.getElementById('ending').style.display = 'none';
       document.getElementById('verse').style.display = 'none';
@@ -1396,6 +1448,7 @@ addEventListener('keydown', (e) => {
   }
   if (e.key === '1') send({t:'emote', id:'wave'});
   if (e.key === '2') send({t:'emote', id:'heart'});
+  if (e.key === 'j' || e.key === 'J') toggleJournal();   // STORYLINE: TIKVAH JOURNAL
   hideTutorial();
 });
 addEventListener('keyup', (e) => { keys[e.key.toLowerCase()] = false; });
@@ -1738,8 +1791,120 @@ function showDialogue(name, text, hearts, by) {
   const myName = me && me.name;
   if (hearts >= 3 && by && myName && by === myName) setTimeout(() => toast('💛 ' + name + ' considers you a true friend'), 600);
 }
-function closeDialogue() { document.getElementById('dialogue').style.display = 'none'; }
+function closeDialogue() { document.getElementById('dialogue').style.display = 'none'; document.getElementById('dOptions').style.display = 'none'; }
 document.getElementById('dialogue').addEventListener('click', closeDialogue);
+// STORYLINE: the dispute — Fable-style gentle choice inside the dialogue card.
+// Dismissing just waits; reconciling with both ends the quarrel visibly.
+function showDispute(npc, text, options) {
+  showDialogue(npc, text, 0, null);
+  const box = document.getElementById('dOptions');
+  box.innerHTML = '';
+  box.style.display = 'flex';
+  for (const o of options) {
+    const b = document.createElement('button');
+    b.textContent = o.label;
+    b.addEventListener('click', (e) => { e.stopPropagation(); send({ t: 'dispute-choice', npc, choice: o.id }); closeDialogue(); });
+    box.appendChild(b);
+  }
+}
+// STORYLINE: the Song of Hope — epilogue moment after the gate is restored.
+function showSongOfHope(by) {
+  document.getElementById('songhope').classList.add('open');
+  chime();
+}
+document.getElementById('shclose').addEventListener('click', () => {
+  document.getElementById('songhope').classList.remove('open');
+  send({ t: 'epilogue-done' });
+});
+// STORYLINE: TIKVAH JOURNAL — the traveler's notebook. Entries unlock as the
+// Garden Gate story progresses. Scripture holds only the 3 approved KJV verses.
+const JOURNAL_TABS = ['People', 'Places', 'Creatures', 'Scripture', 'Discoveries'];
+const VERSE_JER = 'For I know the thoughts that I think toward you, saith the LORD, thoughts of peace, and not of evil, to give you an expected end.';
+const VERSE_PSA = 'The LORD is my shepherd; I shall not want.';
+const VERSE_JHN = 'I am the light of the world: he that followeth me shall not walk in darkness, but shall have the light of life.';
+let journalTab = 'Discoveries';
+function journalEntries() {
+  const s = story || {};
+  const t = (s.trials || {});
+  const E = [];
+  const person = (n, d) => E.push({ tab: 'People', name: n, text: d });
+  const place = (n, d, unlocked = true) => E.push({ tab: 'Places', name: n, text: d, unlocked });
+  const creature = (n, d) => E.push({ tab: 'Creatures', name: n, text: d });
+  const disc = (n, d, unlocked = true) => E.push({ tab: 'Discoveries', name: n, text: d, unlocked });
+  person('Hannah', 'Keeps the plaza flowers and every newcomer. Her greeting is the village\'s front door.');
+  person('Elias', 'Market vendor with a loud stall and a louder laugh — when he and Miriam aren\'t quarreling.');
+  person('Miriam', 'Keeps the café. Believes a quiet room and a warm loaf can mend almost anything.');
+  person('Pastor Nathan', 'Preaches Scripture-only sermons every seventh day, morning to afternoon. Come as you are.');
+  place('Town Square', 'The heart of Tikvah — market, café, fountain, and neighbors.');
+  place('The Church', 'Cream stone, stained glass, open doors. Sermons every seventh day.');
+  place('The Market', 'Stalls and pennant lights. Elias\'s bread is imaginary; the welcome is real.');
+  place('The Garden of Hope', s.gateRepaired ? 'Awake and blooming — the gate stands restored, and the village breathes again.' : 'Quiet beds around the fountain, waiting. They say it was the village\'s gathering place once.');
+  place('The Ruins', 'Old stones north of the village. Stand on both glowing stones with a friend.');
+  creature('The Fox', 'A quick red fox roams the wilds. It likes being petted, and it remembers kindness.');
+  disc('Arrival', 'You came to Tikvah with empty hands and a full heart. The village rhythm is simple: farm, fish, cook, greet, pray — and the garden blooms as you live it.');
+  disc('The Garden Gate', 'A decaying arch at the plaza\'s north edge. It sealed when the garden dimmed — perhaps a well-lived day could wake it.', !!s.gateFound);
+  disc('Psalm 23:1 — Nurture', '"' + VERSE_PSA + '" — You nurtured the crops with steady care, and the trial of provision is complete.', !!t.crops);
+  disc('John 8:12 — Mend', '"' + VERSE_JHN + '" — You set the bridge planks straight, and the trial of light is complete.', !!t.bridge);
+  disc('Jeremiah 29:11 — Peace', '"' + VERSE_JER + '" — Elias and Miriam are friends again, and the trial of peace is complete.', !!t.dispute);
+  disc('The Restoration Key', 'Three virtues proven — provision, light, peace. The key is warm in your hand, like it was waiting.', !!s.key);
+  disc('The Gate Restored', 'Stone by stone, hands together, the arch stands whole. Light spills through like morning.', !!s.gateRepaired);
+  disc('The Song of Hope', 'The village gathered and sang. This chapter is complete — but the story continues.', !!s.epilogue);
+  return E;
+}
+function renderJournal() {
+  const tabs = document.getElementById('jtabs'), body = document.getElementById('jbody');
+  tabs.innerHTML = '';
+  for (const t of JOURNAL_TABS) {
+    const b = document.createElement('button');
+    b.textContent = t; if (t === journalTab) b.classList.add('on');
+    b.addEventListener('click', () => { journalTab = t; renderJournal(); });
+    tabs.appendChild(b);
+  }
+  body.innerHTML = '';
+  if (journalTab === 'Scripture') {
+    const verses = [['Jeremiah 29:11', VERSE_JER], ['Psalm 23:1', VERSE_PSA], ['John 8:12', VERSE_JHN]];
+    for (const [ref, text] of verses) {
+      const h = document.createElement('h4'); h.textContent = ref; body.appendChild(h);
+      const p = document.createElement('p'); p.textContent = '"' + text + '" (KJV)'; body.appendChild(p);
+    }
+    return;
+  }
+  for (const e of journalEntries().filter(e => e.tab === journalTab)) {
+    const h = document.createElement('h4'); h.textContent = e.unlocked === false ? e.name + ' — ?' : e.name; body.appendChild(h);
+    const p = document.createElement('p');
+    p.textContent = e.unlocked === false ? 'Not yet discovered…' : e.text;
+    if (e.unlocked === false) p.classList.add('locked');
+    body.appendChild(p);
+  }
+}
+function toggleJournal(force) {
+  const j = document.getElementById('journal');
+  const open = force !== undefined ? force : !j.classList.contains('open');
+  j.classList.toggle('open', open);
+  if (open) renderJournal();
+}
+document.getElementById('jclose').addEventListener('click', () => toggleJournal(false));
+document.getElementById('journalBtn').addEventListener('click', () => toggleJournal());
+// STORYLINE: HUD key indicator — a small key appears once the Restoration Key is earned
+function updateStoryHud() {
+  let el = document.getElementById('storyKey');
+  if (story && story.key && !el) {
+    const r = document.getElementById('rhythm');
+    el = document.createElement('span');
+    el.id = 'storyKey'; el.title = 'The Restoration Key';
+    el.textContent = '🗝️';
+    el.style.marginLeft = '6px';
+    r.appendChild(el);
+  }
+  if (story && story.gateRepaired && !document.getElementById('storyGate')) {
+    const r = document.getElementById('rhythm');
+    const g = document.createElement('span');
+    g.id = 'storyGate'; g.title = 'The Garden Gate stands restored';
+    g.textContent = '🌟';
+    g.style.marginLeft = '4px';
+    r.appendChild(g);
+  }
+}
 // quick fade for entering / leaving interiors
 function roomFade() {
   const f = document.getElementById('fade');
@@ -6155,6 +6320,47 @@ function drawWorld(g, now) {
     for (const s of SUNBERRY_SPOTS) if (s[0]===tx && s[1]===ty) g.drawImage(sunberryTile, x, y);
     // RESTORE THE LIGHT M4: fallen stones bar the ruin mouth (or rest aside)
     for (const gt of GATE_TILES) if (gt.tx===tx && gt.ty===ty) g.drawImage(ruinGate ? gateOpenTile : gateShutTile, x, y);
+    // STORYLINE: the Garden Gate — decaying arch at the plaza's north edge (19,12).
+    // Walkable; its state is the story made visible. Repaired: gold-trimmed, flowering.
+    if (tx===19 && ty===12 && story) {
+      if (story.gateRepaired) {
+        g.fillStyle = '#8a6f4d'; g.fillRect(x+2, y+2, 6, 28); g.fillRect(x+24, y+2, 6, 28);   // posts
+        g.fillStyle = '#a8895c'; g.fillRect(x+2, y+2, 28, 7);                                   // lintel
+        g.fillStyle = '#D5AD54'; g.fillRect(x+2, y+7, 28, 2); g.fillRect(x+2, y+2, 2, 28); g.fillRect(x+28, y+2, 2, 28); // gold trim
+        g.fillStyle = '#e88aa8'; g.fillRect(x+4, y+4, 3, 3); g.fillRect(x+25, y+10, 3, 3); g.fillRect(x+10, y+5, 3, 3); // flowers
+        g.fillStyle = '#7fc86a'; g.fillRect(x+7, y+6, 2, 4); g.fillRect(x+22, y+12, 2, 4);
+        drawGlow(g, x+16, y+14, 30, 'rgba(255,230,150,A)', now, 7);
+      } else {
+        g.fillStyle = '#6e6250'; g.fillRect(x+3, y+8, 5, 22); g.fillRect(x+24, y+8, 5, 22);   // leaning posts
+        g.fillStyle = '#5d5240'; g.fillRect(x+3, y+4, 14, 5);                                   // half-fallen lintel
+        g.fillStyle = '#4e6b3a';                                                                // vines
+        for (let v=0; v<6; v++) g.fillRect(x+4+((tx*7+v*5)%24), y+6+((v*7)%18), 2, 3);
+        if (story.gateFound && !story.key) {                                                    // faint shimmer: it notices you
+          g.fillStyle = `rgba(255,240,180,${0.10+0.08*Math.sin(now/600)})`;
+          g.fillRect(x+8, y+10, 16, 14);
+        }
+      }
+    }
+    // STORYLINE Act 2 — the bridge mend: damaged planks mid-bridge until mended.
+    if (tx===20 && ty===22 && story && story.gateFound && !story.trials.bridge) {
+      g.fillStyle = '#5d4a30'; g.fillRect(x+4, y+12, 24, 3); g.fillRect(x+6, y+20, 20, 3);     // cracked boards
+      g.fillStyle = '#3a2f1e'; g.fillRect(x+12, y+12, 3, 3); g.fillRect(x+20, y+20, 3, 3);      // gaps
+      g.fillStyle = '#8a7a5a'; g.fillRect(x+4, y+12, 24, 1);                                    // splinters
+    }
+    // STORYLINE Act 3 — the prayer circle: stones and flowers ring the fountain
+    // once the gate is restored. A shared space, made by many hands.
+    if (story && story.gateRepaired && Math.abs(tx-20)+Math.abs(ty-15)===3 && !(tx===20&&ty===15)) {
+      const h = hash2(tx*3+1, ty*5+2);
+      if (h < 0.6) { g.fillStyle = '#9a8f7a'; g.fillRect(x+12, y+22, 8, 6); g.fillStyle = '#c9bfa8'; g.fillRect(x+12, y+22, 8, 2); }
+      else { g.fillStyle = '#e88aa8'; g.fillRect(x+14, y+20, 4, 4); g.fillStyle = '#fff7d6'; g.fillRect(x+15, y+21, 2, 2); g.fillStyle = '#7fc86a'; g.fillRect(x+14, y+25, 4, 2); }
+    }
+    // STORYLINE: the church program plaque by the church door — after the
+    // epilogue it carries the Song of Hope (Jeremiah 29:11).
+    if (tx===29 && ty===15 && story && story.epilogue) {
+      g.fillStyle = '#F5EBD5'; g.fillRect(x+6, y+8, 20, 16);
+      g.strokeStyle = '#D5AD54'; g.lineWidth = 1; g.strokeRect(x+6.5, y+8.5, 19, 15);
+      g.fillStyle = '#7a4b1f'; g.fillRect(x+10, y+12, 12, 2); g.fillRect(x+10, y+16, 8, 2);
+    }
     for (const s of STONES) if (s.tx===tx && s.ty===ty) {
       // VISUAL-PASS-RUINS: state-addressable pad — 'dormant' today, 'lit'
       // while the ruin stands open; trigger tiles, prompts, verbs unchanged
@@ -6680,6 +6886,8 @@ function loop(now) {
     const idleSway = Math.sin(now/1400 + p.x*0.02)*0.8;
     const bob = p.moving ? Math.abs(Math.sin(stridePhase))*2.2 : idleSway;
     ctx.drawImage(spr, Math.round(p.x-8+strideX), Math.round(p.y-22+bob));
+    // STORYLINE: the prayer blessing — a soft light halo while blessed
+    if (story && story.blessing) drawGlow(ctx, p.x, p.y-12, 26, 'rgba(255,236,160,A)', now, 3);
     drawNameTag(ctx, p.x, p.y, p.name);
     if (p.fishing) {
       ctx.font = '14px monospace'; ctx.textAlign = 'center';
