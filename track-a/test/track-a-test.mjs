@@ -131,12 +131,12 @@ const artChecks = [
   ['water painter', 'const waterTile'], ['sand painter', 'const sandTile'],
   ['bridge painter', 'const bridgeTile'],
   ['soil painter', 'const soilTile'], ['crop painters', 'const cropTiles'],
-  ['stone painter', 'const stoneTile'], ['garden painter', 'const gardenTile'],
-  ['bloom painter', 'const bloomTile'], ['fence painter', 'const fenceTile'],
-  ['tree painter', 'function treeTile(v)'],
-  ['tree alternates', 'const treeA = treeTile(0), treeB = treeTile(1)'],
-  ['cherry blossom variant', 'treeBlossom = treeTile(2)'],
-  ['tall pine variant', 'treeTallPine = treeTile(3)'],
+  ['stone painter', 'const stoneTile'], ['garden painter', 'gardenTile  = gardenBed('],
+  ['bloom painter', 'bloomTile   = gardenBed('], ['fence painter', 'const fenceTile'],
+  ['tree painter', 'function treeTile(v, season)'],
+  ['tree alternates', 'treeA = treeTile(0, seasonKey), treeB = treeTile(1, seasonKey)'],
+  ['cherry blossom variant', 'treeBlossom = treeTile(2, seasonKey)'],
+  ['tall pine variant', 'treeTallPine = treeTile(3, seasonKey)'],
   ['batch1 marker', 'BATCH1: board-palette terrain art'],
 ];
 for (const [label, needle] of artChecks) ok('art contains ' + label, pageHtml.includes(needle));
@@ -380,7 +380,7 @@ const b7Checks = [
   ['church exterior wall', 'const churchWallEx'],
   ['church timber trim', '// timber trim band'],
   ['church flowers layout', 'const CHURCH_FLOWERS = '],
-  ['church flower beds', 'const churchBedA = flowerBedTile(3'],
+  ['church flower beds', 'churchBedA = flowerBedTile(3, seasonKey)'],
   ['river ripple overlays', 'const rippleTileA'],
   ['river foam edges', 'const shoreFoamN'],
   ['river bank dressing', 'const RIVER_BANK = new Map()'],
@@ -470,8 +470,8 @@ console.log('visual-pass forest+ruins (static page):');
 const frChecks = [
   ['forest marker', 'VISUAL-PASS-FOREST'],
   ['ruins marker', 'VISUAL-PASS-RUINS'],
-  ['ancient tree variant', 'treeAncient = treeTile(4)'],
-  ['birch tree variant', 'treeBirch = treeTile(5)'],
+  ['ancient tree variant', 'treeAncient = treeTile(4, seasonKey)'],
+  ['birch tree variant', 'treeBirch = treeTile(5, seasonKey)'],
   ['ancient canopy light shafts', 'light filtering through'],
   ['forest mix deterministic', 'const fh = hash2(tx, ty)'],
   ['forest light painter A', 'const forestLightA'],
@@ -514,9 +514,9 @@ const gChecks = [
   ['dormant state', "'dormant' (quiet, waiting)"],
   ['waking state', "'waking' (first green"],
   ['blooming state', "'blooming' (the extraordinary full"],
-  ['dormant const kept', 'const gardenTile  = gardenBed('],
-  ['bloom const kept', 'const bloomTile   = gardenBed('],
-  ['sway frames', 'const bloomTileS  = gardenBed('],
+  ['dormant const kept', 'gardenTile  = gardenBed('],
+  ['bloom const kept', 'bloomTile   = gardenBed('],
+  ['sway frames', 'bloomTileS  = gardenBed('],
   ['tall spire blooms', 'lupine/delphinium spires'],
   ['layered bloom rows', 'front row: low blossoms'],
   ['bloom sway clock', 'now/650'],
@@ -949,7 +949,7 @@ try {
   ok('sermon attendance counts toward the day rhythm', await w1.waitFor(() => w1.lastOf('day')?.rhythm?.sermon === true, 3000));
   ok('sermon-peace fires once per sermon', await sleep(600).then(() => w1.msgs.filter(m => m.t === 'sermon-peace').length === 1),
      'count=' + w1.msgs.filter(m => m.t === 'sermon-peace').length);
-  ok('page carries the sermon lines', pageHtml.includes('SERMON_LINES') && pageHtml.includes('Pastor Nathan: '));
+  ok('page carries the sermon lines', pageHtml.includes('SERMON_LINES') && pageHtml.includes('Pastor Nathan preaches'));
   w1.close();
 
   // ---------- 7. SIGNATURE: ruin opens when both stand on stones ----------

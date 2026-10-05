@@ -219,3 +219,47 @@ Code-painted canvas gets MUCH closer (denser, painterly, cohesive) but will neve
 ### Deliberately left out
 - rejoin-position-repro "stone B clearing" FAIL: pre-existing, not touched (would require changing the rejoin validation logic — out of scope for this program)
 - 1:1 pixel-match with the hand-painted reference: impossible with code-painted canvas; we chased feel, density, and cohesion instead
+
+## 2026-10-05 ~07:30 EDT — DESIGN-BOARD PROGRAM (Ariel: "This is how it should look.")
+
+### Phase 1 — TITLE (commit b4f90af)
+- Logo: cream serif (was gold gradient), warm brown shadows; verse moved to corner parchment note; quieter footer.
+
+### Phase 2 — CHARACTER CREATOR (commit b4f90af)
+- h2 inside the parchment panel (warm brown, no hard shadow); portrait enlarged to 140×210; backlink restyled brown. Hair enum unchanged.
+
+### Phase 3 — HOME INTERIOR (commit b4f90af)
+- Gold trim on bed headboard, bookcase crown, wardrobe crown. Sleep stays removed (her directive).
+
+### Phase 4 — DIALOGUE (commit b4f90af)
+- Georgia serif body; portrait backdrop navy gradient (was mint); "Press E to close" gold small-caps; deduped hearts CSS.
+
+### Phase 5 — CHURCH (commit b4f90af)
+- Sermon as parchment panel (gold "Pastor Nathan preaches" heading, 7s); gold pew piping; gold preaching glow behind Nathan's nameplate. No candle-lighting (her directive).
+
+### Phase 6 — FISHING VERBS (commit e5dba18)
+- Board verbs: Cast / Waiting… / Reel In! (was Fish / Catch!); bite banner storybook navy/gold; bite toast text updated.
+
+### Phase 7 — SEASONS (commit e5dba18) — the headline feature
+- Server: seasonOf(dayN) = 7 days/season (Spring/Summer/Autumn/Winter), season in dayPublic — zero new sync state.
+- Client: seasonKey + SEASON_CANOPY + SEASON_TINT + SEASON_MOTES; all 12 bloom hardcodes → SEASON_BLOOMS[seasonKey]; pre-rendered tiles const→let with rebuildSeasonTiles() on season turn (painters deterministic via srand — layouts identical, only colors change); treeTile(v, season) seasonal canopy (cherry keeps blossom structure, seasonal blossom colors; pine gets winter snow dusting).
+- HUD: "Day N · Season · Phase"; season-change toast with seasonal emoji.
+- Particles: petals spring / golden pollen summer / leaves autumn / snow winter (snow falls downward).
+- Gameplay: gentle growth modifier (Spring 0.8x, Summer 1.0x, Autumn 1.1x, Winter 1.25x) — test-safe (waitFor polling).
+- Morning mist on spring/autumn dawns (burns off over ~60s); winter nights get crisper stars.
+
+### Phase 8 — DAY/NIGHT DEEPENING (commit e5dba18)
+- Winter star boost (+24 stars), dawn mist, seasonal tint overlays. 8-min clock and phase fractions untouched.
+
+### Phase 9 — UI AUDIT (commit e5dba18)
+- Emote/quick-chat buttons: navy/gold (were plain dark). E button already board-gold. Journal has no client UI (concept only).
+
+### Test results
+- track-a-test.mjs: 13 "art contains" string checks updated for intentional const→let / treeTile(v,season) changes; 1 sermon-lines check updated for new heading. Final re-run (solo, no concurrent load): **966 passed, 0 failed**.
+- qa-systems.mjs: 18/18 PASS. fox-check.mjs: 5/5.
+- Note: an intermediate run showed 15 functional failures (fishing/cooking/greeting) — confirmed flaky: they passed in the run before and the run after; the failing run shared the machine with two concurrent test processes.
+
+### Deliberately left out
+- Seasonal crop types: no crop-type system exists; added growth-speed texture instead (gentle, balance-safe).
+- Bare winter trees: cherry keeps blossom structure year-round with seasonal colors (simpler, still seasonal).
+- Board's "Sleep" (home) and "Light Candle" (church): excluded per her binding directives.

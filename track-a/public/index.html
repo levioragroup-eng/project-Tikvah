@@ -1080,7 +1080,8 @@ function updateDayHud() {
   if (sk !== seasonKey) {
     seasonKey = sk;
     rebuildSeasonTiles();
-    toast('🌸 A new season has come to Tikvah — ' + day.season + ' arrives.');
+    const seasonEmoji = { spring:'🌸', summer:'☀️', autumn:'🍂', winter:'❄️' }[seasonKey] || '🌸';
+    toast(seasonEmoji + ' A new season has come to Tikvah — ' + day.season + ' arrives.');
   }
   document.getElementById('dayInfo').textContent =
     'Day ' + day.n + ' · ' + day.season + ' · ' + (day.label || day.phase);
