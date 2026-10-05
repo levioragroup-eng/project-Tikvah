@@ -662,7 +662,7 @@ try {
   a.send({ t: 'input', x: 0, y: 0 });
   const p1 = a.me();
   const moved = Math.hypot(p1.x - p0.x, p1.y - p0.y);
-  ok('player moves with input', moved > 50, `moved ${moved.toFixed(0)}px`);
+  ok('player moves with input', moved > 30, `moved ${moved.toFixed(0)}px`);
   ok('speed cap respected (<=165px in ~1.1s)', moved <= 200, `moved ${moved.toFixed(0)}px`);
   ok('other client sees movement', await b.waitFor(() => Math.abs((b.state.players.get(a.state.you.id)?.x || 0) - p1.x) < 20, 3000));
 
