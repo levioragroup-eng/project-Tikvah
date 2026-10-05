@@ -1243,7 +1243,7 @@ const CH_PEW_SITS = [ { tx: 19, ty: 21 }, { tx: 21, ty: 21 }, { tx: 19, ty: 23 }
 const HM_EXIT = { tx: 32, ty: 24 }, HM_HEARTH = { tx: 35, ty: 18 },
       HM_WARD = { tx: 32, ty: 21 }, HM_RUG = { tx: 29, ty: 21 }, HM_SIT = { tx: 35, ty: 21 },
       HM_NOOK = { tx: 32, ty: 18 };
-const DOCK_T = { tx: 17, ty: 20 };
+const DOCKS_T = [{ tx: 17, ty: 20 }, { tx: 10, ty: 25 }, { tx: 34, ty: 25 }];  // WORLD-EXPANSION: south-bank docks
 function tDist(ax, ay, tx, ty) { return Math.hypot(ax - (tx*TILE+16), ay - (ty*TILE+16)); }
 function promptFor(me) {
   if (me.inside && me.place === 'church') {
@@ -1281,7 +1281,7 @@ function promptFor(me) {
   let bn = null; bd = IR;
   for (const n of npcs.values()) { const d = Math.hypot(me.x - n.x, me.y - n.y); if (d < bd) { bd = d; bn = n; } }
   if (bn) return 'Talk to ' + bn.name;
-  if (tDist(me.x, me.y, DOCK_T.tx, DOCK_T.ty) <= IR)
+  if (DOCKS_T.some(d => tDist(me.x, me.y, d.tx, d.ty) <= IR))
     return me.fishing ? (me.fishing === 'bite' ? 'Catch!' : 'Waiting…') : 'Fish';
   return null;
 }
@@ -1749,7 +1749,9 @@ function hideTutorial() { document.getElementById('tutorial').style.display = 'n
 setTimeout(hideTutorial, 20000);
 
 // ================= Pixel art =================
-const TILE = 32, WW = 40, WH = 28;
+const TILE = 32, WW = 56, WH = 40;   // WORLD-EXPANSION (2026-10-05): Harvest Town scale —
+// was 40x28; eastern wilds (x40-55) + southern riverside (y28-39) added.
+// Town core (x0-39, y0-27) keeps identical coordinates.
 const cv = document.getElementById('game');
 const ctx = cv.getContext('2d');
 ctx.imageSmoothingEnabled = false;
@@ -4670,6 +4672,23 @@ const pillarTile = px(TILE,TILE,(g)=>{ g.clearRect(0,0,TILE,TILE);
   g.fillStyle = '#ff9ec4'; g.fillRect(8,27,2,2);                    // flowers in cracks
   g.fillStyle = '#fff0f6'; g.fillRect(8,27,1,1);
 });
+// WORLD-EXPANSION (2026-10-05): sunberry bush — leafy mound with sun-warmed
+// red-gold berries (for the Sunberry Tart story). Original code-painted art.
+const sunberryTile = px(TILE,TILE,(g)=>{ g.clearRect(0,0,TILE,TILE);
+  const R = srand(0x5e87);
+  g.fillStyle = '#3f7a34';                                          // bush mass
+  g.fillRect(6,14,20,12); g.fillRect(8,10,16,6); g.fillRect(11,7,10,4);
+  g.fillStyle = '#2e5c26';
+  g.fillRect(6,20,20,6); g.fillRect(22,12,4,8);                     // under-shade
+  g.fillStyle = '#5da24a';                                          // leaf light
+  for (let i=0;i<10;i++) g.fillRect(8+R(14), 9+R(8), 2, 1);
+  g.fillStyle = '#6cbf5a'; g.fillRect(11,8,3,2); g.fillRect(18,10,3,1);
+  g.fillStyle = '#c93a3a';                                          // sunberries
+  for (let i=0;i<7;i++) { const bx=8+R(15), by=12+R(10); g.fillRect(bx,by,2,2); }
+  g.fillStyle = '#ff7a5a';
+  for (let i=0;i<4;i++) { const bx=9+R(13), by=13+R(8); g.fillRect(bx,by,1,1); } // sunlit tops
+  g.fillStyle = '#ffd76e'; g.fillRect(14,15,1,1); g.fillRect(20,18,1,1);        // gold glints
+});
 // RESTORE THE LIGHT M4: the fallen stones at the ruin mouth — a tumbled pile
 // while the way is shut; rolled aside, mossy and flat, once it opens.
 const GATE_TILES = [ {tx:33,ty:4}, {tx:34,ty:3}, {tx:33,ty:5}, {tx:33,ty:6}, {tx:34,ty:6} ];
@@ -5105,7 +5124,8 @@ const foxFrames = {
 const FARM_RECT = { x0:5, y0:14, x1:11, y1:18 };
 const CHURCH = {x0:28, y0:10, x1:32, y1:14, door:{tx:30,ty:15}};
 const HOME = {x0:7, y0:9, x1:10, y1:11, door:{tx:8,ty:12}};
-const CAFE = {x0:23, y0:13, x1:25, y1:15, counter:{tx:24,ty:16}};
+const CAFE = {x0:14, y0:13, x1:16, y1:15, counter:{tx:15,ty:16}};  // WORLD-EXPANSION/LAYOUT (2026-10-05):
+// cafe moves west of the plaza to match the reference board (was x23-25 east of plaza).
 const FOUNTAIN = {tx:20, ty:15};
 const STONES = [{tx:6,ty:5},{tx:34,ty:5}];
 const LAMPS = [{tx:17,ty:12},{tx:22,ty:12},{tx:19,ty:17},{tx:27,ty:14},{tx:13,ty:16},{tx:20,ty:19}];
@@ -5123,9 +5143,22 @@ function lampLit(idx) {
 const STALLS = [{tx:14,ty:10,s:stallA},{tx:16,ty:10,s:stallB},{tx:18,ty:10,s:stallC}];
 const WATERFALLS = [{tx:3,ty:0},{tx:36,ty:0}];   // 1 wide x 2 tall
 const RUIN_ARCH = {tx:31, ty:3};                  // 2 wide x 2 tall
+// WORLD-EXPANSION (2026-10-05): Deep Ruins — decorative second arch (no co-op
+// logic; the real arch stays at 31,3) + broken pillar stubs. All walkable decor.
+const RUIN_ARCH2 = {tx:50, ty:4};
+const DEEP_PILLARS = [[49,4],[53,4],[47,6],[52,7],[49,8]];
+// WORLD-EXPANSION: Sunberry Meadow bushes (berry spots for the Sunberry Tart story)
+const SUNBERRY_SPOTS = [[26,34],[28,36],[33,31],[36,34],[25,31],[38,36]];
 // BATCH7: landmark set-pieces — pink-blossom clusters along the lanes and plaza
-const BLOSSOM_SPOTS = [[15,17],[23,7],[12,7],[25,11],[21,7],[24,17],[14,19],[25,19],[9,6],[33,17]];
-function isBlossomSpot(tx,ty){ for (const s of BLOSSOM_SPOTS) if (s[0]===tx&&s[1]===ty) return true; return false; }
+const BLOSSOM_SPOTS = [[18,19],[23,7],[12,7],[25,11],[21,7],[24,17],[14,19],[25,19],[9,6],[33,17]];
+// (15,17) moved to (18,19): the old spot is now the cafe entrance footpath.
+function isBlossomSpot(tx,ty){
+  for (const s of BLOSSOM_SPOTS) if (s[0]===tx&&s[1]===ty) return true;
+  // WORLD-EXPANSION: Old Orchard — cherry trees in planted rows (tx 42/45/48/51/54,
+  // ty 31/34/37; the meadow lane ty=32 and orchard connector tx=44 fall between rows)
+  if (tx>=42 && tx<=54 && ty>=30 && ty<=38 && tx%3===0 && ty%3===1) return true;
+  return false;
+}
 const FLOWERS = [[14,12],[16,17],[23,11],[28,15],[12,20],[7,15],[33,8],[3,25],[15,5],[29,20],
   // VISUAL-PASS-TOWN: extra meadow patches on grass verges near the plaza (walkable, never on paths)
   [15,13],[15,16],[17,19],[22,19],[26,14],[26,16]];
@@ -5138,7 +5171,7 @@ const CHURCH_FLOWERS = [[29,15,1],[31,15,2],[28,16,1],[32,16,2],[33,16,1],
 // collision constants untouched; fountain tile itself stays the solid anchor)
 const PLAZA_BEDS = [[17,13,bedA],[22,13,bedB],[17,17,bedC],[22,17,bedA]]; // flower beds, plaza corners
 const PLAZA_BENCHES = [[19,15],[21,15]];   // wooden benches flanking the fountain
-const PLANTERS = [[16,14],[16,16]];        // terracotta planters, west grass verge
+const PLANTERS = [[12,14],[12,16]];        // terracotta planters, west lane verge (moved for cafe)
 const SHRUBS = [[26,13],[26,15],[12,19]];  // ornamental shrubs on grass
 const ROCKS = [[24,19],[15,19]];           // garden rock clusters on grass
 // VISUAL-PASS-FARMHOME: farm dressing layout (pure decor — all tiles stay
@@ -5156,9 +5189,13 @@ const HOME_GARDEN_BEDMAP = {};
 for (const [bx,by] of HOME_GARDEN_BEDS) HOME_GARDEN_BEDMAP[bx+','+by] = (bx+by)%2 ? 0 : 1;
 const ZONE_LABELS = [
   {tx:8, ty:10, text:'Your House'}, {tx:8, ty:19, text:'Farms'},
-  {tx:16, ty:9, text:'Market'}, {tx:24, ty:12, text:'Café'},
+  {tx:16, ty:9, text:'Market'}, {tx:15, ty:12, text:'Café'},
   {tx:30, ty:9, text:'Church'}, {tx:3, ty:4, text:'Forest'},
   {tx:34, ty:3, text:'Ruins'}, {tx:10, ty:23, text:'River'},
+  // WORLD-EXPANSION (2026-10-05): new districts
+  {tx:48, ty:4, text:'Deep Ruins'}, {tx:48, ty:11, text:'Whispering Forest'},
+  {tx:12, ty:30, text:'Riverside Meadow'}, {tx:31, ty:31, text:'Sunberry Meadow'},
+  {tx:48, ty:35, text:'Old Orchard'},
 ];
 // VISUAL-PASS-TOWN: stone medallion ring around the fountain (4 overlay tiles)
 const PLAZA_MEDALLION = {};
@@ -5304,6 +5341,17 @@ function baseTile(tx, ty) {
   if (tx === 27 && ty >= 12 && ty <= 18) return 'path'; // east lane
   if (tx === 33 && ty >= 6 && ty <= 12) return 'path';  // ruins lane
   if (ty === 8 && tx >= 19 && tx <= 33) return 'path';   // upper lane
+  // WORLD-EXPANSION (2026-10-05): eastern wilds + southern riverside
+  if (tx === 48 && ty >= 6 && ty <= 16) return 'path';  // ruins trail (east path to Deep Ruins)
+  if (ty === 16 && tx >= 28 && tx <= 46) return 'path'; // church to the wilds
+  if (tx >= 19 && tx <= 21 && ty >= 26 && ty <= 28) return 'path'; // bridge landing to riverside
+  if (ty === 28 && tx >= 6 && tx <= 50) return 'path';  // riverside walk
+  if (tx === 12 && ty >= 28 && ty <= 32) return 'path'; // to Riverside Meadow
+  if (tx === 30 && ty >= 28 && ty <= 32) return 'path'; // to Sunberry Meadow
+  if (tx === 44 && ty >= 28 && ty <= 32) return 'path'; // to Old Orchard
+  if (ty === 32 && tx >= 10 && tx <= 46) return 'path'; // meadow lane
+  if (tx >= 31 && tx <= 32 && ty >= 34 && ty <= 35) return 'water'; // meadow pond
+  if (tx >= 30 && tx <= 33 && ty >= 33 && ty <= 36) return 'sand';  // pond shore
   return 'grass';
 }
 function isTree(tx, ty) {
@@ -5315,11 +5363,27 @@ function isTree(tx, ty) {
   if (isBlossomSpot(tx, ty)) return true;
   // dense pine forest bands (board edges)
   if (tx >= 0 && tx <= 4 && ty >= 0 && ty <= 24) return (tx*13 + ty*7) % 4 !== 3;
-  if (tx >= 35 && tx <= 39 && ty >= 0 && ty <= 20) return (tx*11 + ty*5) % 5 !== 4;
+  if (tx >= 35 && tx <= 39 && ty >= 0 && ty <= 20) {
+    if (ty === 16) return false;   // WORLD-EXPANSION: the east path runs through
+    return (tx*11 + ty*5) % 5 !== 4;
+  }
   // BATCH7: north forest band + groves (dense board forest, not scattered singles)
   if (ty >= 0 && ty <= 2 && tx >= 5 && tx <= 34 && (tx*5 + ty*11) % 5 !== 4) return true;
   if (tx >= 8 && tx <= 11 && ty >= 2 && ty <= 4 && (tx + ty) % 3 !== 2) return true;
   if (tx >= 24 && tx <= 27 && ty >= 2 && ty <= 4 && (tx*2 + ty) % 3 !== 0) return true;
+  // WORLD-EXPANSION: Whispering Forest (eastern wilds) — dense with clearings
+  if (tx >= 42 && tx <= 55 && ty >= 8 && ty <= 22) {
+    if (ty === 16 && tx <= 46) return false;             // the east path runs through
+    if (tx === 48) return false;                         // ruins trail
+    if (tx >= 44 && tx <= 46 && ty >= 15 && ty <= 17) return false; // path-end clearing
+    return (tx*13 + ty*7) % 4 !== 3;
+  }
+  // WORLD-EXPANSION: Deep Ruins — sparse ancient trees among the stones
+  if (tx >= 44 && tx <= 55 && ty >= 2 && ty <= 8) {
+    if (tx === 48) return false;                         // ruins trail
+    if (tx >= 50 && tx <= 51 && ty >= 4 && ty <= 5) return false; // decorative arch
+    return (tx*7 + ty*13) % 5 === 0;
+  }
   return false;
 }
 function isFence(tx, ty) {
@@ -5590,8 +5654,8 @@ function drawWorld(g, now) {
     if (tx>=CAFE.x0 && tx<=CAFE.x1 && ty>=CAFE.y0-1 && ty<=CAFE.y1) {
       if (ty===CAFE.y0-1) {
         g.drawImage(cafeRoof, x, y);
-        if (tx===23) g.drawImage(houseDormerB, x, y);        // narrower dormer
-        if (tx===24) g.drawImage(cafeSignboard, x, y);       // painted Café signboard
+        if (tx===CAFE.x0) g.drawImage(houseDormerB, x, y);        // narrower dormer
+        if (tx===CAFE.x0+1) g.drawImage(cafeSignboard, x, y);   // painted Café signboard
         if (tx===CAFE.x1) g.drawImage(houseChimneyB, x, y);  // stone stack, east end
       }
       else {
@@ -5610,10 +5674,10 @@ function drawWorld(g, now) {
       if (!cafeOpen) g.drawImage(stallShutterTile, x, y);
       g.drawImage(cafeOpen ? signOpenTile : signShutTile, x+3, y+1);
     }
-    if ((tx===23||tx===25) && ty===17) {
+    if ((tx===CAFE.x0||tx===CAFE.x1) && ty===CAFE.y1+2) {
       g.drawImage(tableTile, x, y);
       // FOOD-ART (2026-10-03): table settings — plates, mugs, bread (variant per table)
-      const tv = tx===23 ? 0 : 1;
+      const tv = tx===CAFE.x0 ? 0 : 1;
       g.drawImage(cafeTableFoodTiles[tv], x, y);
       const cafeOpen = !day.shops || day.shops.cafe !== 'closed';
       if (cafeOpen) { paintSteam(g, x+(tv?10:26), y+12, now); paintSteam(g, x+(tv?27:13), y+14, now); }
@@ -5674,8 +5738,8 @@ function drawWorld(g, now) {
       // VISUAL-PASS-3: larger day halo in lightSoft
       if (lit && !night) drawGlow(g, x+16, y+2, 26, 'rgba(247,217,130,A)', now, l.tx*3+l.ty, 0.2);
     } }
-    // dock
-    if (tx===17 && ty===20) g.drawImage(dockTile, x, y);
+    // docks (WORLD-EXPANSION: north bank + two south-bank docks)
+    for (const d of DOCKS_T) if (tx===d.tx && ty===d.ty) g.drawImage(dockTile, x, y);
     // flowers
     for (const fl of FLOWERS) if (fl[0]===tx && fl[1]===ty) g.drawImage(flowerTile, x, y);
     // VISUAL-PASS-TOWN: plaza dressing — beds, benches, planters, shrubs, rocks
@@ -5690,6 +5754,10 @@ function drawWorld(g, now) {
     for (const s of ROCKS) if (s[0]===tx && s[1]===ty) g.drawImage(rockTile, x, y);
     // ruin pillars flanking the arch (waterfalls + arch draw after the tile loop)
     if ((tx===30 && ty===4) || (tx===33 && ty===4)) g.drawImage(pillarTile, x, y);
+    // WORLD-EXPANSION: Deep Ruins decor — broken pillar stubs (walkable)
+    for (const p of DEEP_PILLARS) if (p[0]===tx && p[1]===ty) g.drawImage(pillarTile, x, y);
+    // WORLD-EXPANSION: sunberry bushes in Sunberry Meadow (walkable decor)
+    for (const s of SUNBERRY_SPOTS) if (s[0]===tx && s[1]===ty) g.drawImage(sunberryTile, x, y);
     // RESTORE THE LIGHT M4: fallen stones bar the ruin mouth (or rest aside)
     for (const gt of GATE_TILES) if (gt.tx===tx && gt.ty===ty) g.drawImage(ruinGate ? gateOpenTile : gateShutTile, x, y);
     for (const s of STONES) if (s.tx===tx && s.ty===ty) {
@@ -5746,6 +5814,8 @@ function drawWorld(g, now) {
     // VISUAL-PASS-RUINS: the arch's dark opening breathes a soft mysterious
     // light — cool and quiet, never neon; stronger after dusk
     drawGlow(g, RUIN_ARCH.tx*TILE+32, RUIN_ARCH.ty*TILE+32, 30, 'rgba(150,200,255,A)', now, 21, night ? 0.5 : 0.18);
+    // WORLD-EXPANSION: decorative second arch in the Deep Ruins (no glow, no co-op logic)
+    g.drawImage(ruinArch, RUIN_ARCH2.tx*TILE, RUIN_ARCH2.ty*TILE);
     // VISUAL-PASS-FOREST: pollen by day, fireflies by night over the forest
     drawForestPollen(g, now, night);
     // VISUAL-PASS-TITLE: two butterflies drifting over the forest by day —

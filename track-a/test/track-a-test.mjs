@@ -807,7 +807,7 @@ try {
   ok('B crop grows', await b.waitFor(() => b.state.farm[2]?.stage === 'ready', 8000));
   b.send({ t: 'interact' }); // harvest -> produce
   ok('B harvests produce', await b.waitFor(() => b.me()?.inv?.produce >= 1, 3000));
-  const CAFE = { x: 24*TILE+16, y: 16*TILE+16 };
+  const CAFE = { x: 15*TILE+16, y: 16*TILE+16 };
   ok('B exits the farm', await walkTo(b, 8*TILE+16, 14*TILE+16, 8000));
   ok('B walks north to the market lane', await walkTo(b, 8*TILE+16, 12*TILE+16, 8000));
   ok('B walks east on the market lane', await walkTo(b, 13*TILE+16, 12*TILE+16, 8000));
@@ -1582,7 +1582,7 @@ try {
   ok('day work: vendor behind the stall', workE.key === 'work|2' && workE.act === 'serve' &&
      JSON.stringify(workE.waypoints) === JSON.stringify([[16,11]]), JSON.stringify(workE));
   ok('day work: café keeper behind the counter', workM.act === 'serve' &&
-     JSON.stringify(workM.waypoints) === JSON.stringify([[24,16]]), JSON.stringify(workM));
+     JSON.stringify(workM.waypoints) === JSON.stringify([[15,16]]), JSON.stringify(workM));
   ok('day work: gardener tends the beds', workH.act === 'tend', JSON.stringify(workH));
   ok('day work: pastor welcomes at the church door', workN.act === 'idle' &&
      JSON.stringify(workN.waypoints) === JSON.stringify([[30,16]]), JSON.stringify(workN));
@@ -1609,7 +1609,7 @@ try {
     for (const dayN of [2, 3, 4]) {
       const route = TL.townDayRoute(name, dayN);
       for (const [tx, ty] of route) {
-        if (tx < 0 || ty < 0 || tx >= 40 || ty >= 28 || TL.isSolid(tx, ty, null)) wpBad.push(`${name} day${dayN} [${tx},${ty}]`);
+        if (tx < 0 || ty < 0 || tx >= TL.WORLD_W || ty >= TL.WORLD_H || TL.isSolid(tx, ty, null)) wpBad.push(`${name} day${dayN} [${tx},${ty}]`);
       }
       for (let i = 0; i + 1 < route.length; i++) {
         const ax = route[i][0]*32+16, ay = route[i][1]*32+16, bx = route[i+1][0]*32+16, by = route[i+1][1]*32+16;

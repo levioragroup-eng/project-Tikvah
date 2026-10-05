@@ -18,7 +18,8 @@ const PORT = parseInt(process.env.PORT || '8787', 10);
 
 // ---------- World constants ----------
 export const TILE = 32;
-export const WORLD_W = 40, WORLD_H = 28;          // 1280 x 896 px
+export const WORLD_W = 56, WORLD_H = 40;          // 1792 x 1280 px — WORLD-EXPANSION (2026-10-05):
+// was 40x28; eastern wilds (x40-55) + southern riverside (y28-39). Town core unchanged.
 export const MAX_SPEED = 150;                      // px/sec, enforced server-side
 export const INTERACT_RANGE = 56;                  // px
 export const RUIN_STONE_RADIUS = 40;               // px
@@ -51,6 +52,8 @@ const REAP_MS = parseInt(process.env.REAP_MS || '60000', 10); // empty private-r
 // Village layout (tile coords) — BATCH6b board composition
 export const FARM_PLOTS = [ {tx:6,ty:15}, {tx:8,ty:15}, {tx:10,ty:15}, {tx:6,ty:17}, {tx:8,ty:17}, {tx:10,ty:17} ];
 export const DOCK = { tx: 17, ty: 20 };            // fishing spot (sand bank by the river)
+// WORLD-EXPANSION (2026-10-05): south-bank docks for the Riverside Meadow
+export const DOCKS = [DOCK, { tx: 10, ty: 25 }, { tx: 34, ty: 25 }];
 export const CHURCH_DOOR = { tx: 30, ty: 15 };    // press E near door -> enter
 export const CHURCH_EXIT = { tx: 20, ty: 24 };    // interior exit spot
 export const PRAY_SPOT = { tx: 20, ty: 20 };      // interior: pray / worship
@@ -99,7 +102,7 @@ export const RUG_SPOT = { tx: 29, ty: 21 };        // decorate: cycle rug color
 export const SIT_SPOT = { tx: 35, ty: 21 };        // sit
 export const PRAY_NOOK = { tx: 32, ty: 18 };       // pray at home
 // Cafe (exterior cook spot)
-export const CAFE_COUNTER = { tx: 24, ty: 16 };
+export const CAFE_COUNTER = { tx: 15, ty: 16 };   // WORLD-EXPANSION/LAYOUT: cafe west of plaza
 
 // ---------- Collision (server-authoritative) ----------
 // Pew layout (CHURCH-REDESIGN 2026-10-03): rows at ty 21/23, banks tx 16..18 and
@@ -113,12 +116,16 @@ export const PEW_SIT_SPOTS = [ {tx:19,ty:21}, {tx:21,ty:21}, {tx:19,ty:23}, {tx:
 const FARM_RECT = { x0: 5, y0: 14, x1: 11, y1: 18 };    // matches client fence rect
 const CHURCH_RECT = { x0: 28, y0: 9, x1: 32, y1: 14 };  // building incl. roof row
 const HOME_RECT = { x0: 7, y0: 9, x1: 10, y1: 11 };
-const CAFE_RECT = { x0: 23, y0: 13, x1: 25, y1: 15 };
+const CAFE_RECT = { x0: 14, y0: 13, x1: 16, y1: 15 };   // WORLD-EXPANSION/LAYOUT: cafe west of plaza
 const STALL_TILES = [ {tx:14,ty:10}, {tx:16,ty:10}, {tx:18,ty:10} ];
 const FOUNTAIN_TILE = { tx: 20, ty: 15 };
 // BATCH7: pink-blossom clusters along the lanes and plaza (mirrors client)
-const BLOSSOM_SPOTS = [[15,17],[23,7],[12,7],[25,11],[21,7],[24,17],[14,19],[25,19],[9,6],[33,17]];
-function isBlossomSpot(tx, ty) { for (const s of BLOSSOM_SPOTS) if (s[0]===tx && s[1]===ty) return true; return false; }
+const BLOSSOM_SPOTS = [[18,19],[23,7],[12,7],[25,11],[21,7],[24,17],[14,19],[25,19],[9,6],[33,17]];
+// (15,17) moved to (18,19): the old spot is now the cafe entrance footpath.
+function isBlossomSpot(tx, ty) { for (const s of BLOSSOM_SPOTS) if (s[0]===tx && s[1]===ty) return true;
+  // WORLD-EXPANSION: Old Orchard rows (mirrors client)
+  if (tx>=42 && tx<=54 && ty>=30 && ty<=38 && tx%3===0 && ty%3===1) return true;
+  return false; }
 
 function inRect(tx, ty, r) { return tx >= r.x0 && tx <= r.x1 && ty >= r.y0 && ty <= r.y1; }
 
@@ -135,6 +142,17 @@ function baseKind(tx, ty) {   // mirrors client baseTile()
   if (tx === 27 && ty >= 12 && ty <= 18) return 'path';
   if (tx === 33 && ty >= 6 && ty <= 12) return 'path';
   if (ty === 8 && tx >= 19 && tx <= 33) return 'path';
+  // WORLD-EXPANSION (2026-10-05): mirrors client baseTile — eastern wilds + southern riverside
+  if (tx === 48 && ty >= 6 && ty <= 16) return 'path';  // ruins trail
+  if (ty === 16 && tx >= 28 && tx <= 46) return 'path'; // church to the wilds
+  if (tx >= 19 && tx <= 21 && ty >= 26 && ty <= 28) return 'path'; // bridge landing to riverside
+  if (ty === 28 && tx >= 6 && tx <= 50) return 'path';  // riverside walk
+  if (tx === 12 && ty >= 28 && ty <= 32) return 'path'; // to Riverside Meadow
+  if (tx === 30 && ty >= 28 && ty <= 32) return 'path'; // to Sunberry Meadow
+  if (tx === 44 && ty >= 28 && ty <= 32) return 'path'; // to Old Orchard
+  if (ty === 32 && tx >= 10 && tx <= 46) return 'path'; // meadow lane
+  if (tx >= 31 && tx <= 32 && ty >= 34 && ty <= 35) return 'water'; // meadow pond
+  if (tx >= 30 && tx <= 33 && ty >= 33 && ty <= 36) return 'sand';  // pond shore
   return 'grass';
 }
 
@@ -152,11 +170,26 @@ function isTreeTile(tx, ty) {   // mirrors client isTree(), minus the ruin clear
   if (tx >= 31 && tx <= 32 && ty >= 3 && ty <= 4) return false; // ruin arch
   if (isBlossomSpot(tx, ty)) return true;   // BATCH7: pink-blossom lane clusters
   if (tx >= 0 && tx <= 4 && ty >= 0 && ty <= 24) return (tx*13 + ty*7) % 4 !== 3;
-  if (tx >= 35 && tx <= 39 && ty >= 0 && ty <= 20) return (tx*11 + ty*5) % 5 !== 4;
+  if (tx >= 35 && tx <= 39 && ty >= 0 && ty <= 20) {
+    if (ty === 16) return false;   // WORLD-EXPANSION: the east path runs through
+    return (tx*11 + ty*5) % 5 !== 4;
+  }
   // BATCH7: north forest band + groves (mirrors client — dense board forest)
   if (ty >= 0 && ty <= 2 && tx >= 5 && tx <= 34 && (tx*5 + ty*11) % 5 !== 4) return true;
   if (tx >= 8 && tx <= 11 && ty >= 2 && ty <= 4 && (tx + ty) % 3 !== 2) return true;
   if (tx >= 24 && tx <= 27 && ty >= 2 && ty <= 4 && (tx*2 + ty) % 3 !== 0) return true;
+  // WORLD-EXPANSION: Whispering Forest + Deep Ruins (mirrors client)
+  if (tx >= 42 && tx <= 55 && ty >= 8 && ty <= 22) {
+    if (ty === 16 && tx <= 46) return false;
+    if (tx === 48) return false;
+    if (tx >= 44 && tx <= 46 && ty >= 15 && ty <= 17) return false;
+    return (tx*13 + ty*7) % 4 !== 3;
+  }
+  if (tx >= 44 && tx <= 55 && ty >= 2 && ty <= 8) {
+    if (tx === 48) return false;
+    if (tx >= 50 && tx <= 51 && ty >= 4 && ty <= 5) return false; // decorative arch
+    return (tx*7 + ty*13) % 5 === 0;
+  }
   return false;
 }
 
@@ -404,13 +437,15 @@ export const NPC_CHAT_LINES = [
 // fails if any leg crosses a solid tile.
 export const TOWN_SCHEDULE = {
   'Hannah': { home: [11,11],
-    goWork: [[13,12],[17,14],[19,16]],
+    // WORLD-EXPANSION/LAYOUT: cafe west of plaza — goWork routes via the market
+    // lane around the cafe's north side (was [13,12],[17,14] which clips it).
+    goWork: [[13,12],[17,12],[17,14],[19,16]],
     workWp: [[19,16],[21,16],[17,16]], workAct: 'tend',
     lunchWp: [[19,15]],
     aftA: [[19,16],[22,16],[17,16]], aftActA: 'tend',
     aftB: [[19,14],[19,12],[20,11]], aftActB: 'stroll',
     marketWp: [[19,12],[16,11],[14,11],[16,11],[18,11],[15,11],[17,11]],
-    evening: [[19,14],[15,12],[11,11]] },
+    evening: [[19,14],[17,12],[13,12],[11,11]] },
   'Elias': { home: [20,11],
     goWork: [[19,11],[17,11],[16,11]],
     workWp: [[16,11]], workAct: 'serve',
@@ -420,13 +455,15 @@ export const TOWN_SCHEDULE = {
     marketWp: [[18,12],[16,11],[14,11],[18,11],[15,11],[17,11]],
     evening: [[20,18],[18,18],[18,12],[20,11]] },
   'Miriam': { home: [26,18],
-    goWork: [[24,18],[25,17],[24,16]],
-    workWp: [[24,16]], workAct: 'serve',
-    lunchWp: [[23,16],[23,17]],
-    aftA: [[24,18],[20,18],[13,18],[13,12],[11,11]], aftActA: 'stroll',
-    aftB: [[24,18],[20,18],[16,16],[16,14]], aftActB: 'tend',
-    marketWp: [[20,18],[19,14],[16,12],[14,11],[16,11],[18,11],[15,11],[17,11]],
-    evening: [[20,18],[24,18],[26,18]] },
+    // WORLD-EXPANSION/LAYOUT (2026-10-05): cafe moved west of the plaza (counter
+    // 15,16) — Miriam's commute rerouted via the south lane; all legs walkable.
+    goWork: [[24,18],[20,18],[16,18],[16,16],[15,16]],
+    workWp: [[15,16]], workAct: 'serve',
+    lunchWp: [[14,16],[14,17]],
+    aftA: [[16,18],[20,18],[13,18],[13,12],[11,11]], aftActA: 'stroll',
+    aftB: [[16,18],[20,18],[14,17],[12,17]], aftActB: 'tend',
+    marketWp: [[13,18],[13,12],[14,11],[16,11],[18,11],[15,11],[17,11]],
+    evening: [[13,12],[13,18],[16,18],[20,18],[24,18],[26,18]] },
   'Pastor Nathan': { home: [27,17],
     goWork: [[29,16],[30,16]],
     workWp: [[30,16]], workAct: 'idle',
@@ -910,8 +947,8 @@ function handleInteract(room, ws, p) {
     broadcast(room, {t:'say', name: npc.name, text, hearts, by: p.name});
     return {ok:true, action:'talk'};
   }
-  // dock -> fishing
-  if (near(p, DOCK.tx, DOCK.ty)) {
+  // dock -> fishing (any of the world docks)
+  if (DOCKS.some(d => near(p, d.tx, d.ty))) {
     if (!p.fishing) {
       p.fishing = { state: 'cast', biteAt: now + FISH_WAIT_MIN + Math.random()*(FISH_WAIT_MAX-FISH_WAIT_MIN), windowUntil: 0 };
       broadcast(room, {t:'player', p: playerPublic(p)});
