@@ -5605,17 +5605,17 @@ function drawStoryPathEdge(g, tx, ty, x, y) {
     g.fillStyle = PAL.meadowLight; g.fillRect(px+2, py-2, 1, 1);
     g.restore();
   };
-  if (n === 'grass' && h > 0.28) { tuft(x+5, y+2, false); featherDab(g, featherGrassSpr, x+16, y+2, 9, 0.55); }
-  if (s === 'grass' && h < 0.82) { tuft(x+21, y+29, true); featherDab(g, featherGrassSpr, x+16, y+30, 9, 0.55); }
+  if (n === 'grass' && h > 0.28) { tuft(x+5, y+2, false); g.fillStyle='rgba(121,169,87,0.28)'; g.fillRect(x+8,y,16,3); }
+  if (s === 'grass' && h < 0.82) { tuft(x+21, y+29, true); g.fillStyle='rgba(121,169,87,0.28)'; g.fillRect(x+8,y+29,16,3); }
   if (w === 'grass' && h > 0.42) {
     g.fillStyle = 'rgba(183,157,120,.42)';
     g.fillRect(x+1, y+8, 3, 2); g.fillRect(x+2, y+21, 2, 2);
-    featherDab(g, featherGrassSpr, x+2, y+16, 9, 0.55);
+    g.fillStyle='rgba(121,169,87,0.28)'; g.fillRect(x,y+8,3,16);
   }
   if (e === 'grass' && h < 0.70) {
     g.fillStyle = 'rgba(183,157,120,.42)';
     g.fillRect(x+28, y+12, 3, 2); g.fillRect(x+27, y+24, 2, 2);
-    featherDab(g, featherGrassSpr, x+30, y+16, 9, 0.55);
+    g.fillStyle='rgba(121,169,87,0.28)'; g.fillRect(x+29,y+8,3,16);
   }
   if (h > 0.88) {   // wildflower beside the trail
     const fx = x+4+((h*17)|0), fy = y+5+(((h*23)|0)%22);
@@ -5650,7 +5650,7 @@ function drawStructureShadows(g) {
   // walls meet ground, complementing the rect shadows above
   const ao = (tx0, ty0, tx1, ty1) => {
     const cx = (tx0+tx1+1)/2*TILE, by = (ty1+1)*TILE - 2;
-    aoHalo(g, cx, by, (tx1-tx0+1)*TILE*0.9, 18, 0.5);
+    g.fillStyle='rgba(22,28,16,0.20)'; g.fillRect(cx-(tx1-tx0+1)*TILE*0.45, by-3, (tx1-tx0+1)*TILE*0.9, 6);
   };
   ao(HOME.x0, HOME.y0, HOME.x1, HOME.y1);
   ao(CAFE.x0, CAFE.y0, CAFE.x1, CAFE.y1);
@@ -5688,50 +5688,22 @@ function drawWorldDepthWash(g, now) {
 // state, or signature changes. Perf rules: precompute at load, reuse per
 // frame, no per-frame allocation in hot paths.
 // ============================================================
-// Item 2 first (items 1+2 ship together): precomputed palette jitter.
-// 6 variants per key color, picked by hash at draw time — zero per-frame
-// string building, just an array lookup.
+// PAINTERLY-PASS items 1+2: brush strokes + palette jitter, INLINED into the
+// tile loop below (no per-frame function calls). JIT palette table is built
+// once at startup; per-tile stroke work is inline at the call site.
+// ============================================================
 const JIT = {};
 (function jitPalette() {
-  const keys = ['meadow','meadowLight','meadowDark','leaf','leafLight','leafDark',
-                'pine','pineLight','blossom','path','pathLight','flowerPink'];
+  // rgba strings with 0.16 alpha baked in (no per-frame globalAlpha toggles)
+  const keys = ['meadowLight','meadowDark','pathLight','path'];
   for (const k of keys) {
     const base = PAL[k]; JIT[k] = [];
     for (let v = 0; v < 6; v++) {
-      // variants 0-2 lean darker, 3-5 lean lighter; tiny amounts only
       const t = v < 3 ? 0.04 + v*0.02 : 0.04 + (v-3)*0.02;
       JIT[k].push(v < 3 ? mixHex(base, '#1a2b12', t) : mixHex(base, '#fffbe8', t));
     }
   }
 })();
-function jit(k, tx, ty, salt) {
-  const arr = JIT[k]; if (!arr) return PAL[k] || '#000';
-  return arr[(hash2(tx*3+salt, ty*5+salt*2)*6)|0];
-}
-// Item 1: brush-stroke layer — short semi-transparent dabs laid over ground
-// tiles, seeded per tile so they're identical every frame. Reads as painted,
-// never noisy: 2 strokes max per tile, gentle alpha.
-function drawBrushStrokes(g, tx, ty, x, y) {
-  const b = baseTile(tx, ty);
-  if (b !== 'grass' && b !== 'path' && b !== 'plaza') return;
-  const h = hash2(tx*7+3, ty*11+5);
-  if (h < 0.55) return;                       // ~45% of tiles get strokes
-  const n = 1 + ((h*2)|0);                     // 1-2 strokes
-  for (let i = 0; i < n; i++) {
-    const hx = hash2(tx*13+i*7+1, ty*17+i*3+2);
-    const bx = x + 3 + ((hx*25)|0), by = y + 5 + ((hash2(tx*19+i+4, ty*23+i+6)*22)|0);
-    const len = 4 + ((hx*4)|0);                // 4-7 px stroke
-    if (b === 'grass') {
-      g.fillStyle = hx > 0.5 ? jit('meadowLight', tx+i, ty, 11) : jit('meadowDark', tx+i, ty, 13);
-    } else {
-      g.fillStyle = hx > 0.5 ? jit('pathLight', tx+i, ty, 17) : jit('path', tx+i, ty, 19);
-    }
-    g.globalAlpha = 0.16;
-    g.fillRect(bx, by, len, 1);                // the stroke body
-    g.fillRect(bx+1, by-1, len-2, 1);          // hand-laid second pass, offset
-    g.globalAlpha = 1;
-  }
-}
 
 // ============================================================
 // FUN-PASS (2026-10-05): ambient life + action feedback. Pure render;
@@ -5881,8 +5853,22 @@ function drawWorld(g, now) {
     else { const gh = hash2(tx, ty); g.drawImage(gh < 0.42 ? grassA : gh < 0.72 ? grassB : grassC, x, y); }
     // VISUAL-PASS-4 Priority 1: continuous painted ground texture
     if (b === 'grass') drawGroundDepth(g, tx, ty, x, y);
-    // PAINTERLY-PASS items 1+2: brush-stroke dabs + palette jitter on ground
-    drawBrushStrokes(g, tx, ty, x, y);
+    // PAINTERLY-PASS items 1+2: brush strokes + jitter, inlined (no call).
+    // Seeded per tile so strokes are identical every frame.
+    if (b === 'grass' || b === 'path' || b === 'plaza') {
+      const __bh = hash2(tx*7+3, ty*11+5);
+      if (__bh >= 0.70) {
+        const __bhx = hash2(tx*13+1, ty*17+2);
+        const __bbx = x + 3 + ((__bhx*25)|0), __bby = y + 5 + ((hash2(tx*19+4, ty*23+6)*22)|0);
+        const __blen = 4 + ((__bhx*4)|0);
+        const __bj = (__bhx*6)|0;
+        g.fillStyle = b === 'grass'
+          ? (__bhx > 0.5 ? JIT.meadowLight[__bj] : JIT.meadowDark[__bj])
+          : (__bhx > 0.5 ? JIT.pathLight[__bj] : JIT.path[__bj]);
+        g.fillRect(__bbx, __bby, __blen, 1);
+        g.fillRect(__bbx+1, __bby-1, __blen-2, 1);
+      }
+    }
     // VISUAL-PASS-FOREST: dappled light shafts, leaf litter, rocks, mushrooms
     // on walkable forest-floor grass — pure decor overlays, collision untouched
     if (b === 'grass') {
@@ -6653,7 +6639,7 @@ function loop(now) {
       ctx.beginPath(); ctx.ellipse(Math.round(n.x), Math.round(n.y+1), 15, 6, 0, 0, 7); ctx.fill();
     }
     ctx.fillStyle = 'rgba(0,0,0,.16)';
-    aoHalo(ctx, Math.round(n.x), Math.round(n.y+1), 26, 12, 0.55);  // PAINTERLY item 6: AO
+    ctx.fillStyle='rgba(22,28,16,0.14)'; ctx.beginPath(); ctx.ellipse(Math.round(n.x), Math.round(n.y+1), 13, 6, 0, 0, 7); ctx.fill();  // PAINTERLY item 6: AO inlined
     ctx.beginPath(); ctx.ellipse(Math.round(n.x), Math.round(n.y+1), 7, 3, 0, 0, 7); ctx.fill();
     ctx.drawImage(npcSprite(n.name), Math.round(n.x-8+nDrift), Math.round(n.y-22+(seatedStill?6:0)+nBob-nHop));
     // DESIGN-BOARD: gold preaching glow behind Nathan's nameplate during sermon
@@ -6688,7 +6674,7 @@ function loop(now) {
     const spr = spriteForF(p.look, wfr);
     // soft grounding shadow + smoother two-step walk bounce
     ctx.fillStyle = 'rgba(0,0,0,.18)';
-    aoHalo(ctx, Math.round(p.x), Math.round(p.y+1), 26, 12, 0.55);  // PAINTERLY item 6: AO
+    ctx.fillStyle='rgba(22,28,16,0.14)'; ctx.beginPath(); ctx.ellipse(Math.round(p.x), Math.round(p.y+1), 13, 6, 0, 0, 7); ctx.fill();  // PAINTERLY item 6: AO inlined
     ctx.beginPath(); ctx.ellipse(Math.round(p.x), Math.round(p.y+1), 7, 3, 0, 0, 7); ctx.fill();
     const strideX = p.moving ? Math.sin(stridePhase)*1.8 : 0;
     const idleSway = Math.sin(now/1400 + p.x*0.02)*0.8;
@@ -6888,14 +6874,14 @@ function loop(now) {
   }
   // vignette warmth (cached — rebuilt on resize only)
   if (vignetteGrad) { ctx.fillStyle = vignetteGrad; ctx.fillRect(0,0,vw,vh); }
-  // PAINTERLY-PASS item 5: depth fog over the world
-  if (fogGrad && !inside) { ctx.fillStyle = fogGrad; ctx.fillRect(0,0,vw,vh); }
-  // PAINTERLY-PASS item 3: paper grain over the frame — barely perceptible,
-  // never dirty. Alpha stays tiny; the pattern does the work.
-  if (grainPattern) {
-    ctx.save(); ctx.globalAlpha = 0.045; ctx.fillStyle = grainPattern;
-    ctx.fillRect(0, 0, vw, vh); ctx.restore();
+  // PAINTERLY-PASS item 5: depth fog — 2 solid bands (cheap; no gradient).
+  // Haze increases toward top of frame (farther in top-down view).
+  if (me && !me.inside) {
+    ctx.fillStyle = 'rgba(205,218,228,0.09)'; ctx.fillRect(0, 0, vw, vh*0.33);
+    ctx.fillStyle = 'rgba(205,218,228,0.045)'; ctx.fillRect(0, vh*0.33, vw, vh*0.17);
   }
+  // PAINTERLY-PASS item 3: paper grain (pre-rendered, alpha baked in)
+  if (grainImg) ctx.drawImage(grainImg, 0, 0);
   // footsteps
   if (me) maybeStep(now, me.moving);
   // bite flash banner
@@ -6918,67 +6904,29 @@ function resize() {
   cv.style.width = Math.max(1, Math.floor(VW * s)) + 'px';
   cv.style.height = Math.max(1, Math.floor(VH * s)) + 'px';
   buildAtmoGrads();
+  if (typeof buildGrain === 'function' && grainImg) buildGrain();
 }
 // VISUAL-PASS-TITLE: screen-space atmosphere gradients, built once per resize
 // instead of every frame (perf: no per-frame gradient allocation on the game loop).
-let goldGrad = null, duskGrad = null, vignetteGrad = null, fogGrad = null;
-// PAINTERLY-PASS item 3: paper grain — pre-rendered 128px noise tile, drawn
-// as a repeating pattern at very low alpha for a tactile storybook finish.
-// Built once; one fillRect per frame.
-let grainPattern = null;
+let goldGrad = null, duskGrad = null, vignetteGrad = null;
+// PAINTERLY-PASS item 3: paper grain — pre-rendered full-screen noise image
+// with alpha baked in. One unscaled drawImage per frame (no pattern fill,
+// no globalAlpha toggles). Barely perceptible, never dirty.
+let grainImg = null;
 function buildGrain() {
-  const c = document.createElement('canvas'); c.width = c.height = 128;
+  const w = cv.width, h = cv.height;
+  const c = document.createElement('canvas'); c.width = w; c.height = h;
   const g = c.getContext('2d');
-  const img = g.createImageData(128, 128);
+  const img = g.createImageData(w, h);
   for (let i = 0; i < img.data.length; i += 4) {
     const v = 110 + ((Math.random()*36)|0);
-    img.data[i] = v; img.data[i+1] = v; img.data[i+2] = v; img.data[i+3] = 255;
+    img.data[i] = v; img.data[i+1] = v; img.data[i+2] = v; img.data[i+3] = 14;
   }
   g.putImageData(img, 0, 0);
-  grainPattern = ctx.createPattern(c, 'repeat');
+  grainImg = c;
 }
-// PAINTERLY-PASS item 4: feathered edges — precomputed soft radial sprites
-// for hand-softening tile borders. Characters and key pixel edges untouched.
-let featherGrassSpr = null, featherPathSpr = null;
-function buildFeather() {
-  const mk = (r, gcol, bcol) => {
-    const c = document.createElement('canvas'); c.width = c.height = 32;
-    const x = c.getContext('2d');
-    const gr = x.createRadialGradient(16, 16, 2, 16, 16, 16);
-    gr.addColorStop(0, `rgba(${r},${gcol},${bcol},0.4)`);
-    gr.addColorStop(0.7, `rgba(${r},${gcol},${bcol},0.15)`);
-    gr.addColorStop(1, `rgba(${r},${gcol},${bcol},0)`);
-    x.fillStyle = gr; x.fillRect(0, 0, 32, 32);
-    return c;
-  };
-  featherGrassSpr = mk(121, 169, 87);   // meadow bleed
-  featherPathSpr = mk(216, 195, 155);   // path bleed
-}
-// PAINTERLY-PASS item 6: ambient occlusion — soft dark halo sprite for where
-// objects meet the ground. Complements (never replaces) existing shadows.
-let aoSpr = null;
-function buildAO() {
-  const c = document.createElement('canvas'); c.width = c.height = 32;
-  const x = c.getContext('2d');
-  const gr = x.createRadialGradient(16, 16, 2, 16, 16, 16);
-  gr.addColorStop(0, 'rgba(22,28,16,0.42)');
-  gr.addColorStop(0.65, 'rgba(22,28,16,0.18)');
-  gr.addColorStop(1, 'rgba(22,28,16,0)');
-  x.fillStyle = gr; x.fillRect(0, 0, 32, 32);
-  aoSpr = c;
-}
-function aoHalo(g, cx, by, w, h, alpha) {
-  if (!aoSpr) return;
-  g.save(); g.globalAlpha = alpha;
-  g.drawImage(aoSpr, cx - w/2, by - h/2, w, h);
-  g.restore();
-}
-function featherDab(g, spr, x, y, r, alpha) {
-  if (!spr) return;
-  g.save(); g.globalAlpha = alpha;
-  g.drawImage(spr, x - r, y - r, r*2, r*2);
-  g.restore();
-}
+// PAINTERLY-PASS items 4+6: feather bands and AO halos are INLINED at their
+// call sites (no per-frame function calls). No sprite builders needed.
 function buildAtmoGrads() {
   const vw = cv.width, vh = cv.height;
   goldGrad = ctx.createRadialGradient(vw/2, vh*0.22, 10, vw/2, vh*0.22, vh*0.95);
@@ -6991,19 +6939,12 @@ function buildAtmoGrads() {
   vignetteGrad = ctx.createRadialGradient(vw/2, vh/2, vh*0.4, vw/2, vh/2, vh*0.85);
   vignetteGrad.addColorStop(0, 'rgba(0,0,0,0)');
   vignetteGrad.addColorStop(1, 'rgba(30,15,5,0.35)');
-  // PAINTERLY-PASS item 5: depth fog — gentle haze increasing toward the top
-  // of the frame (farther away in top-down view). Cached; one fill per frame.
-  fogGrad = ctx.createLinearGradient(0, 0, 0, vh);
-  fogGrad.addColorStop(0, 'rgba(205,218,228,0.12)');
-  fogGrad.addColorStop(0.45, 'rgba(205,218,228,0.04)');
-  fogGrad.addColorStop(1, 'rgba(205,218,228,0)');
+
 }
 addEventListener('resize', resize);
 requestAnimationFrame(loop);
 resize();
 buildGrain();
-buildFeather();
-buildAO();
 </script>
 </body>
 </html>
