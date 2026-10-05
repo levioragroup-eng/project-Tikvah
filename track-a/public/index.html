@@ -5582,15 +5582,17 @@ function drawStoryPathEdge(g, tx, ty, x, y) {
     g.fillStyle = PAL.meadowLight; g.fillRect(px+2, py-2, 1, 1);
     g.restore();
   };
-  if (n === 'grass' && h > 0.28) tuft(x+5, y+2, false);
-  if (s === 'grass' && h < 0.82) tuft(x+21, y+29, true);
+  if (n === 'grass' && h > 0.28) { tuft(x+5, y+2, false); featherDab(g, featherGrassSpr, x+16, y+2, 9, 0.55); }
+  if (s === 'grass' && h < 0.82) { tuft(x+21, y+29, true); featherDab(g, featherGrassSpr, x+16, y+30, 9, 0.55); }
   if (w === 'grass' && h > 0.42) {
     g.fillStyle = 'rgba(183,157,120,.42)';
     g.fillRect(x+1, y+8, 3, 2); g.fillRect(x+2, y+21, 2, 2);
+    featherDab(g, featherGrassSpr, x+2, y+16, 9, 0.55);
   }
   if (e === 'grass' && h < 0.70) {
     g.fillStyle = 'rgba(183,157,120,.42)';
     g.fillRect(x+28, y+12, 3, 2); g.fillRect(x+27, y+24, 2, 2);
+    featherDab(g, featherGrassSpr, x+30, y+16, 9, 0.55);
   }
   if (h > 0.88) {   // wildflower beside the trail
     const fx = x+4+((h*17)|0), fy = y+5+(((h*23)|0)%22);
@@ -6896,6 +6898,29 @@ function buildGrain() {
   g.putImageData(img, 0, 0);
   grainPattern = ctx.createPattern(c, 'repeat');
 }
+// PAINTERLY-PASS item 4: feathered edges — precomputed soft radial sprites
+// for hand-softening tile borders. Characters and key pixel edges untouched.
+let featherGrassSpr = null, featherPathSpr = null;
+function buildFeather() {
+  const mk = (r, gcol, bcol) => {
+    const c = document.createElement('canvas'); c.width = c.height = 32;
+    const x = c.getContext('2d');
+    const gr = x.createRadialGradient(16, 16, 2, 16, 16, 16);
+    gr.addColorStop(0, `rgba(${r},${gcol},${bcol},0.4)`);
+    gr.addColorStop(0.7, `rgba(${r},${gcol},${bcol},0.15)`);
+    gr.addColorStop(1, `rgba(${r},${gcol},${bcol},0)`);
+    x.fillStyle = gr; x.fillRect(0, 0, 32, 32);
+    return c;
+  };
+  featherGrassSpr = mk(121, 169, 87);   // meadow bleed
+  featherPathSpr = mk(216, 195, 155);   // path bleed
+}
+function featherDab(g, spr, x, y, r, alpha) {
+  if (!spr) return;
+  g.save(); g.globalAlpha = alpha;
+  g.drawImage(spr, x - r, y - r, r*2, r*2);
+  g.restore();
+}
 function buildAtmoGrads() {
   const vw = cv.width, vh = cv.height;
   goldGrad = ctx.createRadialGradient(vw/2, vh*0.22, 10, vw/2, vh*0.22, vh*0.95);
@@ -6913,6 +6938,7 @@ addEventListener('resize', resize);
 requestAnimationFrame(loop);
 resize();
 buildGrain();
+buildFeather();
 </script>
 </body>
 </html>
