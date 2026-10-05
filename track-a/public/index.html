@@ -921,6 +921,13 @@ function onMsg(m) {
         toast('🌅 Good morning — the village wakes.');
         try { chime(); } catch (e) {}
       }
+      // FUN-PASS: day-phase transition moments — the village breathes with the light
+      if (wasPhase && wasPhase !== m.phase && m.phase === 'sunset') {
+        toast('🌇 Sunset — lanterns flicker on across Tikvah.');
+      }
+      if (wasPhase && wasPhase !== m.phase && m.phase === 'night') {
+        toast('🌙 Night falls — the Garden rests under the stars.');
+      }
       lastPhaseSeen = m.phase;
       break;
     }
@@ -956,7 +963,10 @@ function onMsg(m) {
     }
     case 'bite': if (m.player === myId) { biteFlash = Date.now(); toast('❗ TAP E NOW!'); } break;
     case 'pet': toast('🦊 ' + m.by + ' petted the fox'); break;
-    case 'say': sayFlash = { name: m.name, until: Date.now() + 6000 }; showDialogue(m.name, m.text, m.hearts, m.by); break;
+    case 'say': sayFlash = { name: m.name, until: Date.now() + 6000 }; showDialogue(m.name, m.text, m.hearts, m.by);
+      // FUN-PASS: floating hearts when a warm greeting lands
+      if (m.hearts > 0) { const sp = playerByName(m.by); if (sp) spawnGreetHearts(sp.x, sp.y-30); }
+      break;
     // TOWN-LIFE: two villagers pause to chat when they cross paths — a short
     // warm line, shared with both travelers
     case 'npc-chat': npcChat = { a: m.a, b: m.b, until: Date.now() + 6000 }; toast('💬 ' + m.a + ' & ' + m.b + ': ' + m.line); break;
@@ -5518,6 +5528,86 @@ function drawWorldDepthWash(g, now) {
   }
 }
 
+// ============================================================
+// FUN-PASS (2026-10-05): ambient life + action feedback. Pure render;
+// no mechanics, no balance changes.
+// ============================================================
+// Ambient butterflies — flutter in flower-rich areas (garden, meadow, orchard).
+const BUTTERFLIES = [];
+for (let i=0; i<8; i++) {
+  const homes = [[19,15],[12,22],[35,30],[45,34],[50,15],[25,20],[15,18],[40,28]];
+  const h = homes[i % homes.length];
+  BUTTERFLIES.push({ hx: h[0]*32+16, hy: h[1]*32+16, ph: i*1.7, sp: 0.6+((i*37)%40)/100,
+    col: ['#E99CAF','#F2E0B5','#B8A6D9','#91BBD0','#F5A623'][i%5] });
+}
+function drawButterflies(g, now) {
+  for (const b of BUTTERFLIES) {
+    const t = now/1000*b.sp + b.ph;
+    const x = b.hx + Math.sin(t*0.9)*28 + Math.sin(t*2.3)*8;
+    const y = b.hy + Math.cos(t*1.1)*20 - 6 + Math.sin(t*3.1)*4;
+    const flap = Math.abs(Math.sin(t*9));
+    g.fillStyle = b.col;
+    // two wings, flapping
+    g.fillRect(x-3, y-2-flap*2, 3, 2+flap*2);
+    g.fillRect(x, y-2-flap*2, 3, 2+flap*2);
+    g.fillStyle = '#302A2A'; g.fillRect(x-0.5, y-1, 1, 3);  // body
+  }
+}
+// Ambient birds — a small flock crosses the sky every so often.
+let birdFlock = null, nextFlockAt = 0;
+function drawBirds(g, now) {
+  if (!birdFlock && now > nextFlockAt) {
+    birdFlock = { x: -40, y: 60+((now/1000|0)%140), n: 3+((now/7000|0)%3), t: now };
+    nextFlockAt = now + 18000 + ((now/1000|0)%15000);
+  }
+  if (birdFlock) {
+    const el = (now - birdFlock.t)/1000;
+    const bx = birdFlock.x + el*45;
+    if (bx > WW*TILE+40) { birdFlock = null; return; }
+    g.strokeStyle = 'rgba(48,42,42,.75)'; g.lineWidth = 1.5;
+    for (let i=0; i<birdFlock.n; i++) {
+      const x = bx - i*22, y = birdFlock.y + Math.sin(el*2+i)*8 + i*6;
+      const w = 4 + Math.sin(now/90+i*1.3)*2.5;
+      g.beginPath();
+      g.moveTo(x-w, y); g.quadraticCurveTo(x-w/2, y-2-Math.sin(now/90+i)*1.5, x, y);
+      g.quadraticCurveTo(x+w/2, y-2-Math.sin(now/90+i)*1.5, x+w, y);
+      g.stroke();
+    }
+  }
+}
+// Fishing ripples — expanding rings where the line meets the water.
+function drawFishingRipples(g, p, now) {
+  if (!p.fishing || p.inside) return;
+  // bobber sits in the water just beyond the player (toward the nearest dock water)
+  const bx = p.x, by = p.y + 26;
+  for (let i=0; i<3; i++) {
+    const ph = ((now/700 + i*0.33) % 1);
+    const r = 3 + ph*14;
+    g.strokeStyle = 'rgba(255,255,255,' + (0.5*(1-ph)).toFixed(2) + ')';
+    g.lineWidth = 1;
+    g.beginPath(); g.ellipse(bx, by, r, r*0.45, 0, 0, Math.PI*2); g.stroke();
+  }
+  // bobber
+  g.fillStyle = '#D94F3D'; g.fillRect(bx-1, by-8, 3, 5);
+  g.fillStyle = '#fff'; g.fillRect(bx-1, by-8, 3, 2);
+}
+// Greeting hearts — floating hearts when a warm greeting lands.
+const greetHearts = [];
+function spawnGreetHearts(x, y) {
+  for (let i=0; i<5; i++) greetHearts.push({ x: x+(Math.random()*24-12), y, t: Date.now()+i*120 });
+}
+function drawGreetHearts(g, now) {
+  for (let i=greetHearts.length-1; i>=0; i--) {
+    const h = greetHearts[i], el = (now - h.t)/900;
+    if (el < 0) continue;
+    if (el > 1) { greetHearts.splice(i, 1); continue; }
+    g.font = '12px monospace'; g.textAlign = 'center';
+    g.globalAlpha = 1-el;
+    g.fillText('❤', h.x, h.y - el*26);
+    g.globalAlpha = 1;
+  }
+}
+
 function drawWorld(g, now) {
   const me = players.get(myId);
   const inside = me && me.inside, place = me && me.place;
@@ -5892,6 +5982,8 @@ function drawWorld(g, now) {
   // VISUAL-PASS-4 Priority 2+4: grounding shadows + atmospheric depth wash.
   // AFTER the tile loop (terrain would cover them at the start), BEFORE entities.
   if (!inside) { drawStructureShadows(g); drawWorldDepthWash(g, now); }
+  // FUN-PASS: ambient life (butterflies, birds, greeting hearts)
+  if (!inside) { drawButterflies(g, now); drawBirds(g, now); drawGreetHearts(g, now); }
   // zone labels
   if (!inside) {
     // waterfalls + ruin arch (taller than one tile: drawn over the base terrain)
@@ -6368,6 +6460,8 @@ function loop(now) {
     if (p.fishing) {
       ctx.font = '14px monospace'; ctx.textAlign = 'center';
       ctx.fillText(p.fishing==='bite' ? '❗' : '🎣', p.x+14, p.y-24);
+      // FUN-PASS: ripples where the line meets the water
+      drawFishingRipples(ctx, p, now);
     }
     if (p.emote && (EMOJI[p.emote] || p.emote === 'sit')) {
       ctx.font = '18px monospace'; ctx.textAlign = 'center';
