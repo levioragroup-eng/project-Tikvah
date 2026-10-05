@@ -127,9 +127,10 @@
   #dialogue { position:absolute; left:50%; bottom:110px; transform:translateX(-50%); display:none; z-index:18;
     width:min(460px,92vw); color:#3a2a12; padding:14px 18px; animation:cardIn .4s ease-out; }
   #dialogue .who { font-weight:bold; color:#7a4b1f; font-size:16px; margin-bottom:6px; }
-  #dialogue .who .hearts { color:#e06a8a; font-size:14px; }
-  #dialogue .line { font-size:15px; line-height:1.55; font-style:italic; }
-  #dialogue .next { font-size:11px; color:#8a7a5a; margin-top:8px; text-align:right; }
+  #dialogue .who .hearts { font-size:14px; }
+  #dialogue .line { font-family:Georgia,'Times New Roman',serif; font-size:15.5px; line-height:1.6; font-style:italic; }
+  #dialogue .next { font-size:11px; color:#b8912f; margin-top:8px; text-align:right;
+    font-variant:small-caps; letter-spacing:2px; font-weight:bold; }
   /* screen fade */
   #fade { position:absolute; inset:0; background:#000; opacity:0; pointer-events:none; transition:opacity 1.2s; z-index:25; }
   /* ending overlay */
@@ -171,32 +172,36 @@
   #titleScreen { display:flex; flex-direction:column; align-items:center; justify-content:center;
     min-height:100%; width:100%; padding:24px 16px 44px; text-align:center; }
   #titleFx { position:absolute; inset:0; width:100%; height:100%; z-index:0; pointer-events:none; }
-  /* VISUAL-PASS-TITLE: warm gold elegant serif over the painted vista — the
-     board's title idiom (serif gold, script "Hope Lives Here."). */
+  /* DESIGN-BOARD TITLE: cream serif logo over the painted vista — the board's
+     title panel idiom (white serif TIKVAH, tagline, corner verse). */
   #titleScreen h1 { font-family:Georgia,'Times New Roman',serif; font-weight:normal;
-    font-size:clamp(58px, 15vw, 100px); margin:0; letter-spacing:10px; color:#f2d98c;
-    background:linear-gradient(#fff6d8 8%, #f2d98c 38%, #caa145 62%, #f7e9bd 92%);
-    -webkit-background-clip:text; background-clip:text; -webkit-text-fill-color:transparent;
-    filter:drop-shadow(2px 3px 0 #1a2340) drop-shadow(4px 6px 8px rgba(0,0,0,.45));
+    font-size:clamp(58px, 15vw, 100px); margin:0; letter-spacing:10px; color:#fff8e7;
+    background:none; -webkit-background-clip:border-box; background-clip:border-box;
+    -webkit-text-fill-color:#fff8e7;
+    filter:drop-shadow(2px 3px 0 rgba(93,66,38,.9)) drop-shadow(4px 8px 10px rgba(0,0,0,.4));
     animation:titleFloat 5s ease-in-out infinite; }
   @keyframes titleFloat { 0%,100% { transform:translateY(0); } 50% { transform:translateY(-6px); } }
   #titleScreen .growline { margin:10px 0 0; font-variant:small-caps; letter-spacing:4px;
-    font-size:clamp(13px, 3.4vw, 17px); color:#ffe9a8;
-    text-shadow:1px 1px 0 #1a2340, 2px 2px 0 rgba(0,0,0,.45); }
-  #titleScreen .tagline { color:#f5eeda; font-size:clamp(16px, 4.2vw, 23px); font-style:italic; margin:8px 0 6px;
-    text-shadow:1px 1px 0 #1a2340, 2px 2px 0 rgba(0,0,0,.45); letter-spacing:1px; }
+    font-size:clamp(13px, 3.4vw, 17px); color:#fff3d6;
+    text-shadow:1px 1px 0 #5d4226, 2px 2px 0 rgba(0,0,0,.45); }
+  #titleScreen .tagline { color:#fdf6e0; font-size:clamp(16px, 4.2vw, 23px); font-style:italic; margin:8px 0 6px;
+    text-shadow:1px 1px 0 #5d4226, 2px 2px 0 rgba(0,0,0,.45); letter-spacing:1px; }
   #titleScreen .hopeline { margin:0 0 28px; font-family:'Snell Roundhand','Brush Script MT','Segoe Script',cursive;
     font-size:clamp(22px, 6vw, 30px); color:#ffe9a8;
-    text-shadow:1px 1px 0 #1a2340, 2px 3px 4px rgba(0,0,0,.5); }
+    text-shadow:1px 1px 0 #5d4226, 2px 3px 4px rgba(0,0,0,.5); }
   /* board's activity vocabulary as a quiet title footer, not a HUD */
   #titleScreen .boardwords { display:flex; flex-wrap:wrap; justify-content:center; gap:8px 14px;
-    margin:16px 0 0; max-width:560px; font-variant:small-caps; letter-spacing:2px; font-size:11.5px;
-    color:#c9b98e; text-shadow:1px 1px 0 #1a2340; }
+    margin:14px 0 0; max-width:560px; font-variant:small-caps; letter-spacing:2px; font-size:11px;
+    color:#e9dfc2; text-shadow:1px 1px 0 #5d4226; opacity:.85; }
   #titleScreen .boardwords span { white-space:nowrap; }
-  #titleScreen .boardfoot { margin-top:30px; font-variant:small-caps; letter-spacing:6px; font-size:15px;
-    color:#d4a940; text-shadow:1px 1px 0 #1a2340; font-weight:bold; }
-  #titleScreen .boardverse { margin-top:10px; font-size:12.5px; font-style:italic; color:#e9dfc2; max-width:440px;
-    line-height:1.6; text-shadow:1px 1px 0 rgba(26,35,64,.9); }
+  #titleScreen .boardfoot { margin-top:26px; font-variant:small-caps; letter-spacing:6px; font-size:14px;
+    color:#ffe9a8; text-shadow:1px 1px 0 #5d4226; font-weight:bold; }
+  /* DESIGN-BOARD: verse as a corner note, like the board's title panel. */
+  #titleScreen .boardverse { position:absolute; top:14px; right:16px; margin:0; max-width:230px;
+    font-family:Georgia,'Times New Roman',serif; font-size:13px; font-style:italic; color:#5d4226; line-height:1.6;
+    background:linear-gradient(#fdf8e7,#f5eeda); border:1.5px solid #d4a940; border-radius:10px;
+    padding:10px 14px; box-shadow:0 4px 14px rgba(0,0,0,.3); text-shadow:none; text-align:right; }
+  @media (max-width:640px) { #titleScreen .boardverse { position:static; margin:14px auto 0; text-align:center; max-width:300px; } }
   #titleScreen .hint, #titleScreen .pnote { color:#e9dfc2; text-shadow:1px 1px 0 rgba(26,35,64,.9); }
   #roomPanel h2, #howPanel h2, #creatorScreen h2 { color:#f5eeda;
     text-shadow:2px 2px 0 #1a2340, 4px 4px 0 rgba(0,0,0,.3); }
@@ -206,8 +211,8 @@
   .tbtns { display:flex; flex-direction:column; gap:14px; width:min(340px, 86vw); }
   .tbtn { width:100%; font-size:21px; padding:14px 20px; letter-spacing:1px;
     font-family:Georgia,'Times New Roman',serif; font-variant:small-caps; }
-  button.big.tbtn.ghost { background:rgba(26,35,64,.78); border:2px solid #d4a940; color:#f5eeda;
-    box-shadow:0 4px 0 rgba(0,0,0,.4); }
+  button.big.tbtn.ghost { background:linear-gradient(#fdf8e7,#f5eeda); border:2px solid #d4a940; color:#5d4226;
+    box-shadow:0 4px 0 rgba(93,66,38,.35); text-shadow:none; }
   #roomPanel, #howPanel, #creatorScreen { display:flex; flex-direction:column; align-items:center;
     width:100%; padding:20px 16px 44px; text-align:center; }
   #roomPanel h2, #howPanel h2, #creatorScreen h2 { color:#ffe9a8; font-size:clamp(26px,6vw,34px);
@@ -345,6 +350,13 @@
   /* toast: navy/gold */
   #toast { background:rgba(26,35,64,.95); border:1.5px solid #d4a940; color:#f5eeda;
     border-radius:12px; }
+  /* DESIGN-BOARD: sermon arrives as a parchment panel with gold heading. */
+  #toast.sermon { background:linear-gradient(#fdf8e7,#f5eeda); border:2px solid #d4a940;
+    color:#3a2a12; max-width:460px; box-shadow:0 10px 30px rgba(0,0,0,.5); }
+  #toast .sermon-head { font-family:Georgia,'Times New Roman',serif; font-variant:small-caps;
+    letter-spacing:2px; color:#b8912f; font-weight:bold; font-size:13px; margin-bottom:6px; }
+  #toast .sermon-line { font-family:Georgia,'Times New Roman',serif; font-style:italic;
+    font-size:15px; line-height:1.6; }
   /* contextual prompt: navy pill, gold rim */
   #prompt { background:rgba(26,35,64,.92); border:1.5px solid #d4a940;
     color:#f5eeda; }
@@ -411,10 +423,14 @@
 
   /* VISUAL-PASS-CHARACTERS: board-style creator + relationship dialogue portraits */
   #creatorScreen h2 { font-family:Georgia,'Times New Roman',serif; font-weight:normal; letter-spacing:4px; }
+  #creatorWrap h2 { color:#5d4226; text-shadow:none; font-size:clamp(24px,5.4vw,30px); margin:2px 0 2px; }
+  #creatorWrap .sub { color:#7a5c38; text-shadow:none; }
+  #creatorScreen .backlink { color:#5d4226; text-shadow:none; }
   #creatorScreen .sub { font-family:Georgia,serif; }
   #creatorTop { align-items:center; }
-  #creatorWrap { width:min(470px,94vw); }
-  #preview { width:112px; height:168px; background:linear-gradient(#fdf8e7,#f0e4c8);
+  #creatorWrap { width:min(470px,94vw); padding:20px 22px 22px; }
+  /* DESIGN-BOARD: large character portrait, like the board's creator panel. */
+  #preview { width:140px; height:210px; background:linear-gradient(#fdf8e7,#f0e4c8);
     box-shadow:inset 0 0 26px rgba(212,169,64,.28), 0 4px 14px rgba(93,66,38,.35); }
   #ctabs { display:flex; flex-wrap:wrap; gap:6px; }
   .ctab { font-family:Georgia,serif; font-variant:small-caps; letter-spacing:1.5px; font-size:12.5px;
@@ -433,7 +449,7 @@
     box-shadow:0 10px 34px rgba(0,0,0,.55), inset 0 0 0 3px #fdf8e7, inset 0 0 0 4.5px rgba(212,169,64,.55); }
   #dialogue .who { display:flex; align-items:center; gap:12px; }
   #dPortrait, #hannahPortrait { image-rendering:pixelated; width:40px; height:60px; flex:none;
-    border:2px solid #d4a940; border-radius:10px; background:linear-gradient(#e9f2dc,#d8e6c4);
+    border:2px solid #d4a940; border-radius:10px; background:linear-gradient(#2a3757,#1a2340);
     box-shadow:0 2px 8px rgba(93,66,38,.3); }
   #hannah .who { display:flex; align-items:center; gap:12px; background:none; border:none; padding:0;
     margin-bottom:8px; }
@@ -539,9 +555,9 @@
     </div>
 
     <div id="creatorScreen" style="display:none">
-      <h2>Create Your Character</h2>
-      <p class="sub">Your traveler will be waiting for you in the village.</p>
       <div id="creatorWrap">
+        <h2>Create Your Character</h2>
+        <p class="sub">Your traveler will be waiting for you in the village.</p>
         <div id="creatorTop">
           <canvas id="preview" width="32" height="48"></canvas>
           <div id="creatorOpts">
@@ -1096,7 +1112,7 @@ setInterval(() => {
   const me = myId && players.get(myId);
   if (me && me.inside && me.place === 'church' && sermonActiveClient()) {
     const idx = Math.floor(Date.now() / 30000) % SERMON_LINES.length;
-    if (idx !== lastSermonIdx) { lastSermonIdx = idx; toast('🕊️ Pastor Nathan: ' + SERMON_LINES[idx]); }
+    if (idx !== lastSermonIdx) { lastSermonIdx = idx; sermonToast(SERMON_LINES[idx]); }
   } else lastSermonIdx = -1;
 }, 5000);
 
@@ -1773,8 +1789,17 @@ document.getElementById('dclose').onclick = () => document.getElementById('disco
 let toastTimer = null;
 function toast(msg) {
   const el = document.getElementById('toast');
-  el.textContent = msg; el.style.display = 'block';
+  el.classList.remove('sermon'); el.textContent = msg; el.style.display = 'block';
   clearTimeout(toastTimer); toastTimer = setTimeout(() => el.style.display = 'none', 3200);
+}
+// DESIGN-BOARD: sermon as a parchment panel with a gold heading (not a plain toast).
+function sermonToast(line) {
+  const el = document.getElementById('toast');
+  el.innerHTML = '<div class="sermon-head">🕊️ Pastor Nathan preaches</div><div class="sermon-line"></div>';
+  el.querySelector('.sermon-line').textContent = line;
+  el.classList.add('sermon'); el.style.display = 'block';
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => { el.style.display = 'none'; el.classList.remove('sermon'); }, 7000);
 }
 // celebration sparkles at a world position (harvest, catches)
 function playerByName(nm) { for (const p of players.values()) if (p.name === nm) return p; return null; }
@@ -4877,6 +4902,7 @@ const bedTile = px(TILE,TILE,(g)=>{ g.drawImage(woodFloor,0,0);
   g.fillStyle='#8a5a2b'; g.fillRect(3,6,3,12);
   g.fillStyle='#5d3a17'; g.fillRect(1,1,7,4);                  // crown
   g.fillStyle='#ffd76e'; g.fillRect(2,1,5,1);                  // crown sheen
+  g.fillStyle='#d4a940'; g.fillRect(1,4,7,1);                  // DESIGN-BOARD: gold crown trim
   g.fillStyle='#7a4f28'; g.fillRect(1,10,7,2);                 // headboard slat detail
   g.fillStyle='#8a5a2b'; g.fillRect(6,19,19,9);                 // frame rail
   g.fillStyle='#fff8ea'; g.fillRect(6,12,9,8);                 // pillow
@@ -4918,6 +4944,7 @@ const hearthTile = px(TILE,TILE,(g)=>{ g.drawImage(woodFloor,0,0);
 const wardrobeTile = px(TILE,TILE,(g)=>{ g.drawImage(woodFloor,0,0);
   g.fillStyle='rgba(0,0,0,.15)'; g.fillRect(3,28,26,3);
   g.fillStyle='#5d3a17'; g.fillRect(3,0,26,4);                // crown
+  g.fillStyle='#d4a940'; g.fillRect(3,3,26,1);                 // DESIGN-BOARD: gold crown trim
   g.fillStyle='#8a5a2b'; g.fillRect(3,0,26,1);
   g.fillStyle='#6b4423'; g.fillRect(4,4,24,25);               // body
   for(const dx of [5,17]){                                    // double doors
@@ -5087,6 +5114,7 @@ const crateTile = px(TILE,TILE,(g)=>{ g.drawImage(woodFloor,0,0);
 const bookcaseTile = px(TILE,TILE,(g)=>{ g.drawImage(woodFloor,0,0);
   g.fillStyle='rgba(0,0,0,.15)'; g.fillRect(4,27,24,3);
   g.fillStyle='#5d3a17'; g.fillRect(3,2,26,4);                // crown
+  g.fillStyle='#d4a940'; g.fillRect(3,5,26,1);                 // DESIGN-BOARD: gold crown trim
   g.fillStyle='#6b4423'; g.fillRect(4,6,24,22);               // case
   g.fillStyle='#7a4f28'; g.fillRect(4,6,24,1);
   for (const sy of [6,17]) {
@@ -6156,6 +6184,7 @@ function drawChurchInterior(g, tx, ty, x, y, now) {
   if ((ty===21||ty===23) && (tx===19||tx===21)) {
     g.fillStyle='#a8555f'; g.fillRect(x+6,y+14,20,6);           // sit-gap cushion
     g.fillStyle='#c97a85'; g.fillRect(x+6,y+14,20,2);
+    g.fillStyle='#d4a940'; g.fillRect(x+6,y+18,20,1);           // DESIGN-BOARD: gold piping
     g.fillStyle='rgba(0,0,0,.10)'; g.fillRect(x+6,y+20,20,2);
   }
   // VISUAL-PASS-CHURCH: center-aisle runner down to the altar (walkable decor)
@@ -6451,6 +6480,11 @@ function loop(now) {
     ctx.fillStyle = 'rgba(0,0,0,.16)';
     ctx.beginPath(); ctx.ellipse(Math.round(n.x), Math.round(n.y+1), 7, 3, 0, 0, 7); ctx.fill();
     ctx.drawImage(npcSprite(n.name), Math.round(n.x-8+nDrift), Math.round(n.y-22+(seatedStill?6:0)+nBob-nHop));
+    // DESIGN-BOARD: gold preaching glow behind Nathan's nameplate during sermon
+    if (n.name === 'Pastor Nathan' && typeof sermonActiveClient === 'function' && sermonActiveClient()) {
+      ctx.fillStyle = 'rgba(212,169,64,.30)';
+      ctx.beginPath(); ctx.ellipse(Math.round(n.x), Math.round(n.y-30), 26, 11, 0, 0, 7); ctx.fill();
+    }
     drawNameTag(ctx, n.x, n.y, n.name, '#ffe9a8');
     if (chatting) {
       ctx.font = '16px monospace'; ctx.textAlign = 'center';
