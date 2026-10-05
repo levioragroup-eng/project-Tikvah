@@ -198,9 +198,9 @@ try {
   sys('fishing', cast && bite && caught, `cast=${cast} bite=${bite} catch=${caught} fish=${a.me()?.inv?.fish}`);
 
   // ---- S8: cooking ----
-  await walkTo(a, 13*TILE+16, 18*TILE+16); await walkTo(a, 13*TILE+16, 12*TILE+16);
-  await walkTo(a, 27*TILE+16, 12*TILE+16, 15000); await walkTo(a, 27*TILE+16, 16*TILE+16);
-  await walkTo(a, 24*TILE+16, 16*TILE+16);
+  // CAFE-MOVE (2026-10-05): counter is now at (15,16), west of the plaza
+  await walkTo(a, 13*TILE+16, 18*TILE+16);
+  await walkTo(a, 15*TILE+16, 17*TILE+16);   // 1 tile south of counter (32px < 56px range)
   a.send({ t: 'interact' });
   const menu = await a.waitFor(() => a.msgs.some(m => m.t === 'menu' && m.kind === 'cook'), 3000);
   a.send({ t: 'cook', action: 'cook' });
@@ -335,7 +335,7 @@ try {
   // ---- S17: intro/onboarding hooks (static page) ----
   const r = await fetch(`${URL.replace('ws://', 'http://')}/`);
   const html = await r.text();
-  const hooks = ['Welcome to Tikvah', 'tikvah_welcome_seen', 'tikvah_discover_seen', 'tikvah_hannah_seen', 'Meet your neighbor', 'id="prompt"'];
+  const hooks = ['Welcome to Tikvah', 'tikvah_welcome_seen', 'tikvah_discover_seen', 'tikvah_hannah_seen', 'live the village rhythm', 'id="prompt"'];
   const hooksOk = hooks.every(h => html.includes(h));
   sys('intro-hooks', r.status === 200 && hooksOk, `welcome/discover/hannah gates + contextual prompt present=${hooksOk}`);
 

@@ -365,7 +365,7 @@ const b7Checks = [
   ['ruin arch layout', 'tx:31, ty:3'],
   ['ruin arch drawn', 'drawImage(ruinArch, RUIN_ARCH.tx*TILE, RUIN_ARCH.ty*TILE)'],
   ['ruin arch vines', '// BATCH7: hanging vines claim the arch'],
-  ['blossom spots list', 'const BLOSSOM_SPOTS = [[15,17],[23,7],[12,7],[25,11],[21,7],[24,17],[14,19],[25,19],[9,6],[33,17]]'],
+  ['blossom spots list', 'const BLOSSOM_SPOTS = [[18,19],[23,7],[12,7],[25,11],[21,7],[24,17],[14,19],[25,19],[9,6],[33,17]]'],
   ['blossom spot fn', 'function isBlossomSpot(tx,ty)'],
   ['blossom variant used', 'if (isBlossomSpot(tx,ty)) tv = treeBlossom'],
   ['blossom lush canopy', '// wide side puffs'],
@@ -657,7 +657,7 @@ try {
   // ---------- 2. movement sync + speed cap ----------
   console.log('movement:');
   const p0 = { ...a.me() };
-  a.send({ t: 'input', x: 1, y: 0 });
+  a.send({ t: 'input', x: -1, y: 0 });   // west lane is clear (cafe sits east of spawn)
   await sleep(1100);
   a.send({ t: 'input', x: 0, y: 0 });
   const p1 = a.me();
