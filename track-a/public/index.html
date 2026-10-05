@@ -5646,6 +5646,57 @@ function drawWorldDepthWash(g, now) {
 }
 
 // ============================================================
+// PAINTERLY-PASS (2026-10-05): close the last art-medium gap toward the
+// hand-painted storybook board. All render-only; no gameplay, collision,
+// state, or signature changes. Perf rules: precompute at load, reuse per
+// frame, no per-frame allocation in hot paths.
+// ============================================================
+// Item 2 first (items 1+2 ship together): precomputed palette jitter.
+// 6 variants per key color, picked by hash at draw time — zero per-frame
+// string building, just an array lookup.
+const JIT = {};
+(function jitPalette() {
+  const keys = ['meadow','meadowLight','meadowDark','leaf','leafLight','leafDark',
+                'pine','pineLight','blossom','path','pathLight','flowerPink'];
+  for (const k of keys) {
+    const base = PAL[k]; JIT[k] = [];
+    for (let v = 0; v < 6; v++) {
+      // variants 0-2 lean darker, 3-5 lean lighter; tiny amounts only
+      const t = v < 3 ? 0.04 + v*0.02 : 0.04 + (v-3)*0.02;
+      JIT[k].push(v < 3 ? mixHex(base, '#1a2b12', t) : mixHex(base, '#fffbe8', t));
+    }
+  }
+})();
+function jit(k, tx, ty, salt) {
+  const arr = JIT[k]; if (!arr) return PAL[k] || '#000';
+  return arr[(hash2(tx*3+salt, ty*5+salt*2)*6)|0];
+}
+// Item 1: brush-stroke layer — short semi-transparent dabs laid over ground
+// tiles, seeded per tile so they're identical every frame. Reads as painted,
+// never noisy: 2 strokes max per tile, gentle alpha.
+function drawBrushStrokes(g, tx, ty, x, y) {
+  const b = baseTile(tx, ty);
+  if (b !== 'grass' && b !== 'path' && b !== 'plaza') return;
+  const h = hash2(tx*7+3, ty*11+5);
+  if (h < 0.55) return;                       // ~45% of tiles get strokes
+  const n = 1 + ((h*2)|0);                     // 1-2 strokes
+  for (let i = 0; i < n; i++) {
+    const hx = hash2(tx*13+i*7+1, ty*17+i*3+2);
+    const bx = x + 3 + ((hx*25)|0), by = y + 5 + ((hash2(tx*19+i+4, ty*23+i+6)*22)|0);
+    const len = 4 + ((hx*4)|0);                // 4-7 px stroke
+    if (b === 'grass') {
+      g.fillStyle = hx > 0.5 ? jit('meadowLight', tx+i, ty, 11) : jit('meadowDark', tx+i, ty, 13);
+    } else {
+      g.fillStyle = hx > 0.5 ? jit('pathLight', tx+i, ty, 17) : jit('path', tx+i, ty, 19);
+    }
+    g.globalAlpha = 0.16;
+    g.fillRect(bx, by, len, 1);                // the stroke body
+    g.fillRect(bx+1, by-1, len-2, 1);          // hand-laid second pass, offset
+    g.globalAlpha = 1;
+  }
+}
+
+// ============================================================
 // FUN-PASS (2026-10-05): ambient life + action feedback. Pure render;
 // no mechanics, no balance changes.
 // ============================================================
@@ -5793,6 +5844,8 @@ function drawWorld(g, now) {
     else { const gh = hash2(tx, ty); g.drawImage(gh < 0.42 ? grassA : gh < 0.72 ? grassB : grassC, x, y); }
     // VISUAL-PASS-4 Priority 1: continuous painted ground texture
     if (b === 'grass') drawGroundDepth(g, tx, ty, x, y);
+    // PAINTERLY-PASS items 1+2: brush-stroke dabs + palette jitter on ground
+    drawBrushStrokes(g, tx, ty, x, y);
     // VISUAL-PASS-FOREST: dappled light shafts, leaf litter, rocks, mushrooms
     // on walkable forest-floor grass — pure decor overlays, collision untouched
     if (b === 'grass') {
