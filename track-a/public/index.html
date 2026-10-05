@@ -5623,6 +5623,18 @@ function drawStructureShadows(g) {
   // town square grounding wash
   g.fillStyle = 'rgba(55,52,38,.08)';
   g.fillRect(17*TILE+4, 17*TILE+5, 6*TILE-8, 6);
+  // PAINTERLY-PASS item 6: AO halos at structure bases — soft darkening where
+  // walls meet ground, complementing the rect shadows above
+  const ao = (tx0, ty0, tx1, ty1) => {
+    const cx = (tx0+tx1+1)/2*TILE, by = (ty1+1)*TILE - 2;
+    aoHalo(g, cx, by, (tx1-tx0+1)*TILE*0.9, 18, 0.5);
+  };
+  ao(HOME.x0, HOME.y0, HOME.x1, HOME.y1);
+  ao(CAFE.x0, CAFE.y0, CAFE.x1, CAFE.y1);
+  ao(CHURCH.x0, CHURCH.y0, CHURCH.x1, CHURCH.y1);
+  ao(FARM_RECT.x0, FARM_RECT.y0, FARM_RECT.x1, FARM_RECT.y1);
+  for (const s of STALLS) ao(s.tx, s.ty, s.tx, s.ty);
+  ao(FOUNTAIN.tx, FOUNTAIN.ty, FOUNTAIN.tx, FOUNTAIN.ty);
 }
 // Priority 4: world-space atmospheric depth — extremely subtle warm foreground /
 // cooler distance separation. Deliberately faint: painted depth, not a filter.
@@ -6618,6 +6630,7 @@ function loop(now) {
       ctx.beginPath(); ctx.ellipse(Math.round(n.x), Math.round(n.y+1), 15, 6, 0, 0, 7); ctx.fill();
     }
     ctx.fillStyle = 'rgba(0,0,0,.16)';
+    aoHalo(ctx, Math.round(n.x), Math.round(n.y+1), 26, 12, 0.55);  // PAINTERLY item 6: AO
     ctx.beginPath(); ctx.ellipse(Math.round(n.x), Math.round(n.y+1), 7, 3, 0, 0, 7); ctx.fill();
     ctx.drawImage(npcSprite(n.name), Math.round(n.x-8+nDrift), Math.round(n.y-22+(seatedStill?6:0)+nBob-nHop));
     // DESIGN-BOARD: gold preaching glow behind Nathan's nameplate during sermon
@@ -6652,6 +6665,7 @@ function loop(now) {
     const spr = spriteForF(p.look, wfr);
     // soft grounding shadow + smoother two-step walk bounce
     ctx.fillStyle = 'rgba(0,0,0,.18)';
+    aoHalo(ctx, Math.round(p.x), Math.round(p.y+1), 26, 12, 0.55);  // PAINTERLY item 6: AO
     ctx.beginPath(); ctx.ellipse(Math.round(p.x), Math.round(p.y+1), 7, 3, 0, 0, 7); ctx.fill();
     const strideX = p.moving ? Math.sin(stridePhase)*1.8 : 0;
     const idleSway = Math.sin(now/1400 + p.x*0.02)*0.8;
@@ -6917,6 +6931,25 @@ function buildFeather() {
   featherGrassSpr = mk(121, 169, 87);   // meadow bleed
   featherPathSpr = mk(216, 195, 155);   // path bleed
 }
+// PAINTERLY-PASS item 6: ambient occlusion — soft dark halo sprite for where
+// objects meet the ground. Complements (never replaces) existing shadows.
+let aoSpr = null;
+function buildAO() {
+  const c = document.createElement('canvas'); c.width = c.height = 32;
+  const x = c.getContext('2d');
+  const gr = x.createRadialGradient(16, 16, 2, 16, 16, 16);
+  gr.addColorStop(0, 'rgba(22,28,16,0.42)');
+  gr.addColorStop(0.65, 'rgba(22,28,16,0.18)');
+  gr.addColorStop(1, 'rgba(22,28,16,0)');
+  x.fillStyle = gr; x.fillRect(0, 0, 32, 32);
+  aoSpr = c;
+}
+function aoHalo(g, cx, by, w, h, alpha) {
+  if (!aoSpr) return;
+  g.save(); g.globalAlpha = alpha;
+  g.drawImage(aoSpr, cx - w/2, by - h/2, w, h);
+  g.restore();
+}
 function featherDab(g, spr, x, y, r, alpha) {
   if (!spr) return;
   g.save(); g.globalAlpha = alpha;
@@ -6947,6 +6980,7 @@ requestAnimationFrame(loop);
 resize();
 buildGrain();
 buildFeather();
+buildAO();
 </script>
 </body>
 </html>
