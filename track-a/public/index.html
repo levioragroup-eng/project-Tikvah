@@ -405,6 +405,10 @@
     opacity:.94; max-width:88vw !important; }
   #tutorial b { color:#ffd76e !important; }
 
+  /* STARTUP-PASS (2026-10-05): gentle fade between title panels — no flow changes */
+  #titleScreen, #roomPanel, #howPanel, #creatorScreen { animation:panelIn .35s ease-out; }
+  @keyframes panelIn { from { opacity:0; transform:translateY(10px); } to { opacity:1; transform:none; } }
+
   /* VISUAL-PASS-CHARACTERS: board-style creator + relationship dialogue portraits */
   #creatorScreen h2 { font-family:Georgia,'Times New Roman',serif; font-weight:normal; letter-spacing:4px; }
   #creatorScreen .sub { font-family:Georgia,serif; }
