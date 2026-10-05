@@ -6851,6 +6851,8 @@ function loop(now) {
   }
   // vignette warmth (cached — rebuilt on resize only)
   if (vignetteGrad) { ctx.fillStyle = vignetteGrad; ctx.fillRect(0,0,vw,vh); }
+  // PAINTERLY-PASS item 5: depth fog over the world
+  if (fogGrad && !inside) { ctx.fillStyle = fogGrad; ctx.fillRect(0,0,vw,vh); }
   // PAINTERLY-PASS item 3: paper grain over the frame — barely perceptible,
   // never dirty. Alpha stays tiny; the pattern does the work.
   if (grainPattern) {
@@ -6882,7 +6884,7 @@ function resize() {
 }
 // VISUAL-PASS-TITLE: screen-space atmosphere gradients, built once per resize
 // instead of every frame (perf: no per-frame gradient allocation on the game loop).
-let goldGrad = null, duskGrad = null, vignetteGrad = null;
+let goldGrad = null, duskGrad = null, vignetteGrad = null, fogGrad = null;
 // PAINTERLY-PASS item 3: paper grain — pre-rendered 128px noise tile, drawn
 // as a repeating pattern at very low alpha for a tactile storybook finish.
 // Built once; one fillRect per frame.
@@ -6933,6 +6935,12 @@ function buildAtmoGrads() {
   vignetteGrad = ctx.createRadialGradient(vw/2, vh/2, vh*0.4, vw/2, vh/2, vh*0.85);
   vignetteGrad.addColorStop(0, 'rgba(0,0,0,0)');
   vignetteGrad.addColorStop(1, 'rgba(30,15,5,0.35)');
+  // PAINTERLY-PASS item 5: depth fog — gentle haze increasing toward the top
+  // of the frame (farther away in top-down view). Cached; one fill per frame.
+  fogGrad = ctx.createLinearGradient(0, 0, 0, vh);
+  fogGrad.addColorStop(0, 'rgba(205,218,228,0.12)');
+  fogGrad.addColorStop(0.45, 'rgba(205,218,228,0.04)');
+  fogGrad.addColorStop(1, 'rgba(205,218,228,0)');
 }
 addEventListener('resize', resize);
 requestAnimationFrame(loop);
