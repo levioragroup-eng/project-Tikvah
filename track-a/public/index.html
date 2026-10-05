@@ -78,11 +78,11 @@
   #btnE { position:absolute; right:18px; bottom:30px; width:84px; height:84px; border-radius:50%; display:none; z-index:7;
     background:linear-gradient(#ffd76e,#f0a840); border:3px solid #5d3a17; font-size:30px; font-weight:bold; color:#4a2c0c; }
   #emotes { position:absolute; right:14px; top:100px; display:none; flex-direction:column; gap:8px; z-index:7; }
-  #emotes button { width:48px; height:48px; border-radius:50%; font-size:22px; background:rgba(0,0,0,.5);
-    border:2px solid rgba(255,255,255,.4); }
+  #emotes button { width:48px; height:48px; border-radius:50%; font-size:22px; background:rgba(26,35,64,.82);
+    border:2px solid #d4a940; box-shadow:0 2px 8px rgba(0,0,0,.35); }
   /* quick chat */
   #qcBtn { position:absolute; right:14px; top:212px; width:48px; height:48px; border-radius:50%; font-size:22px;
-    background:rgba(0,0,0,.5); border:2px solid rgba(255,255,255,.4); display:none; z-index:7; }
+    background:rgba(26,35,64,.82); border:2px solid #d4a940; box-shadow:0 2px 8px rgba(0,0,0,.35); display:none; z-index:7; }
   #qcPanel { position:absolute; right:70px; top:150px; display:none; z-index:8; background:#fffbe8;
     border:3px solid #7a4b1f; border-radius:12px; padding:8px; width:min(240px,62vw); animation:cardRise .25s ease-out; }
   #qcPanel button { display:block; width:100%; margin:4px 0; font-size:14px; padding:9px 10px; border-radius:10px;
@@ -481,7 +481,7 @@
   <div id="hud">
     <div id="hudLeft">
       <div id="roomcode">····</div>
-      <div id="dayInfo">Day 1 · Morning</div>
+      <div id="dayInfo">Day 1 · Spring · Morning</div>
       <div id="rhythm" title="Today's village rhythm">
         <span data-k="farm">🌾</span><span data-k="fish">🎣</span><span data-k="cook">🍲</span><span data-k="greet">👋</span><span data-k="sermon">🙏</span>
       </div>
@@ -834,12 +834,13 @@ let ws = null, myId = null, code = null;
 let players = new Map(), npcs = new Map(), farm = [], ruinOpen = false, fox = {x:0,y:0};
 let ruinA = false, ruinB = false, ruinGate = false;   // RESTORE THE LIGHT M4: synced ruin-puzzle state
 let biteFlash = 0;
-let day = { n: 1, phase: 'morning', label: 'Morning', sermon: false, rhythm: { farm:false, fish:false, cook:false, greet:false, sermon:false } };
+let day = { n: 1, phase: 'morning', label: 'Morning', season: 'Spring', sermon: false, rhythm: { farm:false, fish:false, cook:false, greet:false, sermon:false } };
 let gardenBloomed = false, homeRug = 0;
 let restore = null;   // RESTORE THE LIGHT: synced town-restoration state (stage + world effects only)
 let sayFlash = null;       // {name, until} — dialogue bubble over NPC
 let npcChat = null;        // TOWN-LIFE: {a, b, until} — two villagers pausing to chat
 let lastPhaseSeen = '';    // TOWN-LIFE: phase-transition detector for the morning wake cue
+let morningStartT = 0;     // SEASONS: dawn-mist clock — set when morning begins
 let worshipFlash = 0, peaceFlash = 0;
 // ================= Persistent identity (M3) =================
 // No logins, no passwords, no accounts — one invisible traveler token,
@@ -953,6 +954,7 @@ function onMsg(m) {
       if (wasPhase && wasPhase !== m.phase && m.phase === 'morning') {
         toast('🌅 Good morning — the village wakes.');
         try { chime(); } catch (e) {}
+        morningStartT = Date.now();
       }
       // FUN-PASS: day-phase transition moments — the village breathes with the light
       if (wasPhase && wasPhase !== m.phase && m.phase === 'sunset') {
@@ -994,7 +996,7 @@ function onMsg(m) {
       sparkleAt(cp ? cp.x : 33*TILE, cp ? cp.y : 20*TILE, '140,200,255', 12);
       break;
     }
-    case 'bite': if (m.player === myId) { biteFlash = Date.now(); toast('❗ TAP E NOW!'); } break;
+    case 'bite': if (m.player === myId) { biteFlash = Date.now(); toast('❗ BITE! Reel in — tap E!'); } break;
     case 'pet': toast('🦊 ' + m.by + ' petted the fox'); break;
     case 'say': sayFlash = { name: m.name, until: Date.now() + 6000 }; showDialogue(m.name, m.text, m.hearts, m.by);
       // FUN-PASS: floating hearts when a warm greeting lands
@@ -1073,7 +1075,15 @@ function onMsg(m) {
 
 let prevRhythm = {};
 function updateDayHud() {
-  document.getElementById('dayInfo').textContent = 'Day ' + day.n + ' · ' + (day.label || day.phase);
+  // SEASONS (DESIGN-BOARD): live season from the server; rebuild seasonal tiles on turn.
+  const sk = SEASON_KEY_OF[day.season] || 'spring';
+  if (sk !== seasonKey) {
+    seasonKey = sk;
+    rebuildSeasonTiles();
+    toast('🌸 A new season has come to Tikvah — ' + day.season + ' arrives.');
+  }
+  document.getElementById('dayInfo').textContent =
+    'Day ' + day.n + ' · ' + day.season + ' · ' + (day.label || day.phase);
   document.querySelectorAll('#rhythm span').forEach(s => {
     const k = s.dataset.k, done = !!(day.rhythm && day.rhythm[k]);
     s.classList.toggle('done', done);
@@ -1335,7 +1345,7 @@ function promptFor(me) {
   for (const n of npcs.values()) { const d = Math.hypot(me.x - n.x, me.y - n.y); if (d < bd) { bd = d; bn = n; } }
   if (bn) return 'Talk to ' + bn.name;
   if (DOCKS_T.some(d => tDist(me.x, me.y, d.tx, d.ty) <= IR))
-    return me.fishing ? (me.fishing === 'bite' ? 'Catch!' : 'Waiting…') : 'Fish';
+    return me.fishing ? (me.fishing === 'bite' ? 'Reel In!' : 'Waiting…') : 'Cast';
   return null;
 }
 setInterval(() => {
@@ -2205,6 +2215,22 @@ const SEASON_BLOOMS = {
   autumn: { leaf:'#5a6b2a', blooms:['#e8863c','#d4a940','#c96a4a','#f0e0a0'], center:'#7a4a20' },
   winter: { leaf:'#3a5a3a', blooms:['#e8ecf4','#c9d4e8','#ffffff','#a0b4d4'], center:'#f4f8ff' },
 };
+// SEASONS (DESIGN-BOARD): live season key, synced from the server via day.season.
+// 7 days per season. Painters read SEASON_BLOOMS[seasonKey]; seasonal tiles are
+// rebuilt by rebuildSeasonTiles() whenever the season turns.
+let seasonKey = 'spring';
+const SEASON_KEY_OF = { Spring:'spring', Summer:'summer', Autumn:'autumn', Winter:'winter' };
+// Seasonal canopy palettes for treeTile: deciduous crowns re-theme per season.
+const SEASON_CANOPY = {
+  spring: { deep:'#2F5F33', main:'#4F8F43', mid:'#6FAE5A', lite:'#9BD08A', spark:'#FFF3C4', snow:0,
+            blossom:['#E89BB4','#F6CBD8','#F9D9DE'] },
+  summer: { deep:'#24401F', main:'#2F6B2F', mid:'#4A8F3C', lite:'#7AB648', spark:'#FFF6D8', snow:0,
+            blossom:['#D96A8A','#F08AA8','#F6B8C9'] },
+  autumn: { deep:'#5A3A1F', main:'#B86A2A', mid:'#D98A3C', lite:'#F0B85C', spark:'#FFE9A8', snow:0,
+            blossom:['#E8863C','#F0A85C','#F8C88A'] },
+  winter: { deep:'#3A4A3A', main:'#5A6B5A', mid:'#8A9A8A', lite:'#C9D4C9', spark:'#F4F8FF', snow:1,
+            blossom:['#DDE4EE','#E9EEF6','#F4F8FF'] },
+};
 function grassTile(variant) {
   return px(TILE, TILE, (g) => {
     const R = srand(0x9e37 + variant*7919);   // deterministic: identical every load
@@ -2417,7 +2443,7 @@ const medallionN = medallionTile(16, 48), medallionS = medallionTile(16, -16),
 function flowerBedTile(variant, season) {
   return px(TILE,TILE,(g)=>{
     const R = srand(0xbed + variant*131);
-    const S = SEASON_BLOOMS[season] || SEASON_BLOOMS.spring;
+    const S = SEASON_BLOOMS[season] || SEASON_BLOOMS[seasonKey];
     g.clearRect(0,0,TILE,TILE);
     g.fillStyle = PAL.stone; g.fillRect(2, 6, 28, 22);            // stone border
     g.fillStyle = PAL.stoneLight; g.fillRect(2, 6, 28, 2);             // border sunlit top
@@ -2438,12 +2464,12 @@ function flowerBedTile(variant, season) {
     }
   });
 }
-const bedA = flowerBedTile(0, 'spring'), bedB = flowerBedTile(1, 'spring'), bedC = flowerBedTile(2, 'spring');
+let bedA = flowerBedTile(0, seasonKey), bedB = flowerBedTile(1, seasonKey), bedC = flowerBedTile(2, seasonKey);
 // VISUAL-PASS-CHURCH: flower beds flanking the church door (fresh seeds)
-const churchBedA = flowerBedTile(3, 'spring'), churchBedB = flowerBedTile(4, 'spring');
+let churchBedA = flowerBedTile(3, seasonKey), churchBedB = flowerBedTile(4, seasonKey);
 // Terracotta planter pot with blooms (palette terracotta, season blooms).
 const planterTile = px(TILE,TILE,(g)=>{
-  const P = BOARD_PALETTE, S = SEASON_BLOOMS.spring, R = srand(0x9a7);
+  const P = BOARD_PALETTE, S = SEASON_BLOOMS[seasonKey], R = srand(0x9a7);
   g.clearRect(0,0,TILE,TILE);
   g.fillStyle = PAL.terracottaDark; g.fillRect(9, 18, 14, 10);            // pot shade
   g.fillStyle = PAL.terracotta; g.fillRect(10, 17, 12, 10);    // pot body
@@ -2577,7 +2603,7 @@ function riverBankTile(variant) {
   return px(TILE,TILE,(g)=>{
     g.clearRect(0,0,TILE,TILE);
     const R = srand(0xba4 + variant*977);
-    const S = SEASON_BLOOMS.spring;
+    const S = SEASON_BLOOMS[seasonKey];
     if (variant === 0 || variant === 3) {                       // reed clumps
       const nR = 3 + R(3);                                      // 3–5 reeds, clustered
       for (let i=0;i<nR;i++) {
@@ -2627,7 +2653,7 @@ function riverBankTile(variant) {
     }
   });
 }
-const riverBankA = riverBankTile(0), riverBankB = riverBankTile(1),
+let riverBankA = riverBankTile(0), riverBankB = riverBankTile(1),
       riverBankC = riverBankTile(2), riverBankD = riverBankTile(3);
 const sandTile = px(TILE,TILE,(g)=>{
   g.fillStyle = PAL.sand; g.fillRect(0,0,TILE,TILE);
@@ -2855,7 +2881,7 @@ function paintRuinPad(state) {
 // no systems, triggers, or collision touched.
 function gardenBed(state, variant, sway) {
   return px(TILE,TILE,(g)=>{
-    const P = BOARD_PALETTE, S = SEASON_BLOOMS.spring;
+    const P = BOARD_PALETTE, S = SEASON_BLOOMS[seasonKey];
     const R = srand(0x6a2d + variant*977 + (sway ? 7919 : 0));
     const blooming = state === 'blooming', waking = state === 'waking';
     // ---- ground ----
@@ -2968,22 +2994,22 @@ function gardenBed(state, variant, sway) {
   });
 }
 // Legacy consts the world code + tests expect; defaults = current behavior.
-const gardenTile  = gardenBed('dormant', 0, 0);
-const gardenTileB = gardenBed('dormant', 1, 0);
-const bloomTile   = gardenBed('blooming', 0, 0);
-const bloomTileB  = gardenBed('blooming', 1, 0);
-const bloomTileC  = gardenBed('blooming', 2, 0);
-const bloomTileS  = gardenBed('blooming', 0, 1);   // sway frames: blooms breathe ±1px
-const bloomTileBS = gardenBed('blooming', 1, 1);
-const bloomTileCS = gardenBed('blooming', 2, 1);
+let gardenTile  = gardenBed('dormant', 0, 0);
+let gardenTileB = gardenBed('dormant', 1, 0);
+let bloomTile   = gardenBed('blooming', 0, 0);
+let bloomTileB  = gardenBed('blooming', 1, 0);
+let bloomTileC  = gardenBed('blooming', 2, 0);
+let bloomTileS  = gardenBed('blooming', 0, 1);   // sway frames: blooms breathe ±1px
+let bloomTileBS = gardenBed('blooming', 1, 1);
+let bloomTileCS = gardenBed('blooming', 2, 1);
 // RESTORE THE LIGHT: the waking beds — the Old Garden's first green,
 // between dormant waiting and the extraordinary full bloom.
-const wakeTile    = gardenBed('waking', 0, 0);
-const wakeTileB   = gardenBed('waking', 1, 0);
-const wakeTileC   = gardenBed('waking', 2, 0);
-const wakeTileS   = gardenBed('waking', 0, 1);
-const wakeTileBS  = gardenBed('waking', 1, 1);
-const wakeTileCS  = gardenBed('waking', 2, 1);
+let wakeTile    = gardenBed('waking', 0, 0);
+let wakeTileB   = gardenBed('waking', 1, 0);
+let wakeTileC   = gardenBed('waking', 2, 0);
+let wakeTileS   = gardenBed('waking', 0, 1);
+let wakeTileBS  = gardenBed('waking', 1, 1);
+let wakeTileCS  = gardenBed('waking', 2, 1);
 // VISUAL-PASS-GARDEN: garden composition overlays — clearRect decor drawn over
 // the meadow tiles. Every tile stays walkable (verified headless against
 // server isSolid; only the fountain tile is solid, as before).
@@ -3007,7 +3033,7 @@ function gardenPathTile(state) {   // warm cream path slabs, moss seams
 const gardenPathD = gardenPathTile('dormant'), gardenPathB = gardenPathTile('blooming');
 function gardenEdgeTile(state) {   // low clipped hedge edging the garden
   return px(TILE,TILE,(g)=>{ g.clearRect(0,0,TILE,TILE);
-    const S = SEASON_BLOOMS.spring, R = srand(0xed6e);
+    const S = SEASON_BLOOMS[seasonKey], R = srand(0xed6e);
     const body = state==='blooming' ? '#2f6b2f' : '#2a5f2a';
     g.fillStyle = body;
     g.fillRect(4,12,24,10); g.fillRect(8,7,16,7);                 // bush body
@@ -3027,7 +3053,7 @@ function gardenEdgeTile(state) {   // low clipped hedge edging the garden
     else { g.fillStyle = '#5d3a17'; for (let i=0;i<4;i++) g.fillRect(8+R(16), 5, 1, 4); } // bare twigs
   });
 }
-const gardenEdgeD = gardenEdgeTile('dormant'), gardenEdgeB = gardenEdgeTile('blooming');
+let gardenEdgeD = gardenEdgeTile('dormant'), gardenEdgeB = gardenEdgeTile('blooming');
 function gardenSeatTile(state) {   // round resting stone, mossy
   return px(TILE,TILE,(g)=>{ g.clearRect(0,0,TILE,TILE);
     const R = srand(0x5ea7);
@@ -3046,7 +3072,7 @@ function gardenSeatTile(state) {   // round resting stone, mossy
 const gardenSeatD = gardenSeatTile('dormant'), gardenSeatB = gardenSeatTile('blooming');
 function gardenArchTile(state, side) {   // rose trellis pillar flanking the north gate
   return px(TILE,TILE,(g)=>{ g.clearRect(0,0,TILE,TILE);
-    const S = SEASON_BLOOMS.spring, R = srand(0xa2c4 + side*31);
+    const S = SEASON_BLOOMS[seasonKey], R = srand(0xa2c4 + side*31);
     const cx = side === 0 ? 9 : 23, dir = side === 0 ? 1 : -1;
     g.fillStyle = PAL.stoneDark; g.fillRect(cx-7, 26, 14, 4);          // footing
     g.fillStyle = PAL.stone; g.fillRect(cx-6, 8, 12, 18);         // stone pillar
@@ -3081,7 +3107,9 @@ const gardenArchB = [gardenArchTile('blooming',0), gardenArchTile('blooming',1)]
 
 // ---- decor sprites ----
 // v: 0 = dense pine, 1 = dense round canopy, 2 = cherry blossom, 3 = tall pine
-function treeTile(v) {
+function treeTile(v, season) {
+  // SEASONS (DESIGN-BOARD): canopy re-themes per season via SEASON_CANOPY.
+  const SC = SEASON_CANOPY[season || seasonKey] || SEASON_CANOPY.spring;
   // VISUAL-PASS-BOARDMATCH: board trees are big storybook crowns, not 32px
   // sticks — supersized canvases (blit bottom-anchored in drawWorld), layered
   // pixel-cluster canopies with a deep silhouette ring, shaded trunks, and a
@@ -3128,16 +3156,23 @@ function treeTile(v) {
         g.fillRect(cx - (tw >> 1) + R(4), ty + R(Math.max(Math.round(th) - 2, 2)), 1, 1);
       }
       g.fillStyle = PAL.pineLight; g.fillRect(cx - 1, 0, 2, 3);      // bright crown tip
+      if (SC.snow) { // SEASONS: winter snow dusting on pine tier tops
+        g.fillStyle = 'rgba(240,244,250,.8)';
+        for (let i = 0; i < tiers; i++) {
+          const tw = 10 + (i / (tiers - 1)) * (W - 14), ty = top + i * th;
+          for (let k = 0; k < 4; k++) g.fillRect(cx - (tw >> 1) + R(tw), ty + R(3), 2, 1);
+        }
+      }
     } else if (v === 4) { // VISUAL-PASS-FOREST: ancient broadleaf — tall straight
       // trunk, high dense canopy, sunlight filtering through (board EXPLORE)
       groundShadow(44);
       trunk(10, 30, '#33200f', '#4a2f16', '#6b4423');
       g.fillStyle = '#4a2f16'; g.fillRect(cx - 12, H - 38, 4, 14); g.fillRect(cx + 8, H - 38, 4, 14); // branch arms
       const blobs = [[40,34,24],[22,44,16],[58,44,16],[28,22,15],[52,22,15],[40,52,17],[16,34,11],[64,34,11]];
-      blobCanopy(g, blobs, R, { deep:'#2F4F2B', main:PAL.leafDark, mid:PAL.leaf, lite:PAL.leafLight,
-        deep2:'#24401F', spark:'#D9EDB4', nDeep:90, nMid:110, nLite:80, nSpark:26 });
+      blobCanopy(g, blobs, R, { deep:SC.deep, main:SC.main, mid:SC.mid, lite:SC.lite,
+        deep2:SC.deep, spark:SC.spark, nDeep:90, nMid:110, nLite:80, nSpark:26 });
       // light filtering through: pale sun flecks deep in the crown + hanging vines
-      g.fillStyle = '#EAF3C8';
+      g.fillStyle = SC.spark;
       for (let i = 0; i < 12; i++) g.fillRect(22 + R(36), 16 + R(30), 2, 1);
       g.fillStyle = PAL.leafDark;
       for (const vx of [18, 30, 50, 62]) { const len = 6 + R(6); g.fillRect(vx, 52, 1, len); g.fillStyle = PAL.leaf; g.fillRect(vx - 1, 52 + R(len), 2, 2); g.fillStyle = PAL.leafDark; }
@@ -3156,16 +3191,16 @@ function treeTile(v) {
       g.fillStyle = '#3a3428';                                       // birch marks
       for (const my of [42, 50, 58, 64]) g.fillRect(cx - 2, my, 5, 1);
       const blobs = [[28,16,13],[15,27,10],[41,27,10],[28,31,12]];
-      blobCanopy(g, blobs, R, { deep:PAL.leafDark, main:PAL.leaf, mid:PAL.leafLight, lite:PAL.meadowLight,
-        deep2:PAL.leafDark, spark:'#FFF6D8', nDeep:36, nMid:60, nLite:56, nSpark:18 });
+      blobCanopy(g, blobs, R, { deep:SC.deep, main:SC.main, mid:SC.mid, lite:SC.lite,
+        deep2:SC.deep, spark:SC.spark, nDeep:36, nMid:60, nLite:56, nSpark:18 });
     } else if (v === 6) { // VISUAL-PASS-2: alt round crown — offset silhouette
       groundShadow(34);
       trunk(6, 18, '#4A3220', PAL.timber, '#77563A');
       g.fillStyle = PAL.timber;
       g.fillRect(cx - 9, H - 28, 3, 10); g.fillRect(cx + 6, H - 30, 3, 12);
       const blobs = [[30,34,17],[16,26,12],[46,28,13],[24,16,11],[40,44,13],[14,42,10],[50,44,10]];
-      blobCanopy(g, blobs, R, { deep:PAL.leafDark, main:PAL.leaf, mid:PAL.leafLight, lite:PAL.meadowLight,
-        deep2:'#2F4F2B', spark:'#CFE8A8', nDeep:74, nMid:104, nLite:76, nSpark:22 });
+      blobCanopy(g, blobs, R, { deep:SC.deep, main:SC.main, mid:SC.mid, lite:SC.lite,
+        deep2:SC.deep, spark:SC.spark, nDeep:74, nMid:104, nLite:76, nSpark:22 });
       for (const [dx2, dy2] of [[12,48],[26,56],[44,54],[54,46],[34,58]]) {
         g.fillStyle = PAL.leafDark; g.beginPath(); g.arc(dx2, dy2, 3.4, 0, 7); g.fill();
         g.fillStyle = PAL.leaf; g.fillRect(dx2 - 1, dy2 - 2, 3, 3);
@@ -3189,11 +3224,11 @@ function treeTile(v) {
         g.beginPath(); g.moveTo(cx, H-26); g.quadraticCurveTo(cx-14, H-36, cx-20, H-46); g.stroke();
         g.beginPath(); g.moveTo(cx, H-26); g.quadraticCurveTo(cx+14, H-36, cx+20, H-46); g.stroke();
         g.beginPath(); g.moveTo(cx, H-32); g.quadraticCurveTo(cx-7, H-46, cx-9, H-54); g.stroke();
-        blobCanopy(g, blobs, R, { deep:'#B45A74', main:PAL.blossom, mid:PAL.blossomLight, lite:'#F9D9DE',
-          deep2:'#CE7191', spark:'#FFF0F5', nDeep:80, nMid:110, nLite:80, nSpark:34 });
-        g.fillStyle = PAL.blossom;                                   // fallen petals at the base
+        blobCanopy(g, blobs, R, { deep:SC.deep, main:SC.blossom[0], mid:SC.blossom[1], lite:SC.blossom[2],
+          deep2:SC.deep, spark:SC.spark, nDeep:80, nMid:110, nLite:80, nSpark:34 });
+        g.fillStyle = SC.blossom[0];                                 // fallen petals at the base
         for (let i = 0; i < 8; i++) g.fillRect(cx - 16 + R(32), H - 5 + R(3), 2, 1);
-        g.fillStyle = PAL.blossomLight;
+        g.fillStyle = SC.blossom[2];
         for (let i = 0; i < 5; i++) g.fillRect(cx - 14 + R(28), H - 4 + R(3), 1, 1);
         g.strokeStyle = '#8E4360'; g.lineWidth = 2;                  // under-belly shadow crescents
         for (const [bx2, by2, br2] of blobs) {
@@ -3207,8 +3242,8 @@ function treeTile(v) {
         trunk(6, 20, '#4A3220', PAL.timber, '#77563A');
         g.fillStyle = PAL.timber;                                    // branch forks
         g.fillRect(cx - 8, H - 30, 3, 12); g.fillRect(cx + 5, H - 30, 3, 12);
-        blobCanopy(g, blobs, R, { deep:PAL.leafDark, main:PAL.leaf, mid:PAL.leafLight, lite:PAL.meadowLight,
-          deep2:'#2F4F2B', spark:'#CFE8A8', nDeep:80, nMid:110, nLite:80, nSpark:20 });
+        blobCanopy(g, blobs, R, { deep:SC.deep, main:SC.main, mid:SC.mid, lite:SC.lite,
+          deep2:SC.deep, spark:SC.spark, nDeep:80, nMid:110, nLite:80, nSpark:20 });
       }
       // VISUAL-PASS-2: dangle clusters hang off the crown's lower edge so
       // neighbouring canopies interlock into groves like the board.
@@ -3221,10 +3256,10 @@ function treeTile(v) {
     }
   });
 }
-const treeA = treeTile(0), treeB = treeTile(1);
-const treeBlossom = treeTile(2), treeTallPine = treeTile(3);
-const treeAncient = treeTile(4), treeBirch = treeTile(5);   // VISUAL-PASS-FOREST
-const treeRoundAlt = treeTile(6);                            // VISUAL-PASS-2
+let treeA = treeTile(0, seasonKey), treeB = treeTile(1, seasonKey);
+let treeBlossom = treeTile(2, seasonKey), treeTallPine = treeTile(3, seasonKey);
+let treeAncient = treeTile(4, seasonKey), treeBirch = treeTile(5, seasonKey);   // VISUAL-PASS-FOREST
+let treeRoundAlt = treeTile(6, seasonKey);                            // VISUAL-PASS-2
 // VISUAL-PASS-2: east-forest pine variety — kind 0 taller/thinner, kind 1
 // shorter/wider, each with its own tint, so stands never read as a tree line.
 function pineVariant(kind) {
@@ -3277,7 +3312,7 @@ function pineVariant(kind) {
     for (let k = 0; k < 4; k++) g.fillRect(Math.round(cx - 5 + R(10)), Math.round(top + R(4)), 1, 1);
   });
 }
-const pineTallB = pineVariant(0), pineTallC = pineVariant(1);
+let pineTallB = pineVariant(0), pineTallC = pineVariant(1);
 // VISUAL-PASS-FOREST: forest-floor overlays — all transparent, drawn on
 // walkable grass tiles only (decor; collision constants untouched).
 const forestLightA = px(TILE,TILE,(g)=>{ g.clearRect(0,0,TILE,TILE);
@@ -3295,7 +3330,7 @@ const forestLightB = px(TILE,TILE,(g)=>{ g.clearRect(0,0,TILE,TILE);
   for (let i=0;i<10;i++) g.fillRect(2+R(28), 2+R(28), 2, 2);
 });
 const forestLitter = px(TILE,TILE,(g)=>{ g.clearRect(0,0,TILE,TILE);
-  const R = srand(0x11fe), S = SEASON_BLOOMS.spring;
+  const R = srand(0x11fe), S = SEASON_BLOOMS[seasonKey];
   g.fillStyle = PAL.meadowDeep;
   for (let i=0;i<12;i++) g.fillRect(R(30), R(30), 3, 2);        // fallen leaves
   g.fillStyle = PAL.leaf;
@@ -3334,7 +3369,7 @@ const forestShroom = px(TILE,TILE,(g)=>{ g.clearRect(0,0,TILE,TILE);
   for (let i=0;i<6;i++) g.fillRect(4+R(24), 20+R(4), 1, 3);
 });
 const flowerTile = px(TILE,TILE,(g)=>{ g.clearRect(0,0,TILE,TILE);
-  const S = SEASON_BLOOMS.spring, R = srand(0xf10e2);
+  const S = SEASON_BLOOMS[seasonKey], R = srand(0xf10e2);
   for(let i=0;i<5;i++){ const x=4+R(22),y=8+R(16); g.fillStyle=S.leaf; g.fillRect(x+1,y+3,2,5);
     g.fillStyle=S.blooms[R(S.blooms.length)]; g.fillRect(x,y,4,4);
     g.fillStyle=S.center; g.fillRect(x+1,y+1,1,1); }
@@ -3363,7 +3398,7 @@ const fenceTile = px(TILE,TILE,(g)=>{ g.clearRect(0,0,TILE,TILE);
 // (transparent overlay on walkable grass — never on plots, fence, or the gate).
 function farmBloomTile(variant) {
   return px(TILE,TILE,(g)=>{ g.clearRect(0,0,TILE,TILE);
-    const S = SEASON_BLOOMS.spring, R = srand(0x8100 + variant*131);
+    const S = SEASON_BLOOMS[seasonKey], R = srand(0x8100 + variant*131);
     for (let i=0;i<4;i++) {
       const x = 3+R(23), y = 6+R(18);
       g.fillStyle = S.leaf; g.fillRect(x+1, y+3, 2, 6);        // stem
@@ -3374,7 +3409,7 @@ function farmBloomTile(variant) {
   });
 }
 function P_farmGreen(R) { return R(2) ? '#3f7a2e' : '#4a8f3c'; }
-const farmBloomA = farmBloomTile(0), farmBloomB = farmBloomTile(1);
+let farmBloomA = farmBloomTile(0), farmBloomB = farmBloomTile(1);
 // VISUAL-PASS-FARMHOME: watering can resting by the farm path (decor, walkable).
 const wateringCanTile = px(TILE,TILE,(g)=>{ g.clearRect(0,0,TILE,TILE);
   g.fillStyle='rgba(0,0,0,.18)'; g.fillRect(9,27,18,3);        // ground shadow
@@ -3397,7 +3432,7 @@ const wateringCanTile = px(TILE,TILE,(g)=>{ g.clearRect(0,0,TILE,TILE);
 // VISUAL-PASS-FARMHOME: natural grass boundary — tufts + wildflowers on the
 // grass ring outside the farm fence (transparent, walkable).
 const farmEdgeTuft = px(TILE,TILE,(g)=>{ g.clearRect(0,0,TILE,TILE);
-  const S = SEASON_BLOOMS.spring, R = srand(0xe94e);
+  const S = SEASON_BLOOMS[seasonKey], R = srand(0xe94e);
   g.fillStyle = '#3a7230';
   for (let i=0;i<7;i++) { const x=R(30), y=R(28); g.fillRect(x,y,1,4); g.fillRect(x+2,y+1,1,3); }
   g.fillStyle = '#6ab04c';
@@ -3410,7 +3445,7 @@ const farmEdgeTuft = px(TILE,TILE,(g)=>{ g.clearRect(0,0,TILE,TILE);
 // season blooms; flanks the home approach (walkable grass, decor only).
 function homeBedTile(variant) {
   return px(TILE,TILE,(g)=>{ g.clearRect(0,0,TILE,TILE);
-    const P = BOARD_PALETTE, S = SEASON_BLOOMS.spring, R = srand(0x8ed0 + variant*97);
+    const P = BOARD_PALETTE, S = SEASON_BLOOMS[seasonKey], R = srand(0x8ed0 + variant*97);
     g.fillStyle = P.soilRich; g.fillRect(4,8,24,18);          // bed soil
     g.fillStyle = P.soilDark; g.fillRect(4,22,24,2);
     g.fillStyle = P.soilRidge; for (let i=0;i<5;i++) g.fillRect(6+R(18), 10+R(12), 2, 1);
@@ -3425,7 +3460,7 @@ function homeBedTile(variant) {
     }
   });
 }
-const homeBedA = homeBedTile(0), homeBedB = homeBedTile(1);
+let homeBedA = homeBedTile(0), homeBedB = homeBedTile(1);
 const lampTile = px(TILE,TILE,(g)=>{ g.clearRect(0,0,TILE,TILE);
   // VISUAL-PASS-TOWN: classic Victorian lamppost — flared iron base, collared
   // post, capped lantern with warm glass (halo added at night in drawWorld)
@@ -5049,7 +5084,7 @@ const homeShelfTile = px(TILE,TILE,(g)=>{ g.drawImage(homeWall,0,0);
 // decor only, placed on open floor tiles.
 function plantPotTile(variant) {
   return px(TILE,TILE,(g)=>{ g.drawImage(woodFloor,0,0);
-    const S = SEASON_BLOOMS.spring, R = srand(0x5eed + variant*61);
+    const S = SEASON_BLOOMS[seasonKey], R = srand(0x5eed + variant*61);
     g.fillStyle='rgba(0,0,0,.15)'; g.fillRect(8,27,16,3);     // floor shadow
     g.fillStyle = variant ? '#b06030' : '#8a5a2b';            // terracotta pot
     g.fillRect(10,20,12,8);
@@ -5072,7 +5107,33 @@ function plantPotTile(variant) {
     }
   });
 }
-const plantPotTall = plantPotTile(0), plantPotHerb = plantPotTile(1);
+let plantPotTall = plantPotTile(0), plantPotHerb = plantPotTile(1);
+// SEASONS (DESIGN-BOARD): rebuild every season-keyed tile when the season turns.
+// Painters are deterministic (srand), so layouts stay identical — only colors change.
+function rebuildSeasonTiles() {
+  bedA = flowerBedTile(0, seasonKey); bedB = flowerBedTile(1, seasonKey); bedC = flowerBedTile(2, seasonKey);
+  churchBedA = flowerBedTile(3, seasonKey); churchBedB = flowerBedTile(4, seasonKey);
+  riverBankA = riverBankTile(0); riverBankB = riverBankTile(1);
+  riverBankC = riverBankTile(2); riverBankD = riverBankTile(3);
+  gardenTile = gardenBed('dormant', 0, 0); gardenTileB = gardenBed('dormant', 1, 0);
+  bloomTile = gardenBed('blooming', 0, 0); bloomTileB = gardenBed('blooming', 1, 0);
+  bloomTileC = gardenBed('blooming', 2, 0);
+  bloomTileS = gardenBed('blooming', 0, 1); bloomTileBS = gardenBed('blooming', 1, 1);
+  bloomTileCS = gardenBed('blooming', 2, 1);
+  wakeTile = gardenBed('waking', 0, 0); wakeTileB = gardenBed('waking', 1, 0);
+  wakeTileC = gardenBed('waking', 2, 0);
+  wakeTileS = gardenBed('waking', 0, 1); wakeTileBS = gardenBed('waking', 1, 1);
+  wakeTileCS = gardenBed('waking', 2, 1);
+  gardenEdgeD = gardenEdgeTile('dormant'); gardenEdgeB = gardenEdgeTile('blooming');
+  pineTallB = pineVariant(0); pineTallC = pineVariant(1);
+  farmBloomA = farmBloomTile(0); farmBloomB = farmBloomTile(1);
+  homeBedA = homeBedTile(0); homeBedB = homeBedTile(1);
+  plantPotTall = plantPotTile(0); plantPotHerb = plantPotTile(1);
+  treeA = treeTile(0, seasonKey); treeB = treeTile(1, seasonKey);
+  treeBlossom = treeTile(2, seasonKey); treeTallPine = treeTile(3, seasonKey);
+  treeAncient = treeTile(4, seasonKey); treeBirch = treeTile(5, seasonKey);
+  treeRoundAlt = treeTile(6, seasonKey);
+}
 // VISUAL-PASS-FARMHOME: kitchen corner — counter with pots, kettle, hanging
 // pan; decor only, sits beside the side table.
 const kitchenCounterTile = px(TILE,TILE,(g)=>{ g.drawImage(woodFloor,0,0);
@@ -6263,6 +6324,14 @@ const TINTS = {
   night:   { r: 10,  g: 16,  b: 48,  a: 0.38 },  // deep blue, floored for readability
 };
 const tintCur = { r: 0, g: 0, b: 0, a: 0 };
+// SEASONS (DESIGN-BOARD): faint seasonal cast — blossom pink, harvest gold,
+// amber autumn, cool winter blue. Subtle by design; never a filter.
+const SEASON_TINT = {
+  spring: { r: 255, g: 225, b: 235, a: .030 },
+  summer: { r: 255, g: 248, b: 220, a: .022 },
+  autumn: { r: 255, g: 198, b: 138, a: .048 },
+  winter: { r: 198, g: 218, b: 255, a: .058 },
+};
 let nightF = 0; // 0 = day, 1 = full night — drives stars, lamp glow, fireflies
 let goldF = 0;  // 0 = none, 1 = full golden-hour wash — dawn & dusk glow
 let duskF = 0;  // VISUAL-PASS-TITLE: 0 = none, 1 = full pink/purple sunset wash
@@ -6336,7 +6405,14 @@ function drawForestPollen(g, now, night) {
     g.fillRect(dx, dy, 2, 2);
   }
 }
-// falling leaves drifting through the village (world space)
+// SEASONS (DESIGN-BOARD): drifting motes change with the season —
+// spring petals, summer golden pollen, autumn leaves, winter snow.
+const SEASON_MOTES = {
+  spring: ['#F2B8C9','#F8D8E2','#F9D9DE','#E89BB4'],
+  summer: ['#FFF6D8','#FFE9A8','#D9EDB4','#F2D98c'],
+  autumn: ['#D98A3C','#B86A2A','#E8A84C','#C96A4A'],
+  winter: ['#F4F8FF','#E8ECF4','#FFFFFF','#DDE4EE'],
+};
 const LEAF_COLORS = ['#8ac96a','#d9c26a','#c9a24a','#7cc165','#e8b93c'];
 const leaves = [];
 for (let i = 0; i < 18; i++) leaves.push({ x: Math.random()*WW*TILE, y: Math.random()*WH*TILE, ph: Math.random()*7, sp: 0.5+Math.random()*0.8, c: LEAF_COLORS[i % LEAF_COLORS.length] });
@@ -6442,14 +6518,22 @@ function loop(now) {
       ctx.font = '12px monospace'; ctx.textAlign = 'center'; ctx.fillStyle = '#fff';
       ctx.fillText('\uD83D\uDC9B', Math.round(foxSm.x), Math.round(foxSm.y - 26 + Math.sin(now/300)*2));
     }
-    // falling leaves drifting through the village
+    // SEASONS: drifting motes re-theme per season; winter falls as snow.
+    const moteCols = SEASON_MOTES[seasonKey] || SEASON_MOTES.spring;
+    const isSnow = seasonKey === 'winter';
     for (const l of leaves) {
-      l.x += (0.22 + 0.3*Math.sin(now/1600 + l.ph)) * l.sp;
-      l.y += (0.16 + 0.14*Math.sin(now/900 + l.ph*2)) * l.sp;
+      if (isSnow) {
+        l.y += (0.5 + 0.3*Math.sin(now/900 + l.ph*2)) * l.sp;
+        l.x += 0.18*Math.sin(now/1200 + l.ph) * l.sp;
+      } else {
+        l.x += (0.22 + 0.3*Math.sin(now/1600 + l.ph)) * l.sp;
+        l.y += (0.16 + 0.14*Math.sin(now/900 + l.ph*2)) * l.sp;
+      }
       if (l.x > WW*TILE) l.x = 0;
       if (l.y > WH*TILE) l.y = 0;
-      ctx.fillStyle = l.c;
-      ctx.fillRect(l.x + Math.sin(now/500 + l.ph)*4, l.y, 3, 2);
+      ctx.fillStyle = moteCols[(l.ph*7|0) % moteCols.length];
+      if (isSnow) ctx.fillRect(l.x, l.y, 2, 2);
+      else ctx.fillRect(l.x + Math.sin(now/500 + l.ph)*4, l.y, 3, 2);
     }
   }
   // villagers — gentle idle sway, happy hop while chatting.
@@ -6615,6 +6699,12 @@ function loop(now) {
   // ---- screen-space atmosphere: smooth day/night tint + night fireflies ----
   ctx.fillStyle = 'rgba(' + (tintCur.r|0) + ',' + (tintCur.g|0) + ',' + (tintCur.b|0) + ',' + tintCur.a.toFixed(3) + ')';
   ctx.fillRect(0, 0, vw, vh);
+  // SEASONS (DESIGN-BOARD): subtle seasonal color cast over the whole world.
+  const sTint = SEASON_TINT[seasonKey];
+  if (sTint) {
+    ctx.fillStyle = 'rgba(' + sTint.r + ',' + sTint.g + ',' + sTint.b + ',' + sTint.a + ')';
+    ctx.fillRect(0, 0, vw, vh);
+  }
   // VISUAL-PASS-TITLE: bright-day lift — keeps vegetation sunlit and readable
   if (dayF > 0.02) {
     ctx.globalAlpha = 0.06 * dayF;
@@ -6659,9 +6749,18 @@ function loop(now) {
     ctx.beginPath(); ctx.arc(mx - mr*0.3, my - mr*0.2, mr*0.22, 0, 7); ctx.fill();
     ctx.beginPath(); ctx.arc(mx + mr*0.25, my + mr*0.3, mr*0.15, 0, 7); ctx.fill();
     ctx.fillStyle = 'rgba(255,255,255,' + (0.8*sa).toFixed(2) + ')';
+    // SEASONS: winter nights are crisper — stars burn a little brighter.
+    const starBoost = seasonKey === 'winter' ? 1.35 : 1.0;
     for (let i = 0; i < 50; i++) {
       const sx = (i*97) % vw, sy = (i*61) % vh;
       if (((i*13 + Math.floor(now/900)) % 7) < 5) ctx.fillRect(sx, sy, 2, 2);
+    }
+    if (starBoost > 1) {
+      ctx.fillStyle = 'rgba(255,255,255,' + (0.25*sa).toFixed(2) + ')';
+      for (let i = 0; i < 24; i++) {
+        const sx = (i*173+51) % vw, sy = (i*97+31) % vh;
+        if (((i*7 + Math.floor(now/1100)) % 5) < 3) ctx.fillRect(sx, sy, 1, 1);
+      }
     }
     // fireflies drift through the night air
     if (!inside) {
@@ -6676,6 +6775,24 @@ function loop(now) {
       }
     }
   }
+  // SEASONS (DESIGN-BOARD): morning mist on spring/autumn dawns — soft white
+  // bands drifting low, burning off as morning warms.
+  if (!inside && day.phase === 'morning' && (seasonKey === 'spring' || seasonKey === 'autumn')) {
+    // mist burns off over the first minute of morning
+    const mistA = 0.10 * Math.max(0, 1 - (Date.now() - morningStartT) / 60000);
+    if (mistA > 0.01) {
+      for (let b = 0; b < 3; b++) {
+        const my = vh * (0.55 + b * 0.14);
+        const mx = ((now / (9000 + b * 3000) * vw) % (vw * 1.6)) - vw * 0.3;
+        const mg = ctx.createLinearGradient(0, my - 18, 0, my + 18);
+        mg.addColorStop(0, 'rgba(255,255,255,0)');
+        mg.addColorStop(0.5, 'rgba(255,252,240,' + mistA.toFixed(3) + ')');
+        mg.addColorStop(1, 'rgba(255,255,255,0)');
+        ctx.fillStyle = mg;
+        ctx.fillRect(mx, my - 18, vw * 0.9, 36);
+      }
+    }
+  }
   // vignette warmth (cached — rebuilt on resize only)
   if (vignetteGrad) { ctx.fillStyle = vignetteGrad; ctx.fillRect(0,0,vw,vh); }
   // footsteps
@@ -6683,9 +6800,11 @@ function loop(now) {
   // bite flash banner
   const meNow = players.get(myId);
   if (Date.now() - biteFlash < 2500 && meNow && meNow.fishing === 'bite') {
-    ctx.fillStyle = 'rgba(0,0,0,.55)'; ctx.fillRect(vw/2-110, 40, 220, 30);
-    ctx.fillStyle = '#ffe066'; ctx.font = 'bold 16px sans-serif'; ctx.textAlign='center';
-    ctx.fillText('❗ BITE! Press E now!', vw/2, 61);
+    // DESIGN-BOARD: storybook bite banner (navy/gold, not black box)
+    ctx.fillStyle = 'rgba(26,35,64,.94)'; ctx.fillRect(vw/2-118, 38, 236, 34);
+    ctx.strokeStyle = '#d4a940'; ctx.lineWidth = 2; ctx.strokeRect(vw/2-118, 38, 236, 34);
+    ctx.fillStyle = '#ffe9a8'; ctx.font = 'bold 15px Georgia, serif'; ctx.textAlign='center';
+    ctx.fillText('❗ BITE! Reel In — press E!', vw/2, 60);
   }
 }
 

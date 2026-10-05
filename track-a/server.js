@@ -670,6 +670,13 @@ export function dayPhase(room, now = Date.now()) {
   return 'night';
 }
 const PHASE_LABEL = { morning: 'Morning', day: 'Day', sunset: 'Sunset', night: 'Night' }
+// SEASONS (DESIGN-BOARD): 7 days per season, derived from the synced day counter —
+// no new state, both travelers always agree. Spring=days 1-7, Summer=8-14, etc.
+const SEASON_NAMES = ['Spring', 'Summer', 'Autumn', 'Winter'];
+export function seasonOf(dayN) { return SEASON_NAMES[Math.floor((dayN - 1) / 7) % 4]; }
+// SEASONS: gentle growth texture — spring planting season is fastest, winter slowest.
+// Test-safe: tests use waitFor-polling, and 0.8x–1.25x never breaks balance.
+const SEASON_GROW = { Spring: 0.8, Summer: 1.0, Autumn: 1.1, Winter: 1.25 };
 
 // CHURCH-REDESIGN (2026-10-03): the weekly sermon. Every 7th day (day 1 is a
 // sermon day so travelers meet it quickly), from morning until afternoon, the
@@ -753,7 +760,8 @@ function npcPublic(n) {
 
 function dayPublic(room) {
   const phase = dayPhase(room);
-  return { n: room.day.n, phase, label: PHASE_LABEL[phase], rhythm: { ...room.rhythm },
+  return { n: room.day.n, phase, label: PHASE_LABEL[phase], season: seasonOf(room.day.n),
+           rhythm: { ...room.rhythm },
            sermon: sermonActive(room), shops: shopHours(room), marketDay: marketDayActive(room) };
 }
 
@@ -1114,7 +1122,7 @@ function tickRoom(room) {
   // crops
   let farmChanged = false;
   for (const f of room.farm) {
-    if (f.stage === 'growing' && now - f.t >= CROP_GROW_MS) { f.stage = 'ready'; farmChanged = true; }
+    if (f.stage === 'growing' && now - f.t >= CROP_GROW_MS * (SEASON_GROW[seasonOf(room.day.n)] || 1)) { f.stage = 'ready'; farmChanged = true; }
   }
   if (farmChanged) broadcast(room, {t:'farm', farm: farmPublic(room)});
   // fox wander
