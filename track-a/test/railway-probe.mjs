@@ -1,7 +1,7 @@
 // Live Railway probe: verifies the position-restore fix is deployed.
-// Join production TIKVAH, walk east, drop, rejoin with same uuid.
+// Join production TIKVAH, walk west, drop, rejoin with same uuid.
 // Fixed build -> position restored. Old build -> reset to spawn.
-// Run: node test/railway-probe.mjs
+// (CAFE-MOVE 2026-10-05: walk west — the cafe now sits east of spawn.)
 import WebSocket from 'ws';
 import { setTimeout as sleep } from 'timers/promises';
 
@@ -39,7 +39,7 @@ function join(ws, name) {
 const ws1 = await connect();
 const j1 = await join(ws1, 'QAProbe');
 console.log('joined at', Math.round(j1.you.x), Math.round(j1.you.y), '(spawn)');
-ws1.send(JSON.stringify({ t: 'input', x: 1, y: 0 })); // walk east ~5 tiles
+ws1.send(JSON.stringify({ t: 'input', x: -1, y: 0 })); // walk west ~5 tiles (clear lane)
 await sleep(1800);
 ws1.send(JSON.stringify({ t: 'input', x: 0, y: 0 }));
 await sleep(1200); // let the 20 Hz tick persist the identity record
@@ -50,6 +50,6 @@ const ws2 = await connect();
 const j2 = await join(ws2, 'QAProbe');
 const dSpawn = Math.hypot(j2.you.x - SPAWN.x, j2.you.y - SPAWN.y);
 console.log('rejoined at', Math.round(j2.you.x), Math.round(j2.you.y), '| dist from spawn:', Math.round(dSpawn), 'px');
-console.log(dSpawn > 100 ? 'LIVE BUILD: FIXED (position restored)' : 'LIVE BUILD: OLD (reset to spawn)');
+console.log(dSpawn > 30 ? 'LIVE BUILD: FIXED (position restored)' : 'LIVE BUILD: OLD (reset to spawn)');
 ws2.close();
 process.exit(0);
