@@ -255,6 +255,29 @@
   #welcome .wsub { color:#dff3d8; font-size:14px; margin-top:14px; opacity:.85; }
   .warmcard { background:rgba(255,251,232,.97); color:#3a2a12; border-radius:16px; border:3px solid #7a4b1f;
     box-shadow:0 10px 40px rgba(0,0,0,.5); }
+  /* PAINTERLY-PASS item 7: UI emboss — soft inner shadows + gentle glow on
+     parchment panels; desaturated gold on selection states. CSS only. */
+  .warmcard {
+    box-shadow:0 10px 40px rgba(0,0,0,.5),
+      inset 0 2px 8px rgba(122,75,31,.22),
+      inset 0 -3px 10px rgba(255,255,255,.45),
+      0 0 22px rgba(213,173,84,.28);
+  }
+  .warmcard button, #hannah .choices button {
+    transition:border-color .12s, box-shadow .12s, background .12s;
+  }
+  .warmcard button:hover, .warmcard button:focus-visible,
+  #hannah .choices button:hover, #hannah .choices button:focus-visible {
+    border-color:#b99b5f;
+    background:#fdf6e0;
+    box-shadow:inset 0 1px 4px rgba(122,75,31,.18), 0 0 12px rgba(201,162,75,.35);
+    outline:none;
+  }
+  .warmcard button.selected, #hannah .choices button.selected {
+    border-color:#c9a24b;
+    background:linear-gradient(180deg, #fdf3d8, #f5e6bd);
+    box-shadow:inset 0 2px 6px rgba(122,75,31,.25), 0 0 14px rgba(201,162,75,.4);
+  }
   #discover { position:absolute; left:50%; bottom:120px; transform:translateX(-50%); z-index:19; display:none;
     width:min(360px, 90vw); padding:18px 22px; text-align:center; animation:cardIn .5s ease-out; }
   #discover h3 { margin:0 0 8px; color:#7a4b1f; font-size:19px; }
