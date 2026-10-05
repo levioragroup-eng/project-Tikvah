@@ -38,7 +38,7 @@ function ok(name, cond, detail='') {
 // ---------- server ----------
 console.log('starting server...');
 const srv = spawn('node', ['server.js'], {
-  cwd: ROOT, env: { ...process.env, PORT: String(PORT), CROP_GROW_MS: '1500', FISH_WAIT_MIN: '800', FISH_WAIT_MAX: '1200', FISH_CATCH_WINDOW: '3000', DAY_MS: '45000', REAP_MS: '500', RELIGHT_STEP_MS: '150', RUIN_HOLD_MS: '300' },
+  cwd: ROOT, env: { ...process.env, PORT: String(PORT), CROP_GROW_MS: '1500', FISH_WAIT_MIN: '800', FISH_WAIT_MAX: '1200', FISH_CATCH_WINDOW: '3000', DAY_MS: '45000', REAP_MS: '500', RELIGHT_STEP_MS: '150', RUIN_HOLD_MS: '300', GATE_REPAIR_COOLDOWN_MS: '300' },
   stdio: ['ignore', 'pipe', 'pipe'],
 });
 srv.stderr.on('data', d => process.stderr.write('[srv] ' + d));
@@ -735,8 +735,15 @@ try {
   ok('B walks south down the west lane', await walkTo(b, 13*TILE+16, 18*TILE+16, 12000));
   ok('B walks east on the south lane', await walkTo(b, 17*TILE+16, 18*TILE+16, 8000));
   ok('walk to dock', await walkTo(b, DOCK.x, DOCK.y, 8000));
-  b.send({ t: 'interact' }); // cast
-  ok('cast accepted', await b.waitFor(() => b.me()?.fishing === 'cast', 2000));
+  // Cast. Villagers wander — if one is in range, the talk fires instead of
+  // the cast; wait for them to pass and retry (up to 5 attempts).
+  let castOk = false;
+  for (let i = 0; i < 5 && !castOk; i++) {
+    b.send({ t: 'interact' }); // cast
+    castOk = await b.waitFor(() => b.me()?.fishing === 'cast', 2000);
+    if (!castOk) await sleep(1500);
+  }
+  ok('cast accepted', castOk);
   ok('bite event fires', await b.waitFor(() => b.msgs.some(m => m.t === 'bite'), 5000));
   b.send({ t: 'interact' }); // catch within window
   ok('catch within window -> catch event', await a.waitFor(() => a.msgs.some(m => m.t === 'catch'), 3000));
@@ -778,12 +785,17 @@ try {
   let say = null;
   // route via the plaza: a straight line from the cafe clips the cafe wall
   await walkTo(a, 21*TILE+16, 17*TILE+16, 8000);
-  for (let attempt = 0; attempt < 3 && !say; attempt++) {
+  for (let attempt = 0; attempt < 5 && !(say && say.name === 'Hannah'); attempt++) {
     const h = a.state.npcs.get('Hannah');
     ok('Hannah is in the village', !!h);
     await walkTo(a, h.x, h.y, 8000);
     a.send({ t: 'interact' }); // talk
-    say = await a.waitFor(() => a.msgs.some(m => m.t === 'say'), 2000) ? a.lastOf('say') : null;
+    // If another villager is nearer, their 'say' fires instead — retry.
+    say = await a.waitFor(() => {
+      const s = a.lastOf('say');
+      return s && s.name === 'Hannah' ? true : false;
+    }, 2000) ? a.lastOf('say') : null;
+    if (!say) await sleep(1000);
   }
   ok('Hannah speaks', !!say && say.name === 'Hannah' && say.text.length > 10, say?.text);
   ok('dialogue visible to BOTH players', await b.waitFor(() => b.msgs.some(m => m.t === 'say'), 2000));
@@ -1839,7 +1851,140 @@ try {
   ];
   for (const [label, needle] of foodChecks) ok('page contains ' + label, pageHtml.includes(needle));
 
-  [a, b, c, d, k, v2, v3, i2, h2, f1, ...fillers].forEach(x => x.close());
+  // ---------- STORYLINE: the Garden Gate (3 acts + epilogue) ----------
+  console.log('storyline (Garden Gate):');
+  const st1 = new C('Story'); await st1.connect();
+  st1.send({ t: 'create', name: 'Story', look: LOOK_A2 });
+  ok('story: create -> joined', await st1.waitFor(() => !!st1.state.code, 3000));
+  const sJoin = st1.msgs.find(m => m.t === 'joined');
+  ok('story: join carries story defaults', !!sJoin.story && sJoin.story.gateFound === false && sJoin.story.key === false && !sJoin.story.gateRepaired,
+     JSON.stringify(sJoin.story));
+
+  // ACT 1 — discovery of the decaying gate (woven into early play, no intro sequence)
+  ok('story act1: walk to the Garden Gate', await walkTo(st1, 19*TILE+16, 12*TILE+16, 15000));
+  ok('story act1: gate discovered', await st1.waitFor(() => st1.msgs.some(m => m.t === 'story' && m.story.gateFound), 5000));
+  const gateToast = st1.msgs.find(m => m.t === 'story-toast' && /Garden Gate/.test(m.text));
+  ok('story act1: discovery hints all three trials', !!gateToast && /crops/.test(gateToast.text) && /bridge/.test(gateToast.text) && /peace/.test(gateToast.text),
+     gateToast && gateToast.text);
+
+  // ACT 2a — nurture (Psalm 23:1): 3 harvests through the existing farm system
+  const storyPlots = [[6,15],[8,15],[10,15]];
+  for (const [px,py] of storyPlots) {
+    ok(`story act2a: walk to plot ${px},${py}`, await walkTo(st1, px*TILE+16, py*TILE+16, 12000));
+    st1.send({ t: 'interact' }); await sleep(400);  // plant
+    st1.send({ t: 'interact' }); await sleep(400);  // water
+  }
+  ok('story act2a: crops growing', await st1.waitFor(() => [0,1,2].every(i => ['growing','ready'].includes(st1.state.farm[i]?.stage)), 6000),
+     JSON.stringify((st1.state.farm||[]).slice(0,3).map(f => f && f.stage)));
+  ok('story act2a: crops ready', await st1.waitFor(() => [0,1,2].every(i => st1.state.farm[i]?.stage === 'ready'), 8000));
+  for (const [px,py] of storyPlots) {
+    ok(`story act2a: return to plot ${px},${py}`, await walkTo(st1, px*TILE+16, py*TILE+16, 12000));
+    st1.send({ t: 'interact' }); await sleep(400);  // harvest -> counts toward the trial
+  }
+  ok('story act2a: nurture trial complete', await st1.waitFor(() => st1.msgs.some(m => m.t === 'story' && m.story.trials.crops), 5000));
+  const psalmMsg = st1.msgs.filter(m => m.t === 'verse').pop();
+  ok('story act2a: Psalm 23:1 verbatim', psalmMsg?.ref === 'Psalm 23:1' && psalmMsg?.text === 'The LORD is my shepherd; I shall not want.', psalmMsg?.ref);
+
+  // ACT 2b — mend (John 8:12): 3 mends at the broken bridge
+  // (waypoints: exit the farm, south down the west lane, east on the south
+  // lane — the proven route — then south onto the bridge)
+  ok('story act2b: exit the farm', await walkTo(st1, 8*TILE+16, 14*TILE+16, 12000));
+  ok('story act2b: walk north to the market lane', await walkTo(st1, 8*TILE+16, 12*TILE+16, 8000));
+  ok('story act2b: walk east on the market lane', await walkTo(st1, 13*TILE+16, 12*TILE+16, 8000));
+  ok('story act2b: walk south down the west lane', await walkTo(st1, 13*TILE+16, 18*TILE+16, 12000));
+  ok('story act2b: walk east on the south lane', await walkTo(st1, 20*TILE+16, 18*TILE+16, 12000));
+  ok('story act2b: walk south to the bridge', await walkTo(st1, 20*TILE+16, 20*TILE+16, 8000));
+  ok('story act2b: step onto the broken bridge', await walkTo(st1, 20*TILE+16, 22*TILE+16, 8000));
+  // Mend the bridge (John 8:12). Mending takes priority over villager chat at
+  // the mend spot; the fox may still intercept an interact, so retry.
+  for (let i = 0; i < 8; i++) {
+    if (st1.msgs.some(m => m.t === 'story' && m.story.trials.bridge)) break;
+    st1.send({ t: 'interact' });
+    await sleep(600);
+  }
+  ok('story act2b: bridge trial complete', await st1.waitFor(() => st1.msgs.some(m => m.t === 'story' && m.story.trials.bridge), 5000));
+  const johnMsg = st1.msgs.filter(m => m.t === 'verse').pop();
+  ok('story act2b: John 8:12 verbatim', johnMsg?.ref === 'John 8:12' && johnMsg?.text === 'I am the light of the world: he that followeth me shall not walk in darkness, but shall have the light of life.', johnMsg?.ref);
+
+  // ACT 2c — reconcile (Jeremiah 29:11): the dispute between Elias and Miriam.
+  // NPCs wander; we chase their live position from tick state and interact
+  // as soon as we're in range, re-sampling often.
+  async function openDispute(c, name) {
+    // Walk to the NPC's live position and interact. The server opens the
+    // dispute panel ('dispute' message) if the trial is active; we just need
+    // to be the one talking to them. Retry as they wander.
+    for (let tries = 0; tries < 30; tries++) {
+      const n = c.state.npcs?.get(name);
+      if (!n) { await sleep(300); continue; }
+      const me = c.me();
+      if (me && Math.hypot(n.x - me.x, n.y - me.y) < 50) {
+        const before = c.msgs.length;
+        c.send({ t: 'interact' });
+        await sleep(800);
+        const newMsgs = c.msgs.slice(before);
+        if (newMsgs.some(m => m.t === 'dispute' && m.npc === name)) return true;
+        // If we got a 'say' from them, we're talking to the right villager —
+        // the panel may have been missed; the choice will still land.
+        if (newMsgs.some(m => m.t === 'say' && m.name === name)) return true;
+      } else {
+        await walkToNear(c, n.x, n.y, 50, 2500);
+      }
+      await sleep(200);
+    }
+    return false;
+  }
+  for (const npcName of ['Elias', 'Miriam']) {
+    ok(`story act2c: open the dispute with ${npcName}`, await openDispute(st1, npcName));
+    const dMsg = st1.msgs.filter(m => m.t === 'dispute' && m.npc === npcName).pop();
+    ok(`story act2c: ${npcName} offers a gentle choice`, !!dMsg && dMsg.options.some(o => o.id === 'reconcile') && dMsg.options.some(o => o.id === 'dismiss'),
+       JSON.stringify(dMsg && dMsg.options));
+    st1.send({ t: 'dispute-choice', npc: npcName, choice: 'reconcile' });
+    await sleep(600);
+  }
+  ok('story act2c: dispute trial complete', await st1.waitFor(() => st1.msgs.some(m => m.t === 'story' && m.story.trials.dispute), 5000));
+  const jerMsg = st1.msgs.filter(m => m.t === 'verse').pop();
+  ok('story act2c: Jeremiah 29:11 verbatim', jerMsg?.ref === 'Jeremiah 29:11' && jerMsg?.text === 'For I know the thoughts that I think toward you, saith the LORD, thoughts of peace, and not of evil, to give you an expected end.', jerMsg?.ref);
+
+  // the Restoration Key: earned once all three trials are complete
+  ok('story: Restoration Key granted', await st1.waitFor(() => st1.msgs.some(m => m.t === 'story' && m.story.key), 5000));
+  ok('story: key toast names provision, light, peace', st1.msgs.some(m => m.t === 'story-toast' && /Restoration Key/.test(m.text)));
+
+  // the prayer moment: with the key, prayer at the altar grants a blessing
+  ok('story: walk to church door', await walkTo(st1, CHURCH_DOOR.x, CHURCH_DOOR.y + 8, 15000));
+  st1.send({ t: 'interact' }); // enter
+  ok('story: enter church', await st1.waitFor(() => st1.me()?.inside === true, 3000));
+  ok('story: walk to altar', await walkTo(st1, 20*TILE+16, 20*TILE+16, 12000));
+  st1.send({ t: 'interact' }); // pray with the key
+  ok('story: prayer grants the blessing', await st1.waitFor(() => st1.msgs.some(m => m.t === 'story' && m.story.blessing), 5000));
+  ok('story: walk to church exit', await walkTo(st1, 20*TILE+16, 24*TILE+16, 8000));
+  st1.send({ t: 'interact' }); // exit church
+  await st1.waitFor(() => st1.me()?.inside === false, 3000);
+
+  // ACT 3 — repair the Garden Gate (solo fallback converges on the shared ending)
+  ok('story act3: walk west to the Garden Gate', await walkTo(st1, 19*TILE+16, 12*TILE+16, 15000));
+  for (let i = 0; i < 8; i++) {
+    if (st1.msgs.some(m => m.t === 'story' && m.story.gateRepaired)) break;
+    st1.send({ t: 'interact' });
+    await sleep(700);
+  }  // cooldown is 300ms in tests
+  ok('story act3: gate repaired', await st1.waitFor(() => st1.msgs.some(m => m.t === 'story' && m.story.gateRepaired), 8000));
+  ok('story act3: gate feeds the garden bloom', await st1.waitFor(() => st1.msgs.some(m => m.t === 'garden-bloom'), 5000));
+  ok('story act3: Song of Hope offered', await st1.waitFor(() => st1.msgs.some(m => m.t === 'gate-restored'), 5000));
+
+  // EPILOGUE — the afterglow
+  st1.send({ t: 'epilogue-done' });
+  ok('story epilogue: journal moment recorded', await st1.waitFor(() => st1.msgs.some(m => m.t === 'story' && m.story.epilogue), 5000));
+
+  // co-op: a second traveler in the same room sees the shared story state
+  const st2 = new C('Story2'); await st2.connect();
+  st2.send({ t: 'join', code: st1.state.code, name: 'Story2', look: LOOK_A });
+  ok('story co-op: second traveler joins', await st2.waitFor(() => !!st2.state.you, 3000));
+  const s2Join = st2.msgs.find(m => m.t === 'joined');
+  ok('story co-op: shared state (gate repaired, key, bloom) syncs to joiner',
+     !!s2Join.story && s2Join.story.gateRepaired === true && s2Join.story.key === true,
+     JSON.stringify(s2Join.story && { gateRepaired: s2Join.story.gateRepaired, key: s2Join.story.key }));
+
+  [a, b, c, d, k, v2, v3, i2, h2, f1, st1, st2, ...fillers].forEach(x => x.close());
 } finally {
   srv.kill('SIGTERM');
 }

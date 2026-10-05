@@ -298,3 +298,25 @@ Implemented 7 render-only items to close the gap between code-painted canvas and
 **Verification:** Headless screenshots per item in `docs/qa/painterly-*.png`. Tests: 966/0, 18/18, 5/5. Commits: 8 (7 items + perf optimization). Pushed to master; live-verified HTTP 200, "Pastor Nathan" ×6. ZIP rebuilt.
 
 **Cuts:** None — all 7 items shipped in simplified perf-safe form.
+
+## STORYLINE program (2026-10-05) — Perplexity's 3-act Garden Gate story, approved by Ariel
+
+**Spec:** `docs/perplexity-storyline-2026-10-05.md`. Built on the existing RESTORE THE LIGHT M1–M6 arc — the Garden Gate restoration feeds the garden bloom, not replaces it.
+
+**ACT 1 — Discovery:** A decaying Garden Gate arch renders at the plaza's north edge (19,12, walkable path tile). First approach within 2.5 tiles triggers discovery: toast names the three trials (nurture crops / mend bridge / make peace), journal unlocks "The Garden Gate". Woven into early play via the existing tutorial flow — no intro sequence.
+
+**ACT 2 — Three Scripture trials (gentle, hinted, through existing systems):**
+- Nurture → **Psalm 23:1** "The LORD is my shepherd; I shall not want." — 3 harvests (farm system) after discovery, progress toasts at each.
+- Mend → **John 8:12** "I am the light of the world: he that followeth me shall not walk in darkness, but shall have the light of life." — 3 interactions at the broken bridge planks (20,22).
+- Reconcile → **Jeremiah 29:11** "For I know the thoughts that I think toward you, saith the LORD, thoughts of peace, and not of evil, to give you an expected end." — Fable-style choice dialogue with Elias and Miriam; reconciling with both ends the quarrel visibly (+2 hearts each).
+Reward: the **Restoration Key** (HUD 🗝️). Prayer at the church altar with the key grants a 5-min blessing (John 8:12 shown) — warmth doubled while blessed (visible halo).
+
+**ACT 3 — Cooperative Restoration:** With the key, interact at the gate (3 contributions, 5s cooldown, synced via room state) to repair it together; prayer-circle stones/flowers render around the fountain. Solo fallback converges on the same ending — repair sets `garden.bloomed`, reusing RESTORE THE LIGHT. Ends with the **Song of Hope** overlay (Jeremiah 29:11), then `epilogue-done`.
+
+**EPILOGUE — Afterglow:** Church program plaque renders by the church door (Jeremiah 29:11). **TIKVAH JOURNAL** (📓 button / J key): People, Places, Creatures, Scripture (the 3 approved KJV verses, byte-identical), Discoveries (story-gated entries unlock as acts complete). No Ancient Writings tab — no fake Aramaic.
+
+**Scripture binding:** Only the 3 approved KJV verses appear anywhere; server `VERSES`/`JOHN_812` constants; tests assert byte-identical texts. Sermon/prayer text quotes only these.
+
+**Tests:** track-a-test.mjs gains a full storyline playthrough (join defaults → discovery → 3 harvests → Psalm → 3 mends → John → 2 reconciles → Jeremiah → key → blessing → 3 repairs → bloom → gate-restored → epilogue → co-op sync); `GATE_REPAIR_COOLDOWN_MS` env override for tests (300ms). qa-systems.mjs gains `storyline-gate` (defaults, discovery, Scripture bound to the 3 verses).
+
+**Cuts:** Ancient Writings journal tab (fake-Aramaic risk — binding forbids it); separate intro sequence (spec said use onboarding flow); restored-greenhouse/new-sermon-alcove variants (prayer circle fit the existing fountain/plaza best).

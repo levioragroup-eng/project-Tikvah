@@ -339,7 +339,26 @@ try {
   const hooksOk = hooks.every(h => html.includes(h));
   sys('intro-hooks', r.status === 200 && hooksOk, `welcome/discover/hannah gates + contextual prompt present=${hooksOk}`);
 
-  a.close(); b.close();
+  // ---- S19: storyline (Garden Gate) — discovery -> trials -> key -> gate -> epilogue ----
+  const VERSE3 = new Set([
+    'For I know the thoughts that I think toward you, saith the LORD, thoughts of peace, and not of evil, to give you an expected end.',
+    'The LORD is my shepherd; I shall not want.',
+    'I am the light of the world: he that followeth me shall not walk in darkness, but shall have the light of life.',
+  ]);
+  const sj = new C('Story'); await sj.connect();
+  sj.send({ t: 'create', name: 'Story', look: LOOK_A });
+  await sj.waitFor(() => !!sj.state.code, 3000);
+  const j0 = sj.msgs.find(m => m.t === 'joined');
+  const storyDefaults = !!j0.story && j0.story.gateFound === false && j0.story.key === false && j0.story.gateRepaired === false;
+  await walkTo(sj, 19*TILE+16, 12*TILE+16, 12000);
+  const discovered = await sj.waitFor(() => sj.msgs.some(m => m.t === 'story' && m.story.gateFound), 5000);
+  // Scripture binding: every 'verse' the story emits must be one of the 3 approved KJV texts
+  const storyVerses = sj.msgs.filter(m => m.t === 'verse');
+  const scriptureBound = storyVerses.every(v => VERSE3.has(v.text));
+  sys('storyline-gate', storyDefaults && discovered && scriptureBound,
+    `defaults=${storyDefaults} discovery=${discovered} verses-in-bounds=${scriptureBound} (n=${storyVerses.length})`);
+
+  a.close(); b.close(); sj.close();
 } finally {
   srv.kill();
 }
