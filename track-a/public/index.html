@@ -1867,6 +1867,10 @@ function lookSpriteF(lk, fr) {
       g.fillStyle = blouse; g.fillRect(4, 17, 8, 1);
       g.fillStyle = blouseD; g.fillRect(6, 17, 1, 1); g.fillRect(9, 17, 1, 1);
       g.fillStyle = trim; g.fillRect(4, 18, 8, 1);
+      // CHARACTER-PASS: leather belt with brass buckle at the waist (non-dress only;
+      // dress wearers keep the trim waistband + apron ties). Stole/satchel paint over it.
+      g.fillStyle = '#5a3a22'; g.fillRect(4, 16, 8, 1);
+      g.fillStyle = '#e8b93c'; g.fillRect(7, 16, 2, 1);
     }
 
     // ===== sleeves + arms (swing with the stride) =====
@@ -1960,6 +1964,37 @@ function lookSpriteF(lk, fr) {
       g.fillStyle = trim; g.fillRect(7, 2, 2, 1);      // hair tie
     }
 
+    // CHARACTER-PASS (2026-10-05): role gear — painted after face/hair so the
+    // clergy collar survives the neck paint. All original code-painted art.
+    // Pastor Nathan's stole: deep-gold pastoral stole over the cream robe,
+    // white clergy collar tab at the throat, small cross on the left band.
+    if (lk.stole) {
+      const stD = mixHex(lk.stole, '#1a0f08', .28), stL = mixHex(lk.stole, '#ffffff', .32);
+      g.fillStyle = '#ffffff'; g.fillRect(5, 11, 6, 1);            // clergy collar band
+      g.fillStyle = mixHex('#ffffff', '#1a0f08', .12); g.fillRect(5, 11, 1, 1); g.fillRect(10, 11, 1, 1);
+      g.fillStyle = lk.stole;
+      g.fillRect(5, 12, 2, 6); g.fillRect(10, 12, 2, 6);           // the two bands
+      g.fillStyle = stD;
+      g.fillRect(6, 12, 1, 6); g.fillRect(11, 12, 1, 6);           // inner-edge shade
+      g.fillRect(5, 17, 2, 1); g.fillRect(10, 17, 2, 1);           // hem shade
+      g.fillStyle = stL; g.fillRect(5, 12, 1, 1); g.fillRect(10, 12, 1, 1); // shoulder light
+      g.fillStyle = '#fff6dd';                                     // small cross, left band
+      g.fillRect(5, 13, 1, 3); g.fillRect(5, 14, 2, 1);
+    }
+    // Elias's market satchel: diagonal leather strap + pouch at the left hip
+    if (lk.satchel) {
+      const saD = mixHex(lk.satchel, '#1a0f08', .3), saL = mixHex(lk.satchel, '#ffffff', .25);
+      g.fillStyle = lk.satchel;
+      g.fillRect(12, 12, 1, 1); g.fillRect(11, 13, 1, 1); g.fillRect(10, 14, 1, 1);
+      g.fillRect(9, 15, 1, 1); g.fillRect(8, 16, 1, 1); g.fillRect(7, 17, 1, 1);
+      g.fillRect(6, 17, 1, 1); g.fillRect(5, 18, 1, 1);
+      g.fillStyle = saD;
+      g.fillRect(2, 16, 4, 4);                                     // pouch
+      g.fillStyle = lk.satchel; g.fillRect(2, 17, 4, 2);
+      g.fillStyle = saL; g.fillRect(2, 16, 4, 1);                  // flap light
+      g.fillStyle = '#e8b93c'; g.fillRect(3, 17, 2, 1);            // brass buckle
+    }
+
     // accessories (same option names as the creator)
     if (acc === 'hat') {
       // straw hat
@@ -1980,10 +2015,11 @@ function lookSpriteF(lk, fr) {
 
 const npcLooks = {
   Hannah: { skin:'#9a6540', hair:'long', hairColor:'#241610', outfit:'#c96a4a', dress:true, accessory:'flower', apron:true },
-  Elias:  { skin:'#e0ac7e', hair:'short', hairColor:'#5a3a1e', outfit:'#6aa84f', dress:false, accessory:'none' },
+  Elias:  { skin:'#e0ac7e', hair:'short', hairColor:'#5a3a1e', outfit:'#6aa84f', dress:false, accessory:'none', satchel:'#7a5a34' },
   Miriam: { skin:'#f2c99a', hair:'bun', hairColor:'#d9c08a', outfit:'#9a6ac9', dress:true, accessory:'none' },
   // CHURCH-REDESIGN (2026-10-03): the village pastor — Ariel's choice: Pastor Nathan (male).
-  'Pastor Nathan': { skin:'#6e452a', hair:'short', hairColor:'#3a2a18', outfit:'#f5efdd', dress:false, accessory:'none' },
+  // CHARACTER-PASS (2026-10-05): deep-gold stole + clergy collar over the cream robe.
+  'Pastor Nathan': { skin:'#6e452a', hair:'short', hairColor:'#3a2a18', outfit:'#f5efdd', dress:false, accessory:'none', stole:'#c9a44a' },
 };
 const npcSprites = {};
 function npcSprite(name) {
