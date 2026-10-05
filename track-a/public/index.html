@@ -457,7 +457,7 @@
     <button id="muteBtn" title="Sound on/off">🔊</button>
   </div>
   <div id="toast"></div>
-  <div id="tutorial">Walk with <b>WASD / arrows</b> · Press <b>E</b> to interact<br>Live the village rhythm each day — <b>farm, fish, cook, greet, say a prayer</b> —<br>and the <b>Garden of Hope</b> will bloom 🌸<br>Find the <b>ancient ruin</b> with a friend: stand on both glowing stones together ✨</div>
+  <div id="tutorial">Walk <b>WASD / arrows</b> · <b>E</b> to interact<br>Today's rhythm: 🌾 farm · 🎣 fish · 🍲 cook · 👋 greet · 🙏 pray —<br>the <b>Garden of Hope</b> blooms as you live it 🌸<br><span style="opacity:.75">Ruins: stand on both glowing stones with a friend ✨</span></div>
 
   <div id="intro">
     <video id="introVid" src="assets/intro.mp4" playsinline preload="metadata"></video>
@@ -560,8 +560,8 @@
 
   <div id="discover" class="warmcard">
     <h3>🌿 Find your rhythm</h3>
-    <p>Walk around.<br>Meet your neighbor.<br>Plant something.<br>Explore the river.</p>
-    <p class="nopath">There is no single path.</p>
+    <p>Each day, live the village rhythm —<br>🌾 tend the farm · 🎣 catch a fish · 🍲 cook a meal<br>👋 greet a neighbor · 🙏 say a prayer at the church —<br>and the <b>Garden of Hope</b> will bloom. 🌸</p>
+    <p class="nopath">Start anywhere. The village will guide you.</p>
     <button class="big small" id="discoverOk">Begin →</button>
   </div>
 
@@ -1038,10 +1038,20 @@ function onMsg(m) {
   }
 }
 
+let prevRhythm = {};
 function updateDayHud() {
   document.getElementById('dayInfo').textContent = 'Day ' + day.n + ' · ' + (day.label || day.phase);
   document.querySelectorAll('#rhythm span').forEach(s => {
-    s.classList.toggle('done', !!(day.rhythm && day.rhythm[s.dataset.k]));
+    const k = s.dataset.k, done = !!(day.rhythm && day.rhythm[k]);
+    s.classList.toggle('done', done);
+    // SENSE-PASS: when a rhythm action first completes today, name it and
+    // tie it to the Garden — the player always knows why it matters.
+    if (done && !prevRhythm[k]) {
+      const names = { farm:'🌾 Farm tended', fish:'🎣 Fish caught', cook:'🍲 Meal cooked',
+                      greet:'👋 Neighbor greeted', sermon:'🙏 Prayer said' };
+      toast((names[k] || k) + ' — the Garden of Hope stirs… 🌸');
+    }
+    prevRhythm[k] = done;
   });
 }
 
