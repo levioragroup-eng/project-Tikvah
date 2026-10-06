@@ -377,3 +377,20 @@ Ariel WAIVED the Phase A screenshot checkpoint — continued directly into Phase
 **Cuts:** Isometric/2.5D projection (engine rewrite — frozen); randomized verse cards (queued post-Phase A per Ariel's 2026-10-06 reversal); full landmark sprite rebuilds (existing art from earlier passes already met the bar — Stage 5 added only the missing pieces: church portal, red/white parasols).
 
 **PHASE B COMPLETE.** Awaiting Ariel's visual check before any further work.
+
+## 2026-10-06 — SCRIPTURE POOL: randomized daily verses from the whole Bible (7a2e9e1)
+
+**Ariel's directive:** randomize Scripture — no longer just the 3 core verses. Daily Scripture from anywhere in the Bible: promises of God, wisdom/discernment, instruction/learning, Proverbs, comfort, guidance. No candle-lighting (still forbidden).
+
+**Safeguard (no fabricated Scripture):** all 46 KJV verses verified LIVE against the bolls.life KJV API (`get-verse` endpoint) and stored exactly as the source returns (Strong's `<S>` tags stripped, whitespace normalized). 0 verses failed verification; any failure would have been excluded. Verification log: `docs/verse-verification-2026-10-06.md`; raw API responses: `track-a/test/fixtures/verse-api-responses.json`.
+
+**Pool:** `track-a/public/verses.json` — 46 verses, 10 categories (promise×8, wisdom×9, guidance×4, comfort×6, courage×4, love×4, peace×4, light×3, gratitude×2, instruction×2). Includes the 3 core verses (Jeremiah 29:11, Psalms 23:1, John 8:12 — full API text; the storyline keeps its existing byte-identical constants).
+
+**Gameplay:**
+- Church "Read Scripture" (verse stand) now serves ONE shared daily verse: `pool[floor(UTCday) % 46]` — every player in every room sees the same verse each day. Card labeled "📖 Daily Verse".
+- TIKVAH JOURNAL Scripture tab: daily verse on top, then the 3 core verses (client fetches verses.json, same UTC-day index as server; falls back to core 3 if fetch fails).
+- Garden Gate storyline trials (Psalm 23:1 / John 8:12 / Jeremiah 29:11) and blessings UNTOUCHED — still bound to the 3 core verses.
+
+**Tests:** new `track-a/test/verses-test.mjs` — 155 checks (every pool text == verified fixture text, no markup, unique refs, core present, all 10 categories, daily index deterministic/varies). Updated `track-a-test.mjs` (verse set from pool; asserts shared daily verse, identical for both players) and `qa-systems.mjs` church-verbs (expects exactly 1 shared daily verse from the pool).
+
+**Results:** track-a-test 1012/0, qa-systems 19/19, fox-check 5/5, verses-test 155/0. Committed 7a2e9e1, pushed, Railway redeployed. Live-verified: HTTP 200, "Pastor Nathan" ×7, /verses.json serves 46 verses.
