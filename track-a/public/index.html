@@ -68,6 +68,20 @@
   #rhythm span.done { opacity:1; filter:none; }
   #toast { position:absolute; top:76px; left:50%; transform:translateX(-50%); background:rgba(20,30,20,.85);
     padding:10px 20px; border-radius:12px; font-size:16px; z-index:6; display:none; text-align:center; max-width:90vw; }
+  /* PHASE-B STAGE 6: action ribbon + portrait HUD — parchment, compact, mobile-safe */
+  #ribbon { position:absolute; bottom:10px; left:50%; transform:translateX(-50%); display:none; gap:6px;
+    z-index:5; pointer-events:auto; background:rgba(245,235,213,.92); border:2px solid #d5ad54;
+    border-radius:999px; padding:6px 10px; box-shadow:0 2px 8px rgba(0,0,0,.25); }
+  #ribbon button { width:38px; height:38px; border-radius:50%; border:2px solid #d5ad54;
+    background:#fffbe8; font-size:19px; cursor:pointer; padding:0; line-height:1; }
+  #ribbon button:active { transform:scale(.92); background:#f5ebd5; }
+  #meHud { position:absolute; bottom:10px; right:10px; display:none; z-index:5; pointer-events:none;
+    align-items:center; gap:6px; }
+  #mePortrait { width:40px; height:40px; border-radius:50%; border:2px solid #d5ad54;
+    background:#f5ebd5; }
+  #ePrompt { background:#1a2340; color:#ffe9a8; border:2px solid #d5ad54; border-radius:8px;
+    padding:4px 10px; font-weight:bold; font-size:14px; animation:epulse 1.2s infinite; }
+  @keyframes epulse { 0%,100% { opacity:1; } 50% { opacity:.55; } }
   #tutorial { position:absolute; bottom:86px; left:50%; transform:translateX(-50%); background:rgba(20,30,20,.88);
     padding:12px 22px; border-radius:14px; font-size:clamp(13px, 2.6vw, 15px); z-index:6; text-align:center; line-height:1.7; border:2px solid #ffe9a8; max-width:92vw; }
   /* touch controls */
@@ -551,6 +565,22 @@
     <button id="muteBtn" title="Sound on/off">🔊</button>
   </div>
   <div id="toast"></div>
+  <!-- PHASE-B STAGE 6: bottom action ribbon — 8 circular parchment buttons -->
+  <div id="ribbon">
+    <button data-act="farm" title="Farm">🌾</button>
+    <button data-act="fish" title="Fish">🎣</button>
+    <button data-act="cook" title="Cook">🍲</button>
+    <button data-act="befriend" title="Befriend">👋</button>
+    <button data-act="explore" title="Explore">🗺️</button>
+    <button data-act="learn" title="Learn">📖</button>
+    <button data-act="worship" title="Worship">🙏</button>
+    <button data-act="discover" title="Discover">✨</button>
+  </div>
+  <!-- PHASE-B STAGE 6: HUD portrait + [E] prompt, bottom-right -->
+  <div id="meHud">
+    <canvas id="mePortrait" width="40" height="40"></canvas>
+    <div id="ePrompt" style="display:none">[E]</div>
+  </div>
   <div id="tutorial">Walk <b>WASD / arrows</b> · <b>E</b> to interact<br>Today's rhythm: 🌾 farm · 🎣 fish · 🍲 cook · 👋 greet · 🙏 pray —<br>the <b>Garden of Hope</b> blooms as you live it 🌸<br><span style="opacity:.75">Ruins: stand on both glowing stones with a friend ✨</span></div>
 
   <div id="intro">
@@ -987,6 +1017,10 @@ function onMsg(m) {
       document.getElementById('menu').style.display = 'none';
       document.getElementById('game').style.display = 'block';
       document.getElementById('hud').style.display = 'flex';
+      // PHASE-B STAGE 6: show action ribbon + portrait HUD with the main HUD
+      document.getElementById('ribbon').style.display = 'flex';
+      document.getElementById('meHud').style.display = 'flex';
+      initRibbon(); drawMePortrait();
       document.getElementById('roomcode').textContent = 'ROOM ' + code;
       updateDayHud();
       if (isTouch) {
@@ -1159,7 +1193,8 @@ function updateDayHud() {
     toast(seasonEmoji + ' A new season has come to Tikvah — ' + day.season + ' arrives.');
   }
   document.getElementById('dayInfo').textContent =
-    'Day ' + day.n + ' · ' + day.season + ' · ' + (day.label || day.phase);
+    'Day ' + day.n + ' · ' + day.season + ' · ' + (day.label || day.phase) +
+    (myLocName() ? ' · ' + myLocName() : '');
   document.querySelectorAll('#rhythm span').forEach(s => {
     const k = s.dataset.k, done = !!(day.rhythm && day.rhythm[k]);
     s.classList.toggle('done', done);
@@ -1172,6 +1207,64 @@ function updateDayHud() {
     }
     prevRhythm[k] = done;
   });
+}
+
+// PHASE-B STAGE 6: location name for the top-left banner — derived from the
+// player's tile against the known landmark rects (render-only, no logic).
+function myLocName() {
+  if (!myId) return '';
+  const me = players.get(myId); if (!me) return '';
+  const tx = Math.floor(me.x / TILE), ty = Math.floor(me.y / TILE);
+  const inR = (r) => tx >= r.x0 && tx <= r.x1 && ty >= r.y0 && ty <= r.y1;
+  if (inR(CHURCH)) return 'Church';
+  if (inR(HOME)) return 'Home';
+  if (inR(CAFE)) return 'Café';
+  if (inR(MARKET)) return 'Market';
+  if (inR(SQUARE)) return 'Town Square';
+  if (inR(FARM)) return 'Farms';
+  if (inR(GARDEN)) return 'Garden of Hope';
+  if (inR(FOREST)) return 'Forest';
+  if (inR(RUINS)) return 'Ruins';
+  for (const d of DOCKS) if (Math.abs(tx - d.x) <= 2 && Math.abs(ty - d.y) <= 2) return 'River Dock';
+  const bk = baseKind(tx, ty);
+  if (bk === 'water') return 'River';
+  if (bk === 'bridge') return 'Bridge';
+  return '';
+}
+
+// PHASE-B STAGE 6: action ribbon — 8 circular buttons; each guides the player
+// to where that village rhythm lives (toasts only, no logic changes).
+let ribbonInit = false;
+function initRibbon() {
+  if (ribbonInit) return; ribbonInit = true;
+  const guides = {
+    farm: '🌾 Farm — tend your plots in the southwest fields',
+    fish: '🎣 Fish — cast a line from the river dock (south)',
+    cook: '🍲 Cook — the café kitchen and your home hearth await',
+    befriend: '👋 Befriend — greet villagers with E, or wave with 1',
+    explore: '🗺️ Explore — wander the winding paths; every corner blooms',
+    learn: '📖 Learn — open your TIKVAH JOURNAL (J)',
+    worship: '🙏 Worship — the church doors are open; Sunday sermon weekly',
+    discover: '✨ Discover — the Garden of Hope and old ruins hide wonders'
+  };
+  document.querySelectorAll('#ribbon button').forEach(b => {
+    b.addEventListener('click', () => {
+      const act = b.dataset.act;
+      toast(guides[act] || act);
+      if (act === 'learn') document.getElementById('journalBtn').click();
+      if (act === 'befriend') send({ t: 'emote', id: 'wave' });
+    });
+  });
+}
+
+// PHASE-B STAGE 6: draw the player's own sprite into the HUD portrait.
+function drawMePortrait() {
+  const cv = document.getElementById('mePortrait'); if (!cv || !myId) return;
+  const me = players.get(myId); if (!me) return;
+  const g = cv.getContext('2d');
+  g.clearRect(0, 0, 40, 40);
+  const spr = spriteFor(me.look);
+  if (spr) g.drawImage(spr, 4, 0, 32, 40);
 }
 
 // ================= Weekly sermon =================
@@ -1432,9 +1525,17 @@ setInterval(() => {
     document.getElementById('panel').style.display === 'flex';
   if (!me || overlayOpen) { el.style.display = 'none'; return; }
   const label = promptFor(me);
-  if (!label) { el.style.display = 'none'; return; }
+  const eP = document.getElementById('ePrompt');
+  // PHASE-B STAGE 6: refresh the location tag in the top-left banner
+  const di = document.getElementById('dayInfo');
+  const loc = myLocName();
+  const base = 'Day ' + day.n + ' · ' + day.season + ' · ' + (day.label || day.phase);
+  if (di) di.textContent = base + (loc ? ' · ' + loc : '');
+  if (!label) { el.style.display = 'none'; if (eP) eP.style.display = 'none'; return; }
   el.textContent = (isTouch ? 'E · ' : '[E] ') + label;
   el.style.display = 'block';
+  // PHASE-B STAGE 6: mirror the [E] prompt in the portrait HUD
+  if (eP) eP.style.display = 'block';
 }, 200);
 
 // ================= Input =================
@@ -4475,9 +4576,10 @@ const counterTile = px(TILE,TILE,(g)=>{
   g.fillStyle = '#e87aa0'; g.fillRect(14,20,4,1);
 });
 // Cafe table (Batch 2): striped parasol, round table with cups
+// PHASE-B STAGE 5: board-accurate red/white parasol stripes
 const tableTile = px(TILE,TILE,(g)=>{ g.clearRect(0,0,TILE,TILE);
-  for (let i=0;i<5;i++){ g.fillStyle = i%2 ? PAL.cream : PAL.terracotta; g.fillRect(6+i*4,4,4,6); }
-  for (let i=0;i<5;i++){ g.fillStyle = i%2 ? PAL.cream : PAL.terracotta;
+  for (let i=0;i<5;i++){ g.fillStyle = i%2 ? '#f5f0e6' : '#c0392b'; g.fillRect(6+i*4,4,4,6); }
+  for (let i=0;i<5;i++){ g.fillStyle = i%2 ? '#f5f0e6' : '#c0392b';
     g.beginPath(); g.arc(8+i*4,10,2,0,7); g.fill(); }
   g.fillStyle = '#6b4423'; g.fillRect(15,10,2,10);
   g.fillStyle = '#8a5a2b'; g.beginPath(); g.arc(16,22,7,0,7); g.fill();
@@ -5831,6 +5933,32 @@ function drawPhaseADensity(g, tx, ty, x, y) {
     }
   }
 }
+// PHASE-B STAGE 5: Gothic arched church portal — pointed stone arch with
+// wooden doors, rendered as a tall object at the church door tile.
+const churchPortal = px(TILE,TILE,(g)=>{
+  g.clearRect(0,0,TILE,TILE);
+  // stone surround
+  g.fillStyle = '#c9bfa8'; g.fillRect(6, 2, 20, 30);
+  g.fillStyle = '#a89a80'; g.fillRect(6, 2, 3, 30); g.fillRect(23, 2, 3, 30);
+  g.fillStyle = '#d8cdb4'; g.fillRect(9, 2, 14, 2);
+  // pointed Gothic arch opening
+  g.fillStyle = '#2a1f14';
+  g.fillRect(10, 12, 12, 20);
+  g.beginPath(); g.moveTo(10, 12); g.lineTo(16, 4); g.lineTo(22, 12); g.closePath(); g.fill();
+  // wooden double doors
+  g.fillStyle = '#5e3a1e'; g.fillRect(11, 13, 10, 19);
+  g.fillStyle = '#6e4a28'; g.fillRect(11, 13, 4, 19);
+  g.fillStyle = '#4a2c14'; g.fillRect(15, 13, 2, 19);
+  g.fillStyle = '#d5ad54'; g.fillRect(14, 20, 1, 2); g.fillRect(17, 20, 1, 2);  // handles
+  // arch tracery
+  g.fillStyle = '#c9bfa8';
+  g.fillRect(9, 11, 14, 2);
+  g.beginPath(); g.moveTo(9, 11); g.lineTo(16, 3); g.lineTo(23, 11); g.closePath(); g.fill();
+  g.fillStyle = '#2a1f14';
+  g.beginPath(); g.moveTo(11, 11); g.lineTo(16, 5); g.lineTo(21, 11); g.closePath(); g.fill();
+  // steps
+  g.fillStyle = '#8d8a80'; g.fillRect(4, 30, 24, 2);
+});
 // PHASE-A STAGE 4 (2026-10-06): environmental storytelling — dense,
 // biome-appropriate render-only dressing. No interactions, no collision,
 // never on paths/plaza/water. Deterministic placement.
@@ -6374,6 +6502,10 @@ function drawWorld(g, now) {
       }
     }});
     if (tx===CHURCH.door.tx && ty===CHURCH.door.ty) { g.drawImage(pathTile,x,y); g.drawImage(doorMat,x,y); }
+    // PHASE-B STAGE 5: Gothic portal arch at the church door (tall, depth-queued)
+    if (tx===CHURCH.door.tx && ty===CHURCH.door.ty) {
+      DQ.push({ y: (CHURCH.door.ty+1)*TILE, d: () => { g.drawImage(churchPortal, x, y); }});
+    }
     // VISUAL-PASS-CHURCH: path approach + flower beds flanking the church door
     // (walkable grass tiles; footprint and collision untouched)
     if (tx===30 && ty===16) { g.drawImage(pathTile, x, y); g.drawImage(churchSteps, x, y); }
