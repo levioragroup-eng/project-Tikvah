@@ -367,3 +367,13 @@ Ariel WAIVED the Phase A screenshot checkpoint — continued directly into Phase
 **Stage 7 — Verify:** characters + seasons/lighting checked against the reference board via screenshots; no rework needed.
 
 **Stage 8 — Playtest + deploy:** (pending test results below)
+
+**Stage 8 — Playtest + deploy (2026-10-06 ~3:30 PM EDT):**
+**Tests:** track-a-test.mjs 1011/0; qa-systems.mjs 19/19 PASS (3 transient timing flakes on first run — fishing/cooking/garden-bloom — clean 19/19 on re-run); fox-check.mjs 5/5.
+**Deploy:** commits 29b9b35 (Stage 5-6) + 281bc4e (Stage 7-8) pushed to master; Railway live-verified HTTP 200, "Pastor Nathan" ×7, Y-DEPTH-SORT ×19.
+**ZIP rebuilt:** ~/workspace/your_files/tikvah-source-final.zip (62 MB, 2026-10-06 ~3:28 PM).
+**Screenshots:** docs/qa/phaseA-stage5-*.png (church portal, café parasols), phaseA-stage6-ui-ribbon.png, phaseA-stage7-verify-*.png.
+
+**Cuts:** Isometric/2.5D projection (engine rewrite — frozen); randomized verse cards (queued post-Phase A per Ariel's 2026-10-06 reversal); full landmark sprite rebuilds (existing art from earlier passes already met the bar — Stage 5 added only the missing pieces: church portal, red/white parasols).
+
+**PHASE B COMPLETE.** Awaiting Ariel's visual check before any further work.
