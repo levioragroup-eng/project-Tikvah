@@ -6,6 +6,7 @@ import { setTimeout as sleep } from 'timers/promises';
 import WebSocket from 'ws';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import { readFileSync } from 'fs';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.join(__dirname, '..');
@@ -19,10 +20,10 @@ const PLOT0 = { x: 6*TILE+TILE/2, y: 15*TILE+TILE/2 };
 const DOCK = { x: 17*TILE+TILE/2, y: 20*TILE+TILE/2 };
 const CHURCH_DOOR = { x: 30*TILE+TILE/2, y: 15*TILE+TILE/2 };
 
-const VERSE_TEXTS = new Set([
-  'For I know the thoughts that I think toward you, saith the LORD, thoughts of peace, and not of evil, to give you an expected end.',
-  'The LORD is my shepherd; I shall not want.',
-]);
+// Verified KJV pool (bolls.life) — the daily verse must come from this set.
+const VERSE_POOL = JSON.parse(readFileSync(path.join(ROOT, 'public/verses.json'), 'utf8'));
+const VERSE_TEXTS = new Set(VERSE_POOL.map(v => v.text));
+const DAILY_VERSE = VERSE_POOL[Math.floor(Date.now() / 86400000) % VERSE_POOL.length];
 
 // character look used by Ariel's client in tests
 const LOOK_A = { skin: '#c68a5a', hair: 'curly', hairColor: '#d9c08a', outfit: '#9a6ac9', dress: true, accessory: 'flower' };
@@ -343,7 +344,7 @@ const b5Checks = [
   ['openPanel hook kept', 'function openPanel(title, sub, invHtml, buttons)'],
   ['showDialogue hook kept', 'function showDialogue(name, text, hearts, by)'],
   ['toast hook kept', 'function toast(msg)'],
-  ['showVerse hook kept', 'function showVerse(ref, text)'],
+  ['showVerse hook kept', 'function showVerse(ref, text, daily)'],
   ['buildQcPanel hook kept', 'function buildQcPanel()'],
   ['buildCreator hook kept', 'function buildCreator()'],
   ['showPanel hook kept', 'function showPanel(id)'],
@@ -772,8 +773,11 @@ try {
   ok('walk to verse stand', await walkTo(a, 16*TILE+16, 20*TILE+16));
   a.send({ t: 'interact' }); // read
   const verse = await a.waitFor(() => a.msgs.some(m => m.t === 'verse'), 2000) ? a.lastOf('verse') : null;
-  ok('verse shown and is verified KJV text', !!verse && VERSE_TEXTS.has(verse.text), verse ? verse.ref : 'none');
+  ok('verse shown and is verified KJV pool text', !!verse && VERSE_TEXTS.has(verse.text), verse ? verse.ref : 'none');
+  ok('verse is the shared daily verse', !!verse && verse.daily === true && verse.ref === DAILY_VERSE.ref && verse.text === DAILY_VERSE.text, verse ? verse.ref : 'none');
   ok('verse visible to BOTH players (shared reading)', await b.waitFor(() => b.msgs.some(m => m.t === 'verse'), 2000));
+  const bVerse = b.lastOf('verse');
+  ok('both players see the identical daily verse', !!bVerse && bVerse.ref === verse?.ref && bVerse.text === verse?.text);
   ok('walk to exit', await walkTo(a, 20*TILE+16, 24*TILE+16));
   a.send({ t: 'interact' }); // exit
   ok('exit church', await a.waitFor(() => a.me()?.inside === false, 2000));

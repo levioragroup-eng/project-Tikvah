@@ -709,8 +709,9 @@
 
   <div id="dialogue" class="warmcard"><div class="who"><canvas id="dPortrait" width="32" height="48"></canvas><div class="wtext"><span id="dName"></span> <span class="hearts" id="dHearts"></span></div></div><div class="line" id="dText"></div><div id="dOptions" class="dopts"></div><div class="next">Press E to close</div></div>
   <!-- STORYLINE: TIKVAH JOURNAL — the traveler's notebook. Tabs: People, Places,
-       Creatures, Scripture, Discoveries. Scripture holds only the 3 approved KJV
-       verses; Discoveries unlock as the Garden Gate story progresses. -->
+       Creatures, Scripture, Discoveries. Scripture holds the daily verse (verified
+       KJV pool) plus the 3 core KJV verses; Discoveries unlock as the Garden Gate
+       story progresses. -->
   <div id="journal" class="warmcard"><div class="jhead"><span>📓 TIKVAH JOURNAL</span><button id="jclose" title="Close">✕</button></div><div class="jtabs" id="jtabs"></div><div class="jbody" id="jbody"></div></div>
   <!-- STORYLINE: the Song of Hope — epilogue moment after the gate is restored -->
   <div id="songhope"><div class="card"><div class="sh-kicker">🎶 The Song of Hope</div><div class="sh-line">The Garden Gate stands restored, and light spills through the arch like morning. The village gathers — and for a moment, everyone simply sings.</div><div class="sh-verse">"For I know the thoughts that I think toward you, saith the LORD, thoughts of peace, and not of evil, to give you an expected end."<div class="sh-ref">— Jeremiah 29:11 (KJV)</div></div><div class="sh-line">This chapter is complete. The garden is awake, the neighbors are friends again — and the story continues.</div><button class="big" id="shclose">Amen 🙏</button></div></div>
@@ -723,6 +724,7 @@
   </div></div>
 
   <div id="verse"><div class="card">
+    <div class="daily" id="vdaily" style="display:none">📖 Daily Verse</div>
     <div class="ref" id="vref"></div>
     <div class="text" id="vtext"></div>
     <button class="big" id="vclose">Amen</button>
@@ -1124,7 +1126,7 @@ function onMsg(m) {
             m.reason === 'nobody-nearby' ? 'No one nearby to share with.' : 'Nothing to do here — walk closer.');
       break;
     case 'decor': homeRug = m.rug; toast('🏠 ' + m.by + ' redecorated the rug'); break;
-    case 'verse': showVerse(m.ref, m.text); break;
+    case 'verse': showVerse(m.ref, m.text, m.daily); break;
     case 'interact-fail': if (m.reason === 'nothing-nearby') toast('Nothing to do here — walk closer.'); break;
     case 'ruin-open':
       ruinOpen = true; ruinGate = true; burst = 120;
@@ -1918,7 +1920,8 @@ document.getElementById('shclose').addEventListener('click', () => {
   send({ t: 'epilogue-done' });
 });
 // STORYLINE: TIKVAH JOURNAL — the traveler's notebook. Entries unlock as the
-// Garden Gate story progresses. Scripture holds only the 3 approved KJV verses.
+// Garden Gate story progresses. Scripture tab holds the daily verse (verified
+// KJV pool) plus the 3 core KJV verses; the storyline trials stay 3-verse-bound.
 const JOURNAL_TABS = ['People', 'Places', 'Creatures', 'Scripture', 'Discoveries'];
 const VERSE_JER = 'For I know the thoughts that I think toward you, saith the LORD, thoughts of peace, and not of evil, to give you an expected end.';
 const VERSE_PSA = 'The LORD is my shepherd; I shall not want.';
@@ -1952,6 +1955,14 @@ function journalEntries() {
   disc('The Song of Hope', 'The village gathered and sang. This chapter is complete — but the story continues.', !!s.epilogue);
   return E;
 }
+// Verified KJV Scripture pool (bolls.life, 2026-10-06) for the daily verse.
+// Same UTC-day index as the server, so every player sees the same verse.
+let VERSE_POOL_CLIENT = [];
+fetch('verses.json').then(r => r.ok ? r.json() : []).then(j => { VERSE_POOL_CLIENT = j; }).catch(() => {});
+function dailyVerseClient(now = Date.now()) {
+  if (!VERSE_POOL_CLIENT.length) return null;
+  return VERSE_POOL_CLIENT[Math.floor(now / 86400000) % VERSE_POOL_CLIENT.length];
+}
 function renderJournal() {
   const tabs = document.getElementById('jtabs'), body = document.getElementById('jbody');
   tabs.innerHTML = '';
@@ -1963,6 +1974,11 @@ function renderJournal() {
   }
   body.innerHTML = '';
   if (journalTab === 'Scripture') {
+    const dv = dailyVerseClient();
+    if (dv) {
+      const dh = document.createElement('h4'); dh.textContent = '📖 Daily Verse — ' + dv.ref; body.appendChild(dh);
+      const dp = document.createElement('p'); dp.textContent = '"' + dv.text + '" (KJV)'; body.appendChild(dp);
+    }
     const verses = [['Jeremiah 29:11', VERSE_JER], ['Psalm 23:1', VERSE_PSA], ['John 8:12', VERSE_JHN]];
     for (const [ref, text] of verses) {
       const h = document.createElement('h4'); h.textContent = ref; body.appendChild(h);
@@ -2074,9 +2090,10 @@ document.getElementById('btnJoin').onclick = () => {
   saveName(name);
   connect(); pending.push({t:'join', name, code: c, look, uuid: myUuid});
 };
-function showVerse(ref, text) {
+function showVerse(ref, text, daily) {
   document.getElementById('vref').textContent = ref + ' (KJV)';
   document.getElementById('vtext').textContent = '“' + text + '”';
+  document.getElementById('vdaily').style.display = daily ? 'block' : 'none';
   document.getElementById('verse').style.display = 'flex';
 }
 document.getElementById('vclose').onclick = () => document.getElementById('verse').style.display = 'none';

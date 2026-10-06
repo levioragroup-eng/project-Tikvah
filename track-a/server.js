@@ -295,9 +295,10 @@ function sendRestore(room) { broadcast(room, { t: 'restore', restore: restorePub
 // Builds on RESTORE THE LIGHT: the Garden Gate is the story's front door —
 // discovering it, proving the three virtues, and repairing it together feeds
 // the same garden restoration. All state is per-room and synced like restore.
-// Scripture binding: only VERSES + JOHN_812 (the 3 approved KJV verses) may
-// appear. Trials map: crops -> Psalm 23:1 (provision), bridge -> John 8:12
-// (light), dispute -> Jeremiah 29:11 (peace).
+// Scripture binding: the Garden Gate storyline may use only VERSES + JOHN_812
+// (the 3 core KJV verses). Trials map: crops -> Psalm 23:1 (provision),
+// bridge -> John 8:12 (light), dispute -> Jeremiah 29:11 (peace). The church
+// "Read Scripture" daily verse comes from the verified VERSE_POOL instead.
 const GATE = { tx: 19, ty: 12 };            // Garden Gate: north entrance to the plaza garden
 const BRIDGE_MEND = { tx: 20, ty: 22 };     // damaged planks mid-bridge (walkable while broken)
 const TRIAL_CROPS_NEED = 3;                 // harvests to complete the nurture trial
@@ -404,6 +405,19 @@ const VERSES = [
 // RESTORE THE LIGHT — the Discovery (the one new Scripture for this build).
 // Jesus is the Light; the players restore a community, never saviors.
 const JOHN_812 = { ref: 'John 8:12', text: 'I am the light of the world: he that followeth me shall not walk in darkness, but shall have the light of life.' };
+
+// ---------- SCRIPTURE POOL: verified KJV daily verses (2026-10-06) ----------
+// Ariel approved randomized daily Scripture from the whole Bible. Every verse
+// was verified live against the bolls.life KJV API and stored exactly as the
+// source returns it (see docs/verse-verification-2026-10-06.md). The Garden
+// Gate storyline trials + blessings above stay bound to the 3 core verses;
+// the pool below is ONLY for the church "Read Scripture" daily verse card and
+// the TIKVAH JOURNAL Scripture tab. No candle-lighting.
+const VERSE_POOL = JSON.parse(fs.readFileSync(path.join(PUBLIC, 'verses.json'), 'utf8'));
+// One verse per UTC day for every player in every room (multiplayer-shared).
+function dailyVerse(now = Date.now()) {
+  return VERSE_POOL[Math.floor(now / 86400000) % VERSE_POOL.length];
+}
 
 // ---------- Character looks ----------
 const LOOK_ENUMS = {
@@ -958,7 +972,7 @@ function handleInteract(room, ws, p) {
       }
       return {ok:true, action:'pray'};
     }
-    if (best.kind === 'verse') { const v = VERSES[Math.floor(Math.random()*VERSES.length)]; broadcast(room, {t:'verse', ref: v.ref, text: v.text, by: p.name}); return {ok:true, action:'read'}; }
+    if (best.kind === 'verse') { const v = dailyVerse(now); broadcast(room, {t:'verse', ref: v.ref, text: v.text, daily: true, by: p.name}); return {ok:true, action:'read'}; }
     // pew seat: sit a while; during the weekly sermon, attending is a shared
     // peaceful beat (once per sermon per traveler).
     p.emote='sit'; p.emoteAt=now; broadcast(room, {t:'player', p: playerPublic(p)});

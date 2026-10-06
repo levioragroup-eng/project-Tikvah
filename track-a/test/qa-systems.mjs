@@ -5,17 +5,17 @@ import { setTimeout as sleep } from 'timers/promises';
 import WebSocket from 'ws';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import { readFileSync } from 'fs';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.join(__dirname, '..');
 const PORT = 18789;
 const URL = `ws://127.0.0.1:${PORT}`;
 const TILE = 32;
-const VERSE_TEXTS = new Set([
-  'For I know the thoughts that I think toward you, saith the LORD, thoughts of peace, and not of evil, to give you an expected end.',
-  'The LORD is my shepherd; I shall not want.',
-]);
-const VERSE_REFS = new Set(['Jeremiah 29:11', 'Psalm 23:1']);
+// Verified KJV pool (bolls.life): the Read Scripture stand serves the shared daily verse.
+const VERSE_POOL = JSON.parse(readFileSync(path.join(ROOT, 'public/verses.json'), 'utf8'));
+const VERSE_TEXTS = new Set(VERSE_POOL.map(v => v.text));
+const DAILY_VERSE = VERSE_POOL[Math.floor(Date.now() / 86400000) % VERSE_POOL.length];
 const LOOK_A = { skin: '#c68a5a', hair: 'curly', hairColor: '#d9c08a', outfit: '#9a6ac9', dress: true, accessory: 'flower' };
 const LOOK_B = { skin: '#6e452a', hair: 'bun', hairColor: '#2e1c10', outfit: '#4a8ac9', dress: false, accessory: 'hat' };
 function lookEq(a, b) { return a && b && a.skin===b.skin && a.hair===b.hair && a.hairColor===b.hairColor && a.outfit===b.outfit && a.dress===b.dress && a.accessory===b.accessory; }
@@ -230,9 +230,11 @@ try {
   const prayed = await b.waitFor(() => b.state.players.get(a.state.you.id)?.emote === 'pray', 3000);
   const worship = await b.waitFor(() => b.msgs.some(m => m.t === 'worship'), 3000);
   await walkTo(a, 16*TILE+16, 19*TILE+16); await walkTo(a, 16*TILE+16, 20*TILE+16); // verse stand
-  const seenTexts = new Set(), seenRefs = new Set();
-  for (let i = 0; i < 6; i++) { a.send({ t: 'interact' }); await sleep(300); const v = a.lastOf('verse'); if (v) { seenTexts.add(v.text); seenRefs.add(v.ref); } }
-  const versesExact = seenTexts.size === 2 && [...seenTexts].every(t => VERSE_TEXTS.has(t)) && [...seenRefs].every(r => VERSE_REFS.has(r));
+  const seenTexts = new Set(), seenRefs = new Set(), seenDaily = [];
+  for (let i = 0; i < 6; i++) { a.send({ t: 'interact' }); await sleep(300); const v = a.lastOf('verse'); if (v) { seenTexts.add(v.text); seenRefs.add(v.ref); seenDaily.push(v.daily === true); } }
+  // The stand serves ONE shared daily verse from the verified pool (same every read, same for all players).
+  const versesExact = seenTexts.size === 1 && [...seenTexts].every(t => VERSE_TEXTS.has(t))
+    && [...seenTexts][0] === DAILY_VERSE.text && [...seenRefs][0] === DAILY_VERSE.ref && seenDaily.every(Boolean);
   await walkToNear(a, 21*TILE+16, 23*TILE+16, 12); // pew sit gap
   a.send({ t: 'interact' }); // sit in the pew
   const sat = await b.waitFor(() => b.state.players.get(a.state.you.id)?.emote === 'sit', 3000);
@@ -241,7 +243,7 @@ try {
   a.send({ t: 'interact' }); // exit
   const exited = await a.waitFor(() => a.me()?.inside === false, 3000);
   sys('church-verbs', entered && prayed && worship && versesExact && sat && exited,
-    `enter=${entered} pray=${prayed} worship=${worship} verses-exact-2=${versesExact} sit-in-pew=${sat} leave=${exited}`);
+    `enter=${entered} pray=${prayed} worship=${worship} verses-daily-shared=${versesExact} sit-in-pew=${sat} leave=${exited}`);
   sys('garden-bloom', bloom, bloom ? a.lastOf('garden-bloom')?.message?.slice(0, 60) : 'no bloom event');
 
   // ---- S11: character creator save ----
