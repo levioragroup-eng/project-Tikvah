@@ -320,3 +320,32 @@ Reward: the **Restoration Key** (HUD 🗝️). Prayer at the church altar with t
 **Tests:** track-a-test.mjs gains a full storyline playthrough (join defaults → discovery → 3 harvests → Psalm → 3 mends → John → 2 reconciles → Jeremiah → key → blessing → 3 repairs → bloom → gate-restored → epilogue → co-op sync); `GATE_REPAIR_COOLDOWN_MS` env override for tests (300ms). qa-systems.mjs gains `storyline-gate` (defaults, discovery, Scripture bound to the 3 verses).
 
 **Cuts:** Ancient Writings journal tab (fake-Aramaic risk — binding forbids it); separate intro sequence (spec said use onboarding flow); restored-greenhouse/new-sermon-alcove variants (prayer circle fit the existing fountain/plaza best).
+
+---
+## 2026-10-06 | PHASE-A (foundation visual program — 4 stages)
+
+**Spec:** `docs/visual-stages-2026-10-06.md` (merged 8-stage + Perplexity plans, prioritizing depth). Render/layout only; Stage 0 freeze held (no rebuild, no new deps, no Phaser/Pixi, $0). Carve-outs honored: no candle, no sleep, 3-verse Scripture untouched, no locations removed.
+
+**STAGE 1 — Y-depth sorting + lighting + water:**
+- Depth=y render queue (DQ): trees (450 tiles), church/home/café masses (anchored closures), stalls, fountain, lamps, pillars, ruin arches, garden gate, café tables queue by base-y; fox/NPCs/players interleave in the same queue. Travelers now walk BEHIND tree crowns and roofs.
+- TINTS tuned: morning warm peach, day faint afternoon gold, sunset pink/violet, night indigo. Existing 4-phase progression untouched. Test marker strings preserved.
+- Stone embankments (RIVER_STONE map) + vertical sun-reflection streaks on water.
+- Perf: ~500 closures/frame, no globalAlpha toggles in hot loops (painterly lesson applied).
+
+**STAGE 2 — Terrain density:**
+- `drawPhaseADensity`: flowered meadow patches (~20% of grass), clover clusters, fallen cherry-petal drifts under blossom trees (PETAL_TILES precomputed). Deterministic from tile coords.
+
+**STAGE 3 — Walkable layout:**
+- Market lane + south lane wind (gentle S-curves); mirrored identically in server `baseKind`.
+- Mirror verified: client baseTile == server baseKind on all 2240 tiles.
+- Flood-fill: 2024 walkable tiles reachable; all 10 landmarks (plaza, market, café, church door, home door, bridge, garden gate, farm gate, ruins, dock) reachable.
+
+**STAGE 4 — Environmental storytelling:**
+- 8 sprites: barrel, basket, hay bale, signpost, fallen log, moss patch, potted plant (crate reused).
+- 28 biome-placed items (farm/market/café/church/town/forest/ruins/riverside), filtered to grass-only at startup. Render-only, walkable, no interactions, no new collision, paths kept clear.
+
+**Tests:** track-a-test.mjs 1010/0; qa-systems.mjs 19/19 PASS (3 transient timing flakes on one run, clean on re-run); fox-check.mjs 5/5.
+**Screenshots:** docs/qa/phaseA-*.png (y-sort behind/front tree+church, square, forest, river, meadow, winding lanes, market/farm/ruins dressing).
+**Deploy:** commit a7fecdb pushed to master; Railway live-verified HTTP 200, "Pastor Nathan" ×7, Y-DEPTH-SORT markers ×19; railway-probe: position restore FIXED.
+
+**Cuts:** Isometric/2.5D projection (would require engine rewrite — frozen); separate intro sequence (used existing onboarding); randomized verse cards (Ariel's 3-verse rule stood at build time — NOTE: she reversed this 2026-10-06 ~10:30 AM, queued post-Phase A).
