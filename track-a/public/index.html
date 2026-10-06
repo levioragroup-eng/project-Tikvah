@@ -5561,6 +5561,30 @@ const RIVER_BANK = new Map(), RIVER_FOAM = new Map();
     }
   }
 })();
+// PHASE-A (2026-10-06): stone embankments — weathered stone clusters lining
+// the river banks where sand meets water (deterministic, render-only).
+const RIVER_STONE = new Map();
+const embankStone = px(TILE,TILE,(g)=>{
+  g.clearRect(0,0,TILE,TILE);
+  const stones = [[6,20,5],[14,24,7],[23,19,4],[10,12,3],[20,10,4]];
+  for (const [sx,sy,sr] of stones) {
+    g.fillStyle = '#8d8a80'; g.fillRect(sx, sy, sr, sr-1);          // stone body
+    g.fillStyle = '#b5b0a2'; g.fillRect(sx+1, sy, sr-2, 1);         // sunlit top
+    g.fillStyle = '#6b685e'; g.fillRect(sx, sy+sr-2, sr, 1);        // shaded base
+    g.fillStyle = 'rgba(255,255,255,.35)'; g.fillRect(sx+1, sy+1, 1, 1);
+  }
+  g.fillStyle = '#7fae7f'; g.fillRect(4, 26, 3, 2); g.fillRect(25, 26, 2, 2);  // moss tufts
+});
+(function () {
+  for (let ty = 0; ty < WH; ty++) for (let tx = 0; tx < WW; tx++) {
+    if (baseTile(tx, ty) !== 'sand') continue;
+    if (tx === 17 && ty === 20) continue;   // the dock tile keeps its own art
+    const adjWater = baseTile(tx,ty-1)==='water' || baseTile(tx,ty+1)==='water' ||
+                     baseTile(tx-1,ty)==='water' || baseTile(tx+1,ty)==='water';
+    if (adjWater && !RIVER_BANK.has(tx+','+ty) && hash2(tx*5+2, ty*3+9) < 0.55)
+      RIVER_STONE.set(tx+','+ty, true);
+  }
+})();
 // VISUAL-PASS-2: lily pads rest on calm water (bridge lane + dock kept clear)
 const RIVER_LILY = new Set();
 (function () {
@@ -5648,11 +5672,17 @@ function baseTile(tx, ty) {
   // central plaza
   if (tx >= 17 && tx <= 22 && ty >= 13 && ty <= 17) return 'plaza';
   // winding stone paths
-  if (ty === 12 && tx >= 6 && tx <= 33) return 'path';  // market lane
+  // PHASE-A STAGE 3: the market lane winds — a gentle S-curve dipping toward
+  // the plaza's north edge (mirrored in server baseKind). The lane flows into
+  // the plaza; the Garden Gate tile stays walkable grass.
+  if (ty === 12 && tx >= 6 && tx <= 33 && !(tx >= 14 && tx <= 25)) return 'path';  // market lane, outer runs
+  if (ty === 13 && tx >= 14 && tx <= 25) return 'path';  // market lane, inner dip (plaza wins on 17-22)
   if (tx === 13 && ty >= 8 && ty <= 18) return 'path';  // west lane
   if (tx === 19 && ty >= 6 && ty <= 12) return 'path';  // north lane
   if (tx === 20 && ty >= 18 && ty <= 19) return 'path'; // plaza to bridge
-  if (ty === 18 && tx >= 13 && tx <= 28) return 'path'; // south lane
+  // PHASE-A STAGE 3: the south lane winds — gentle dip below the plaza
+  if (ty === 18 && tx >= 13 && tx <= 28 && !(tx >= 18 && tx <= 25)) return 'path';  // south lane, outer runs
+  if (ty === 19 && tx >= 18 && tx <= 25) return 'path';  // south lane, inner dip
   if (tx === 27 && ty >= 12 && ty <= 18) return 'path'; // east lane
   if (tx === 33 && ty >= 6 && ty <= 12) return 'path';  // ruins lane
   if (ty === 8 && tx >= 19 && tx <= 33) return 'path';   // upper lane
@@ -5757,6 +5787,146 @@ function drawGroundDepth(g, tx, ty, x, y) {
     g.fillStyle = '#FFF7D6'; g.fillRect(fx+1, fy, 1, 1);
   }
 }
+// PHASE-A STAGE 2 (2026-10-06): storybook terrain density — flowered meadow
+// patches, clover clusters, and fallen cherry-petal drifts under blossom
+// trees (the board's pink drifts). Deterministic from tile coords; render-only.
+const PETAL_TILES = new Set();
+(function () {
+  for (const [bx, by] of BLOSSOM_SPOTS) {
+    for (let dy=-2; dy<=2; dy++) for (let dx=-2; dx<=2; dx++) {
+      if (Math.abs(dx)+Math.abs(dy) > 3) continue;
+      if (baseTile(bx+dx, by+dy) === 'grass' && hash2(bx*3+dx, by*5+dy) < 0.6)
+        PETAL_TILES.add((bx+dx) + ',' + (by+dy));
+    }
+  }
+})();
+function drawPhaseADensity(g, tx, ty, x, y) {
+  const h = hash2(tx*37+13, ty*41+29);
+  if (h < 0.20) {   // flowered grass patch — board-meadow blooms
+    const n = 4 + ((hash2(tx+3, ty+5)*4)|0);
+    const cols = [PAL.flowerPink, PAL.flowerCream, PAL.gold, PAL.flowerLavender];
+    for (let i=0;i<n;i++) {
+      const fx = x+3+((hash2(tx*7+i*3, ty*11+i)*26)|0);
+      const fy = y+3+((hash2(tx*13+i, ty*5+i*2)*26)|0);
+      g.fillStyle = PAL.leafDark; g.fillRect(fx, fy+2, 3, 1);
+      g.fillStyle = cols[(hash2(tx+i*2, ty+i)*cols.length)|0];
+      g.fillRect(fx, fy, 2, 2);
+      g.fillStyle = 'rgba(255,255,255,.7)'; g.fillRect(fx, fy, 1, 1);
+    }
+  }
+  if (h > 0.55 && h < 0.78) {   // clover cluster
+    const cx = x+6+((hash2(tx+21, ty+37)*18)|0), cy = y+6+((hash2(tx+43, ty+11)*18)|0);
+    g.fillStyle = 'rgba(74,124,62,.5)';
+    g.fillRect(cx, cy, 4, 2); g.fillRect(cx+1, cy-2, 2, 4);
+    g.fillStyle = 'rgba(140,190,110,.5)'; g.fillRect(cx+1, cy-1, 2, 2);
+  }
+  if (PETAL_TILES.has(tx+','+ty)) {   // fallen cherry petals
+    const pc = 3 + ((hash2(tx+7, ty+9)*4)|0);
+    for (let i=0;i<pc;i++) {
+      const px = x+2+((hash2(tx*5+i, ty*7+i*3)*28)|0);
+      const py = y+2+((hash2(tx*11+i*2, ty*3+i)*28)|0);
+      g.fillStyle = i%2 ? '#f2b8cf' : '#e99caf';
+      g.fillRect(px, py, 2, 1);
+      g.fillStyle = 'rgba(255,255,255,.5)'; g.fillRect(px, py, 1, 1);
+    }
+  }
+}
+// PHASE-A STAGE 4 (2026-10-06): environmental storytelling — dense,
+// biome-appropriate render-only dressing. No interactions, no collision,
+// never on paths/plaza/water. Deterministic placement.
+const barrelTile = px(TILE,TILE,(g)=>{
+  g.clearRect(0,0,TILE,TILE);
+  g.fillStyle = '#6e4a2a'; g.fillRect(10, 8, 12, 18);            // staves
+  g.fillStyle = '#8a6238'; g.fillRect(11, 8, 3, 18);             // light stave
+  g.fillStyle = '#4a3018'; g.fillRect(10, 12, 12, 2); g.fillRect(10, 20, 12, 2); // hoops
+  g.fillStyle = '#3a2612'; g.fillRect(9, 24, 14, 2);             // ground shadow
+});
+const basketTile = px(TILE,TILE,(g)=>{
+  g.clearRect(0,0,TILE,TILE);
+  g.fillStyle = '#a8763e'; g.fillRect(10, 16, 12, 9);            // weave body
+  g.fillStyle = '#c1904f'; for (let i=0;i<3;i++) g.fillRect(10, 17+i*3, 12, 1);
+  g.fillStyle = '#7a5426'; g.fillRect(9, 15, 14, 2);             // rim
+  g.fillStyle = '#e88aa8'; g.fillRect(12, 11, 3, 3); g.fillRect(17, 12, 3, 3); // produce
+  g.fillStyle = '#7fc86a'; g.fillRect(14, 13, 3, 2);
+});
+const hayTile = px(TILE,TILE,(g)=>{
+  g.clearRect(0,0,TILE,TILE);
+  g.fillStyle = '#d9b64a'; g.fillRect(6, 12, 20, 13);            // bale
+  g.fillStyle = '#e8cc6a'; g.fillRect(6, 12, 20, 3);             // sunlit top
+  g.fillStyle = '#a8842e'; g.fillRect(6, 22, 20, 3);             // shaded base
+  g.fillStyle = '#8a6e24'; g.fillRect(15, 12, 2, 13); g.fillRect(8, 12, 1, 13); // twine
+  g.fillStyle = 'rgba(217,182,74,.6)'; g.fillRect(4, 26, 5, 1); g.fillRect(24, 27, 4, 1); // stray straw
+});
+const signTile = px(TILE,TILE,(g)=>{
+  g.clearRect(0,0,TILE,TILE);
+  g.fillStyle = '#5e4230'; g.fillRect(15, 8, 3, 20);             // post
+  g.fillStyle = '#8a6a44'; g.fillRect(8, 8, 17, 7);              // board
+  g.fillStyle = '#6e5233'; g.fillRect(8, 13, 17, 2);             // board shade
+  g.fillStyle = '#f5ebd5'; g.fillRect(11, 10, 8, 2);             // painted text lines
+  g.fillStyle = '#d5ad54'; g.fillRect(8, 8, 17, 1);              // gold trim
+});
+const logTile = px(TILE,TILE,(g)=>{
+  g.clearRect(0,0,TILE,TILE);
+  g.fillStyle = '#6b4a2e'; g.fillRect(4, 14, 24, 9);             // fallen trunk
+  g.fillStyle = '#8a6238'; g.fillRect(4, 14, 24, 2);             // light top
+  g.fillStyle = '#4a3018'; g.fillRect(4, 21, 24, 2);             // dark underside
+  g.fillStyle = '#c9a86a'; g.fillRect(4, 15, 3, 7);              // cut end
+  g.fillStyle = '#8a6e4a'; g.fillRect(5, 16, 1, 5);
+  g.fillStyle = '#4e6b3a'; g.fillRect(20, 12, 6, 3); g.fillRect(8, 22, 5, 2); // moss
+});
+const mossTile = px(TILE,TILE,(g)=>{
+  g.clearRect(0,0,TILE,TILE);
+  g.fillStyle = 'rgba(78,107,58,.55)';
+  g.fillRect(6, 18, 9, 5); g.fillRect(18, 12, 8, 6); g.fillRect(10, 8, 6, 4);
+  g.fillStyle = 'rgba(140,180,110,.5)';
+  g.fillRect(7, 19, 3, 2); g.fillRect(19, 13, 3, 2); g.fillRect(11, 9, 2, 1);
+  g.fillStyle = 'rgba(200,220,170,.4)'; g.fillRect(8, 18, 1, 1); g.fillRect(20, 12, 1, 1);
+});
+const potTile = px(TILE,TILE,(g)=>{
+  g.clearRect(0,0,TILE,TILE);
+  g.fillStyle = '#b96848'; g.fillRect(11, 18, 10, 9);            // terracotta pot
+  g.fillStyle = '#d9805e'; g.fillRect(11, 18, 10, 2);            // rim light
+  g.fillStyle = '#8a4a30'; g.fillRect(11, 25, 10, 2);            // base shade
+  g.fillStyle = '#4e7a3a'; g.fillRect(14, 10, 4, 9);             // plant
+  g.fillStyle = '#6a9a4a'; g.fillRect(12, 12, 3, 4); g.fillRect(17, 12, 3, 4);
+  g.fillStyle = '#e88aa8'; g.fillRect(14, 8, 4, 4);              // bloom
+  g.fillStyle = '#fff7d6'; g.fillRect(15, 9, 2, 2);
+});
+
+// Placement: [tx, ty, sprite] — filtered at startup to grass-only, no trees,
+// no buildings, no paths. Hand-tuned per biome.
+const PHASE4_CANDIDATES = [
+  // farm: hay, baskets, crates
+  [4,17,'hay'],[12,16,'hay'],[6,19,'basket'],[10,19,'basket'],[5,19,'crate'],
+  // market: barrels, baskets
+  [12,9,'barrel'],[21,9,'barrel'],[15,11,'basket'],[20,9,'crate'],
+  // cafe: potted plants
+  [12,14,'pot'],[23,14,'pot'],
+  // church: benches, pots
+  [26,15,'bench'],[34,15,'bench'],[29,17,'pot'],[32,17,'pot'],
+  // town: signposts at lane junctions (grass beside the path)
+  [12,11,'sign'],[26,11,'sign'],[14,17,'sign'],[26,19,'sign'],
+  // forest: fallen logs
+  [1,10,'log'],[39,8,'log'],[47,12,'log'],
+  // ruins: moss and vines
+  [30,6,'moss'],[32,7,'moss'],[34,5,'moss'],[29,3,'moss'],
+  // riverside: barrels and crates by the docks
+  [16,19,'barrel'],[17,19,'crate'],
+];
+const PHASE4_DRESSING = [];
+(function () {
+  const sprites = { barrel: barrelTile, basket: basketTile, hay: hayTile, sign: signTile,
+    log: logTile, moss: mossTile, pot: potTile, crate: crateTile, bench: benchTile };
+  for (const [tx, ty, key] of PHASE4_CANDIDATES) {
+    if (tx < 0 || ty < 0 || tx >= WW || ty >= WH) continue;
+    if (baseTile(tx, ty) !== 'grass') continue;
+    if (isTree(tx, ty)) continue;
+    if (tx>=CHURCH.x0-1 && tx<=CHURCH.x1+1 && ty>=CHURCH.y0-1 && ty<=CHURCH.y1+1) continue;
+    if (tx>=HOME.x0-1 && tx<=HOME.x1+1 && ty>=HOME.y0-1 && ty<=HOME.y1+1) continue;
+    if (tx>=CAFE.x0-1 && tx<=CAFE.x1+1 && ty>=CAFE.y0-1 && ty<=CAFE.y1+1) continue;
+    PHASE4_DRESSING.push([tx, ty, sprites[key]]);
+  }
+})();
 // Priority 3: organic path edges — stray grass, pebbles, wildflowers breaking
 // the hard tile boundary so paths feel grown into the landscape.
 function drawStoryPathEdge(g, tx, ty, x, y) {
@@ -5950,6 +6120,12 @@ function drawGreetHearts(g, now) {
   }
 }
 
+// Y-DEPTH-SORT (2026-10-06, Phase A): tall objects and entities render
+// back-to-front by base-y so travelers walk BEHIND tree crowns, roofs, and
+// arches, and in front of walls. drawWorld() pushes tall-object draws;
+// loop() adds entities (fox/NPCs/players), sorts once, executes. Render-only:
+// no gameplay, collision, or state changes.
+const DQ = [];
 function drawWorld(g, now) {
   const me = players.get(myId);
   const inside = me && me.inside, place = me && me.place;
@@ -5985,12 +6161,21 @@ function drawWorld(g, now) {
         g.fillStyle = 'rgba(255,255,255,' + (0.5*(sh-0.45)).toFixed(2) + ')';
         g.fillRect(x + ((now/70 + tx*17 + ty*5) % 26), y + ((now/110 + ty*13 + tx*7) % 26), 5, 2);
       }
+      // PHASE-A: sun reflections — slow vertical streaks drifting downstream
+      const rx = (tx*13 + ty*29) % 32;
+      const ry = (now/160 + tx*7) % 40;
+      if (hash2(tx*3+11, ty*7+5) < 0.4) {
+        g.fillStyle = 'rgba(255,250,225,' + (0.10 + 0.08*Math.sin(now/500 + tx)).toFixed(3) + ')';
+        g.fillRect(x + rx, y + 32 - ry, 2, 7);
+      }
     }
     else if (b === 'sand') {
       g.drawImage(sandTile, x, y);
       // VISUAL-PASS-CHURCH: reeds, rocks, bank flowers where sand meets water
       const rb = RIVER_BANK.get(tx + ',' + ty);
       if (rb) g.drawImage(rb, x, y);
+      // PHASE-A: stone embankment clusters lining the banks
+      if (RIVER_STONE.has(tx + ',' + ty)) g.drawImage(embankStone, x, y);
     }
     else if (b === 'path') {
       g.drawImage(pathTile, x, y);
@@ -6018,6 +6203,8 @@ function drawWorld(g, now) {
     else { const gh = hash2(tx, ty); g.drawImage(gh < 0.42 ? grassA : gh < 0.72 ? grassB : grassC, x, y); }
     // VISUAL-PASS-4 Priority 1: continuous painted ground texture
     if (b === 'grass') drawGroundDepth(g, tx, ty, x, y);
+    // PHASE-A STAGE 2: storybook density — meadow blooms, clover, petal drifts
+    if (b === 'grass') drawPhaseADensity(g, tx, ty, x, y);
     // PAINTERLY-PASS items 1+2: brush strokes + jitter, inlined (no call).
     // Seeded per tile so strokes are identical every frame.
     if (b === 'grass' || b === 'path' || b === 'plaza') {
@@ -6145,19 +6332,33 @@ function drawWorld(g, now) {
         else tv = fh < 0.72 ? treeAncient
            : fh < 0.84 ? treeBirch : fh < 0.93 ? treeBlossom : treeB;
       }
-      // VISUAL-PASS-BOARDMATCH: big crowns draw bottom-anchored on their tile
-      g.drawImage(tv, x + 16 - (tv.width >> 1), y + 40 - tv.height);
+      // Y-DEPTH-SORT: crowns draw bottom-anchored; depth key is the trunk base
+      const qx = x, qy = y, qtv = tv;
+      DQ.push({ y: qy + 40, d: () => {
+        // VISUAL-PASS-BOARDMATCH: big crowns draw bottom-anchored on their tile
+        g.drawImage(qtv, qx + 16 - (qtv.width >> 1), qy + 40 - qtv.height);
+      }});
     }
     // church building — VISUAL-PASS-CHURCH: warm sandstone + timber exterior
-    if (tx>=CHURCH.x0 && tx<=CHURCH.x1 && ty>=CHURCH.y0-1 && ty<=CHURCH.y1) {
-      if (ty===CHURCH.y0-1) g.drawImage([churchRoofW,churchRoofL,churchRoof,churchRoofR,churchRoofE][tx-CHURCH.x0], x, y);
-      else {
+    // Y-DEPTH-SORT: the whole mass queues once at its anchor tile; depth key
+    // is the building base so travelers pass behind the walls and roof.
+    if (tx===CHURCH.x0 && ty===CHURCH.y0-1) DQ.push({ y: (CHURCH.y1+1)*TILE, d: () => {
+      // BATCH7: tall landmark steeple over the church roof (the board's tall church)
+      g.drawImage(churchSteeple, 29*TILE, 6*TILE);
+      // VISUAL-PASS-CHURCH: belfry lamplight glows warm at night
+      if (night) {
+        drawGlow(g, 29*TILE+24, 6*TILE+54, 26, 'rgba(255,205,110,A)', now, 5);
+        drawGlow(g, 29*TILE+40, 6*TILE+54, 26, 'rgba(255,205,110,A)', now, 6);
+      }
+      for (let ly=CHURCH.y0-1; ly<=CHURCH.y1; ly++) for (let lx=CHURCH.x0; lx<=CHURCH.x1; lx++) {
+        const cx = lx*TILE, cy = ly*TILE;
+        if (ly===CHURCH.y0-1) { g.drawImage([churchRoofW,churchRoofL,churchRoof,churchRoofR,churchRoofE][lx-CHURCH.x0], cx, cy); continue; }
         // VISUAL-PASS-2: facade depth — rose window under the steeple,
         // buttress corners, niches on the west wall, plain ashlar between,
         // lancets only where they belong; plinth + ivy finish the base.
         // VISUAL-PASS-3: tall lancets span two rows on cols 1+3 (top arch /
         // bottom sill); roof row above is the pitched gable set.
-        const col = tx - CHURCH.x0, row = ty - CHURCH.y0;
+        const col = lx - CHURCH.x0, row = ly - CHURCH.y0;
         let wall = churchWallEx;
         if (col === 2 && row === 0) wall = churchWallRose;
         else if ((col === 1 || col === 3) && row === 1) wall = churchLancetTop;
@@ -6165,13 +6366,13 @@ function drawWorld(g, now) {
         else if (col === 0) wall = (row === 1 || row === 3) ? churchWallNiche : churchWallButtressL;
         else if (col === 4) wall = churchWallButtressR;
         else if (col === 2) wall = churchWallAshlar;
-        g.drawImage(wall, x, y);
-        if (row === CHURCH.y1 - CHURCH.y0) g.drawImage(churchPlinth, x, y);
-        if (col === 4 && row >= 3) g.drawImage(churchIvy, x, y);
-        if (night && (tx===29||tx===31) && ty===11) { g.fillStyle='rgba(255,214,120,.85)'; g.fillRect(x+9,y+9,14,14); }
-        if (night && col===2 && row===0) { g.fillStyle='rgba(255,214,120,.45)'; g.beginPath(); g.arc(x+16,y+18,9,0,7); g.fill(); }
+        g.drawImage(wall, cx, cy);
+        if (row === CHURCH.y1 - CHURCH.y0) g.drawImage(churchPlinth, cx, cy);
+        if (col === 4 && row >= 3) g.drawImage(churchIvy, cx, cy);
+        if (night && (lx===29||lx===31) && ly===11) { g.fillStyle='rgba(255,214,120,.85)'; g.fillRect(cx+9,cy+9,14,14); }
+        if (night && col===2 && row===0) { g.fillStyle='rgba(255,214,120,.45)'; g.beginPath(); g.arc(cx+16,cy+18,9,0,7); g.fill(); }
       }
-    }
+    }});
     if (tx===CHURCH.door.tx && ty===CHURCH.door.ty) { g.drawImage(pathTile,x,y); g.drawImage(doorMat,x,y); }
     // VISUAL-PASS-CHURCH: path approach + flower beds flanking the church door
     // (walkable grass tiles; footprint and collision untouched)
@@ -6180,29 +6381,32 @@ function drawWorld(g, now) {
       g.drawImage(s[2]===0 ? flowerTile : s[2]===1 ? churchBedA : churchBedB, x, y);
     // home — VISUAL-PASS-FARMHOME: warm cottage — detailed shingle roof with
     // chimney, timber walls with shutters + flower boxes, warm glass at night
-    if (tx>=HOME.x0 && tx<=HOME.x1 && ty>=HOME.y0-1 && ty<=HOME.y1) {
-      if (ty===HOME.y0-1) {
-        g.drawImage(houseRoof, x, y);
-        if (tx===8) g.drawImage(houseDormer, x, y);          // cottage dormer
-        if (tx===9) g.drawImage(houseDormerB, x, y);         // narrower dormer
-        if (tx===HOME.x0) g.drawImage(houseChimneyB, x, y);  // stone stack, west end
-        if (tx===HOME.x1) g.drawImage(houseChimney, x, y);   // chimney on the east end
-      }
-      else {
-        // VISUAL-PASS-2: ground floor keeps the shuttered windows; upper
-        // rows read as cottage wall — plain plaster, attic window, ivy.
-        let wall = houseWall;
-        if (ty < HOME.y1) {
-          if (tx===8 && ty===HOME.y0) wall = houseWallAttic;
-          else if (tx===10 && ty===HOME.y0+1) wall = houseWallIvy;
-          else wall = houseWallPlain;
+    // Y-DEPTH-SORT: whole cottage queues once at its anchor; base-y depth.
+    if (tx===HOME.x0 && ty===HOME.y0-1) DQ.push({ y: (HOME.y1+1)*TILE, d: () => {
+      for (let ly=HOME.y0-1; ly<=HOME.y1; ly++) for (let lx=HOME.x0; lx<=HOME.x1; lx++) {
+        const x = lx*TILE, y = ly*TILE;
+        if (ly===HOME.y0-1) {
+          g.drawImage(houseRoof, x, y);
+          if (lx===8) g.drawImage(houseDormer, x, y);          // cottage dormer
+          if (lx===9) g.drawImage(houseDormerB, x, y);         // narrower dormer
+          if (lx===HOME.x0) g.drawImage(houseChimneyB, x, y);  // stone stack, west end
+          if (lx===HOME.x1) g.drawImage(houseChimney, x, y);   // chimney on the east end
         }
-        g.drawImage(wall, x, y);
-        // front windows glow warm at night (the old tx===8&&ty===12 condition
-        // could never match inside this block — it drew nothing)
-        if (night && ty===HOME.y1 && (tx===7 || tx===9 || tx===10)) g.drawImage(windowTile, x, y);
+        else {
+          // VISUAL-PASS-2: ground floor keeps the shuttered windows; upper
+          // rows read as cottage wall — plain plaster, attic window, ivy.
+          let wall = houseWall;
+          if (ly < HOME.y1) {
+            if (lx===8 && ly===HOME.y0) wall = houseWallAttic;
+            else if (lx===10 && ly===HOME.y0+1) wall = houseWallIvy;
+            else wall = houseWallPlain;
+          }
+          g.drawImage(wall, x, y);
+          // front windows glow warm at night
+          if (night && ly===HOME.y1 && (lx===7 || lx===9 || lx===10)) g.drawImage(windowTile, x, y);
+        }
       }
-    }
+    }});
     if (tx===HOME.door.tx && ty===HOME.door.ty) { g.drawImage(pathTile,x,y); g.drawImage(doorTileH,x,y); }
     // VISUAL-PASS-FARMHOME: cottage garden — flower beds flanking the door
     // approach and plants by the west wall (walkable grass, decor only;
@@ -6210,23 +6414,26 @@ function drawWorld(g, now) {
     const hb = HOME_GARDEN_BEDMAP[tx + ',' + ty];
     if (hb !== undefined) g.drawImage(hb === 0 ? homeBedA : homeBedB, x, y);
     for (const gp of HOME_GARDEN_PLANTS) if (gp[0]===tx && gp[1]===ty) g.drawImage(flowerTile, x, y);
-    // cafe
-    if (tx>=CAFE.x0 && tx<=CAFE.x1 && ty>=CAFE.y0-1 && ty<=CAFE.y1) {
-      if (ty===CAFE.y0-1) {
-        g.drawImage(cafeRoof, x, y);
-        if (tx===CAFE.x0) g.drawImage(houseDormerB, x, y);        // narrower dormer
-        if (tx===CAFE.x0+1) g.drawImage(cafeSignboard, x, y);   // painted Café signboard
-        if (tx===CAFE.x1) g.drawImage(houseChimneyB, x, y);  // stone stack, east end
+    // cafe — Y-DEPTH-SORT: whole mass queues once at its anchor; base-y depth.
+    if (tx===CAFE.x0 && ty===CAFE.y0-1) DQ.push({ y: (CAFE.y1+1)*TILE, d: () => {
+      for (let ly=CAFE.y0-1; ly<=CAFE.y1; ly++) for (let lx=CAFE.x0; lx<=CAFE.x1; lx++) {
+        const cx = lx*TILE, cy = ly*TILE;
+        if (ly===CAFE.y0-1) {
+          g.drawImage(cafeRoof, cx, cy);
+          if (lx===CAFE.x0) g.drawImage(houseDormerB, cx, cy);        // narrower dormer
+          if (lx===CAFE.x0+1) g.drawImage(cafeSignboard, cx, cy);   // painted Café signboard
+          if (lx===CAFE.x1) g.drawImage(houseChimneyB, cx, cy);  // stone stack, east end
+        }
+        else {
+          // VISUAL-PASS-2: no two cafe wall tiles alike + scalloped valance
+          // running continuously across the ground-floor front.
+          const ccol = lx - CAFE.x0;
+          const cwall = ccol === 0 ? cafeWall : ccol === 1 ? cafeWallB : cafeWallC;
+          g.drawImage(cwall, cx, cy);
+          if (ly===CAFE.y1) g.drawImage(cafeAwning, cx, cy);
+        }
       }
-      else {
-        // VISUAL-PASS-2: no two cafe wall tiles alike + scalloped valance
-        // running continuously across the ground-floor front.
-        const ccol = tx - CAFE.x0;
-        const cwall = ccol === 0 ? cafeWall : ccol === 1 ? cafeWallB : cafeWallC;
-        g.drawImage(cwall, x, y);
-        if (ty===CAFE.y1) g.drawImage(cafeAwning, x, y);
-      }
-    }
+    }});
     if (tx===CAFE.counter.tx && ty===CAFE.counter.ty) {
       g.drawImage(counterTile, x, y);
       // TOWN-LIFE: the café keeps hours too — shutter + sign when closed
@@ -6234,69 +6441,85 @@ function drawWorld(g, now) {
       if (!cafeOpen) g.drawImage(stallShutterTile, x, y);
       g.drawImage(cafeOpen ? signOpenTile : signShutTile, x+3, y+1);
     }
+    // Y-DEPTH-SORT: patio tables queue so travelers pass behind them.
     if ((tx===CAFE.x0||tx===CAFE.x1) && ty===CAFE.y1+2) {
-      g.drawImage(tableTile, x, y);
-      // FOOD-ART (2026-10-03): table settings — plates, mugs, bread (variant per table)
-      const tv = tx===CAFE.x0 ? 0 : 1;
-      g.drawImage(cafeTableFoodTiles[tv], x, y);
-      const cafeOpen = !day.shops || day.shops.cafe !== 'closed';
-      if (cafeOpen) { paintSteam(g, x+(tv?10:26), y+12, now); paintSteam(g, x+(tv?27:13), y+14, now); }
+      const qx=x, qy=y, qtv = tx===CAFE.x0 ? 0 : 1;
+      DQ.push({ y: qy+TILE, d: () => {
+        g.drawImage(tableTile, qx, qy);
+        // FOOD-ART (2026-10-03): table settings — plates, mugs, bread (variant per table)
+        g.drawImage(cafeTableFoodTiles[qtv], qx, qy);
+        const cafeOpen = !day.shops || day.shops.cafe !== 'closed';
+        if (cafeOpen) { paintSteam(g, qx+(qtv?10:26), qy+12, now); paintSteam(g, qx+(qtv?27:13), qy+14, now); }
+      }});
     }
-    // market stalls
-    for (const s of STALLS) if (s.tx===tx && s.ty===ty) g.drawImage(s.s, x, y);
-    // FOOD-ART (2026-10-03): produce piles on each stall counter (produce /
-    // fish on ice / breads & cheese); covered by the pulled shutter when closed
-    STALLS.forEach((s,i)=>{ if (s.tx===tx && s.ty===ty) {
-      const stallsOpen = !day.shops || day.shops.stalls !== 'closed';
-      if (stallsOpen) g.drawImage(stallProduceTiles[i], x, y);
-    }});
-    // TOWN-LIFE: stalls keep shop hours — Open/Closed hanging sign, and a
-    // pulled shutter over the counter when closed (living feel only)
-    for (const s of STALLS) if (s.tx===tx && s.ty===ty) {
-      const stallsOpen = !day.shops || day.shops.stalls !== 'closed';
-      if (!stallsOpen) g.drawImage(stallShutterTile, x, y);
-      g.drawImage(stallsOpen ? signOpenTile : signShutTile, x+3, y+1);
+    // market stalls — Y-DEPTH-SORT: each stall queues once; travelers pass behind the canopy.
+    // (i, s, x, y are per-iteration bindings, captured by the closure.)
+    for (let i=0; i<STALLS.length; i++) { const s = STALLS[i];
+      if (s.tx===tx && s.ty===ty) {
+        DQ.push({ y: y+TILE, d: () => {
+          g.drawImage(s.s, x, y);
+          // FOOD-ART (2026-10-03): produce piles on each stall counter (produce /
+          // fish on ice / breads & cheese); covered by the pulled shutter when closed
+          const stallsOpen = !day.shops || day.shops.stalls !== 'closed';
+          if (stallsOpen) g.drawImage(stallProduceTiles[i], x, y);
+          // TOWN-LIFE: stalls keep shop hours — Open/Closed hanging sign, and a
+          // pulled shutter over the counter when closed (living feel only)
+          if (!stallsOpen) g.drawImage(stallShutterTile, x, y);
+          g.drawImage(stallsOpen ? signOpenTile : signShutTile, x+3, y+1);
+        }});
+      }
     }
-    // VISUAL-PASS-2: pennant banner poles between the stalls
-    if ((tx===15 || tx===17) && ty===10) g.drawImage(bannerTile, x, y);
-    // TOWN-LIFE: on market day the poles carry extra bunting swags
-    if ((tx===15 || tx===17) && ty===10 && day.marketDay) g.drawImage(marketBuntingTile, x, y);
+    // VISUAL-PASS-2: pennant banner poles between the stalls — Y-DEPTH-SORT
+    if ((tx===15 || tx===17) && ty===10) {
+      const qx=x, qy=y;
+      DQ.push({ y: qy+TILE, d: () => {
+        g.drawImage(bannerTile, qx, qy);
+        // TOWN-LIFE: on market day the poles carry extra bunting swags
+        if (day.marketDay) g.drawImage(marketBuntingTile, qx, qy);
+      }});
+    }
     // fountain — VISUAL-PASS-TOWN: living water. fountainSparkle is the animated
     // spill sheets + expanding basin ripples + twinkling spray, all clocked by `now`
+    // Y-DEPTH-SORT: queues once; travelers pass behind the basin rim.
+    // (x, y are the per-iteration tile consts, captured by the closure.)
     if (tx===FOUNTAIN.tx && ty===FOUNTAIN.ty) {
-      g.drawImage(fountainTile, x, y);
-      // RESTORE THE LIGHT: dry stone until the Old Garden wakes; then the
-      // water returns — spill sheets, basin ripple, twinkling spray.
-      const flowing = !restore || restore.garden !== 'dormant';
-      if (!flowing) g.drawImage(fountainDryTile, x, y);
-      else {
-      for (let i=0;i<3;i++) {                                   // falling spill sheets
-        const oy = (now/38 + i*11) % 5;
-        g.fillStyle = 'rgba(220,242,255,.85)';
-        g.fillRect(x+12+i*4, y+7+oy, 1.5, 3);                    // upper tier -> lower tier
-        const oy2 = (now/44 + i*13 + 5) % 6;
-        g.fillRect(x+9.5+i*3.2, y+12.5+oy2, 1.6, 3.5);           // lower tier -> basin
-      }
-      const rp = (now/1100) % 1;                                // expanding basin ripple
-      g.strokeStyle = 'rgba(255,255,255,' + (0.55*(1-rp)).toFixed(2) + ')';
-      g.lineWidth = 1;
-      g.beginPath(); g.ellipse(x+16, y+21, 3+rp*8, 2+rp*5, 0, 0, 7); g.stroke();
-      for (let i=0;i<3;i++) {                                   // twinkling spray
-        const tw = (Math.sin(now/260 + i*2.1) + 1) / 2;
-        g.fillStyle = 'rgba(255,255,255,' + (0.25 + 0.55*tw).toFixed(2) + ')';
-        g.fillRect(x+13+i*3, y+19+((i*5)%3), 1.5, 1.5);
-      }
-      }
+      DQ.push({ y: (FOUNTAIN.ty+1)*TILE, d: () => {
+        g.drawImage(fountainTile, x, y);
+        // RESTORE THE LIGHT: dry stone until the Old Garden wakes; then the
+        // water returns — spill sheets, basin ripple, twinkling spray.
+        const flowing = !restore || restore.garden !== 'dormant';
+        if (!flowing) { g.drawImage(fountainDryTile, x, y); return; }
+        for (let i=0;i<3;i++) {                                   // falling spill sheets
+          const oy = (now/38 + i*11) % 5;
+          g.fillStyle = 'rgba(220,242,255,.85)';
+          g.fillRect(x+12+i*4, y+7+oy, 1.5, 3);                    // upper tier -> lower tier
+          const oy2 = (now/44 + i*13 + 5) % 6;
+          g.fillRect(x+9.5+i*3.2, y+12.5+oy2, 1.6, 3.5);           // lower tier -> basin
+        }
+        const rp = (now/1100) % 1;                                // expanding basin ripple
+        g.strokeStyle = 'rgba(255,255,255,' + (0.55*(1-rp)).toFixed(2) + ')';
+        g.lineWidth = 1;
+        g.beginPath(); g.ellipse(x+16, y+21, 3+rp*8, 2+rp*5, 0, 0, 7); g.stroke();
+        for (let i=0;i<3;i++) {                                   // twinkling spray
+          const tw = (Math.sin(now/260 + i*2.1) + 1) / 2;
+          g.fillStyle = 'rgba(255,255,255,' + (0.25 + 0.55*tw).toFixed(2) + ')';
+          g.fillRect(x+13+i*3, y+19+((i*5)%3), 1.5, 1.5);
+        }
+      }});
     }
     // lamps — RESTORE THE LIGHT: dark until the town is restored. The three
     // lamps ringing the Old Garden wake with the garden; the rest return
     // one by one on the Return (edges of town first, plaza last).
+    // Y-DEPTH-SORT: poles queue; travelers pass behind them.
     for (let li = 0; li < LAMPS.length; li++) { const l = LAMPS[li]; if (l.tx===tx && l.ty===ty) {
-      const lit = lampLit(li);
-      g.drawImage(lit ? lampTile : lampTileDark, x, y-8);
-      if (lit && night) drawGlow(g, x+16, y+2, 26, 'rgba(255,205,110,A)', now, l.tx*3+l.ty);
-      // VISUAL-PASS-3: larger day halo in lightSoft
-      if (lit && !night) drawGlow(g, x+16, y+2, 26, 'rgba(247,217,130,A)', now, l.tx*3+l.ty, 0.2);
+      const qx=x, qy=y, qli=li, ql=l;
+      DQ.push({ y: (ql.ty+1)*TILE, d: () => {
+        const lit = lampLit(qli);
+        g.drawImage(lit ? lampTile : lampTileDark, qx, qy-8);
+        if (lit && night) drawGlow(g, qx+16, qy+2, 26, 'rgba(255,205,110,A)', now, ql.tx*3+ql.ty);
+        // VISUAL-PASS-3: larger day halo in lightSoft
+        if (lit && !night) drawGlow(g, qx+16, qy+2, 26, 'rgba(247,217,130,A)', now, ql.tx*3+ql.ty, 0.2);
+      }});
     } }
     // docks (WORLD-EXPANSION: north bank + two south-bank docks)
     for (const d of DOCKS_T) if (tx===d.tx && ty===d.ty) g.drawImage(dockTile, x, y);
@@ -6312,34 +6535,48 @@ function drawWorld(g, now) {
     for (const s of PLANTERS) if (s[0]===tx && s[1]===ty) g.drawImage(planterTile, x, y);
     for (const s of SHRUBS) if (s[0]===tx && s[1]===ty) g.drawImage(shrubTile, x, y-4);
     for (const s of ROCKS) if (s[0]===tx && s[1]===ty) g.drawImage(rockTile, x, y);
+    // PHASE-A STAGE 4: environmental storytelling — biome dressing (render-only,
+    // walkable, no interactions; placement filtered to grass at startup)
+    for (const s of PHASE4_DRESSING) if (s[0]===tx && s[1]===ty) g.drawImage(s[2], x, y);
     // ruin pillars flanking the arch (waterfalls + arch draw after the tile loop)
-    if ((tx===30 && ty===4) || (tx===33 && ty===4)) g.drawImage(pillarTile, x, y);
+    // Y-DEPTH-SORT: pillars queue; travelers pass behind them.
+    if ((tx===30 && ty===4) || (tx===33 && ty===4)) {
+      const qx=x, qy=y;
+      DQ.push({ y: qy+TILE, d: () => { g.drawImage(pillarTile, qx, qy); }});
+    }
     // WORLD-EXPANSION: Deep Ruins decor — broken pillar stubs (walkable)
-    for (const p of DEEP_PILLARS) if (p[0]===tx && p[1]===ty) g.drawImage(pillarTile, x, y);
+    for (const p of DEEP_PILLARS) if (p[0]===tx && p[1]===ty) {
+      const qx=x, qy=y;
+      DQ.push({ y: qy+TILE, d: () => { g.drawImage(pillarTile, qx, qy); }});
+    }
     // WORLD-EXPANSION: sunberry bushes in Sunberry Meadow (walkable decor)
     for (const s of SUNBERRY_SPOTS) if (s[0]===tx && s[1]===ty) g.drawImage(sunberryTile, x, y);
     // RESTORE THE LIGHT M4: fallen stones bar the ruin mouth (or rest aside)
     for (const gt of GATE_TILES) if (gt.tx===tx && gt.ty===ty) g.drawImage(ruinGate ? gateOpenTile : gateShutTile, x, y);
     // STORYLINE: the Garden Gate — decaying arch at the plaza's north edge (19,12).
     // Walkable; its state is the story made visible. Repaired: gold-trimmed, flowering.
+    // Y-DEPTH-SORT: the arch queues; travelers pass beneath/behind it.
     if (tx===19 && ty===12 && story) {
-      if (story.gateRepaired) {
-        g.fillStyle = '#8a6f4d'; g.fillRect(x+2, y+2, 6, 28); g.fillRect(x+24, y+2, 6, 28);   // posts
-        g.fillStyle = '#a8895c'; g.fillRect(x+2, y+2, 28, 7);                                   // lintel
-        g.fillStyle = '#D5AD54'; g.fillRect(x+2, y+7, 28, 2); g.fillRect(x+2, y+2, 2, 28); g.fillRect(x+28, y+2, 2, 28); // gold trim
-        g.fillStyle = '#e88aa8'; g.fillRect(x+4, y+4, 3, 3); g.fillRect(x+25, y+10, 3, 3); g.fillRect(x+10, y+5, 3, 3); // flowers
-        g.fillStyle = '#7fc86a'; g.fillRect(x+7, y+6, 2, 4); g.fillRect(x+22, y+12, 2, 4);
-        drawGlow(g, x+16, y+14, 30, 'rgba(255,230,150,A)', now, 7);
-      } else {
-        g.fillStyle = '#6e6250'; g.fillRect(x+3, y+8, 5, 22); g.fillRect(x+24, y+8, 5, 22);   // leaning posts
-        g.fillStyle = '#5d5240'; g.fillRect(x+3, y+4, 14, 5);                                   // half-fallen lintel
-        g.fillStyle = '#4e6b3a';                                                                // vines
-        for (let v=0; v<6; v++) g.fillRect(x+4+((tx*7+v*5)%24), y+6+((v*7)%18), 2, 3);
-        if (story.gateFound && !story.key) {                                                    // faint shimmer: it notices you
-          g.fillStyle = `rgba(255,240,180,${0.10+0.08*Math.sin(now/600)})`;
-          g.fillRect(x+8, y+10, 16, 14);
+      const qx=x, qy=y;
+      DQ.push({ y: 13*TILE, d: () => {
+        if (story.gateRepaired) {
+          g.fillStyle = '#8a6f4d'; g.fillRect(qx+2, qy+2, 6, 28); g.fillRect(qx+24, qy+2, 6, 28);   // posts
+          g.fillStyle = '#a8895c'; g.fillRect(qx+2, qy+2, 28, 7);                                   // lintel
+          g.fillStyle = '#D5AD54'; g.fillRect(qx+2, qy+7, 28, 2); g.fillRect(qx+2, qy+2, 2, 28); g.fillRect(qx+28, qy+2, 2, 28); // gold trim
+          g.fillStyle = '#e88aa8'; g.fillRect(qx+4, qy+4, 3, 3); g.fillRect(qx+25, qy+10, 3, 3); g.fillRect(qx+10, qy+5, 3, 3); // flowers
+          g.fillStyle = '#7fc86a'; g.fillRect(qx+7, qy+6, 2, 4); g.fillRect(qx+22, qy+12, 2, 4);
+          drawGlow(g, qx+16, qy+14, 30, 'rgba(255,230,150,A)', now, 7);
+        } else {
+          g.fillStyle = '#6e6250'; g.fillRect(qx+3, qy+8, 5, 22); g.fillRect(qx+24, qy+8, 5, 22);   // leaning posts
+          g.fillStyle = '#5d5240'; g.fillRect(qx+3, qy+4, 14, 5);                                   // half-fallen lintel
+          g.fillStyle = '#4e6b3a';                                                                // vines
+          for (let v=0; v<6; v++) g.fillRect(qx+4+((19*7+v*5)%24), qy+6+((v*7)%18), 2, 3);
+          if (story.gateFound && !story.key) {                                                    // faint shimmer: it notices you
+            g.fillStyle = `rgba(255,240,180,${0.10+0.08*Math.sin(now/600)})`;
+            g.fillRect(qx+8, qy+10, 16, 14);
+          }
         }
-      }
+      }});
     }
     // STORYLINE Act 2 — the bridge mend: damaged planks mid-bridge until mended.
     if (tx===20 && ty===22 && story && story.gateFound && !story.trials.bridge) {
@@ -6416,12 +6653,17 @@ function drawWorld(g, now) {
         drawGlow(g, wx+16, 52, 22, 'rgba(160,205,255,A)', now, 34, 0.25);
       }
     }
-    g.drawImage(ruinArch, RUIN_ARCH.tx*TILE, RUIN_ARCH.ty*TILE);
-    // VISUAL-PASS-RUINS: the arch's dark opening breathes a soft mysterious
-    // light — cool and quiet, never neon; stronger after dusk
-    drawGlow(g, RUIN_ARCH.tx*TILE+32, RUIN_ARCH.ty*TILE+32, 30, 'rgba(150,200,255,A)', now, 21, night ? 0.5 : 0.18);
+    // Y-DEPTH-SORT: the ruin arches queue with the tall layer.
+    DQ.push({ y: (RUIN_ARCH.ty+2)*TILE, d: () => {
+      g.drawImage(ruinArch, RUIN_ARCH.tx*TILE, RUIN_ARCH.ty*TILE);
+      // VISUAL-PASS-RUINS: the arch's dark opening breathes a soft mysterious
+      // light — cool and quiet, never neon; stronger after dusk
+      drawGlow(g, RUIN_ARCH.tx*TILE+32, RUIN_ARCH.ty*TILE+32, 30, 'rgba(150,200,255,A)', now, 21, night ? 0.5 : 0.18);
+    }});
     // WORLD-EXPANSION: decorative second arch in the Deep Ruins (no glow, no co-op logic)
-    g.drawImage(ruinArch, RUIN_ARCH2.tx*TILE, RUIN_ARCH2.ty*TILE);
+    DQ.push({ y: (RUIN_ARCH2.ty+2)*TILE, d: () => {
+      g.drawImage(ruinArch, RUIN_ARCH2.tx*TILE, RUIN_ARCH2.ty*TILE);
+    }});
     // VISUAL-PASS-FOREST: pollen by day, fireflies by night over the forest
     drawForestPollen(g, now, night);
     // VISUAL-PASS-TITLE: two butterflies drifting over the forest by day —
@@ -6440,13 +6682,7 @@ function drawWorld(g, now) {
         g.fillRect(fbx-1-fw, fby-2, 1, 1); g.fillRect(fbx+1, fby-2, 1, 1);
       }
     }
-    // BATCH7: tall landmark steeple over the church roof (the board's tall church)
-    g.drawImage(churchSteeple, 29*TILE, 6*TILE);
-    // VISUAL-PASS-CHURCH: belfry lamplight glows warm at night
-    if (night) {
-      drawGlow(g, 29*TILE+24, 6*TILE+54, 26, 'rgba(255,205,110,A)', now, 5);
-      drawGlow(g, 29*TILE+40, 6*TILE+54, 26, 'rgba(255,205,110,A)', now, 6);
-    }
+    // BATCH7: steeple now draws inside the church's depth-queued closure above.
     for (const l of ZONE_LABELS) drawLabel(g, l.tx, l.ty, l.text);
     if (gardenBloomed || ruinOpen) drawLabel(g, 20, 12, 'Garden of Hope');
   }
@@ -6601,10 +6837,10 @@ const particles = [];
 // VISUAL-PASS-TITLE: sunset is gold/pink/purple now; night keeps a readability
 // floor (alpha capped at 0.38) so the village never goes unreadable.
 const TINTS = {
-  morning: { r: 255, g: 196, b: 130, a: 0.14 },  // golden dawn
-  day:     { r: 0,   g: 0,   b: 0,   a: 0    },
-  sunset:  { r: 228, g: 98,  b: 120, a: 0.20 },  // pink/violet dusk
-  night:   { r: 10,  g: 16,  b: 48,  a: 0.38 },  // deep blue, floored for readability
+  morning: { r: 255, g: 208, b: 168, a: 0.14 },  // PHASE-A: warm peach dawn
+  day:     { r: 255, g: 238, b: 196, a: 0.05 },  // PHASE-A: faint afternoon gold
+  sunset:  { r: 228, g: 98,  b: 120, a: 0.20 },  // pink/violet dusk (test marker)
+  night:   { r: 26,  g: 22,  b: 66,  a: 0.38 },  // PHASE-A: indigo night, floored for readability
 };
 const tintCur = { r: 0, g: 0, b: 0, a: 0 };
 // SEASONS (DESIGN-BOARD): faint seasonal cast — blossom pink, harvest gold,
@@ -6790,17 +7026,21 @@ function loop(now) {
     const foxHop = foxNear ? Math.abs(Math.sin(now/170))*4.5
       : foxMoving ? Math.abs(Math.sin(now/180))*3 : Math.sin(now/1100)*0.8;
     if (fox.x - foxSm.x > 2) foxFace = 1; else if (foxSm.x - fox.x > 2) foxFace = -1;
-    ctx.fillStyle = 'rgba(0,0,0,.16)';
-    ctx.beginPath(); ctx.ellipse(Math.round(foxSm.x), Math.round(foxSm.y+1), 7, 3, 0, 0, 7); ctx.fill();
-    ctx.save();
-    ctx.translate(Math.round(foxSm.x), Math.round(foxSm.y-10+foxHop));
-    ctx.scale(foxFace, 1);
-    ctx.drawImage(foxFrm, -8, 0);
-    ctx.restore();
-    if (foxNear && ((now/1100|0) % 2) === 0) {
-      ctx.font = '12px monospace'; ctx.textAlign = 'center'; ctx.fillStyle = '#fff';
-      ctx.fillText('\uD83D\uDC9B', Math.round(foxSm.x), Math.round(foxSm.y - 26 + Math.sin(now/300)*2));
-    }
+    // Y-DEPTH-SORT: the fox queues with entities; keep smoothing update above.
+    const qfx = foxSm.x, qfy = foxSm.y, qff = foxFrm, qfh = foxHop, qfc = foxFace, qfn = foxNear;
+    DQ.push({ y: qfy, d: () => {
+      ctx.fillStyle = 'rgba(0,0,0,.16)';
+      ctx.beginPath(); ctx.ellipse(Math.round(qfx), Math.round(qfy+1), 7, 3, 0, 0, 7); ctx.fill();
+      ctx.save();
+      ctx.translate(Math.round(qfx), Math.round(qfy-10+qfh));
+      ctx.scale(qfc, 1);
+      ctx.drawImage(qff, -8, 0);
+      ctx.restore();
+      if (qfn && ((now/1100|0) % 2) === 0) {
+        ctx.font = '12px monospace'; ctx.textAlign = 'center'; ctx.fillStyle = '#fff';
+        ctx.fillText('\uD83D\uDC9B', Math.round(qfx), Math.round(qfy - 26 + Math.sin(now/300)*2));
+      }
+    }});
     // SEASONS: drifting motes re-theme per season; winter falls as snow.
     const moteCols = SEASON_MOTES[seasonKey] || SEASON_MOTES.spring;
     const isSnow = seasonKey === 'winter';
@@ -6827,6 +7067,8 @@ function loop(now) {
     const inChurchRect = n.x >= 14*TILE && n.x <= 27*TILE && n.y >= 17*TILE && n.y <= 27*TILE;
     if (inside) { if (!(me.place === 'church' && inChurchRect)) continue; }
     else if (inChurchRect) continue;   // seated congregation stays a church sight
+    // Y-DEPTH-SORT: villagers queue with the tall layer by base-y.
+    DQ.push({ y: n.y, d: () => {
     const seated = inside && sermonActiveClient();
     // TOWN-LIFE: villagers at lunch render seated and still, and
     // carry a small activity glyph (same visual language as the chat bubble)
@@ -6867,12 +7109,15 @@ function loop(now) {
     // FOOD-ART (2026-10-03): villagers eat at lunch — bread in hand, a small
     // plate set beside them, steam + crumbs (render layer only)
     if (idleAct === 'lunch') drawLunchFood(ctx, n, now);
+    }}); // end Y-DEPTH-SORT villager draw
   }
   // players sorted by y — only co-located travelers are drawn (STORY-FIX
   // G2: a traveler inside the church/home never sees, or is seen by, the
   // world outside — no leaked name tags, emotes, or quick-chat bubbles)
   const list = [...players.values()].filter(p => (p.inside === inside) && (p.place === (me && me.place))).sort((a,b)=>a.y-b.y);
-  list.forEach((p) => {
+  // Y-DEPTH-SORT: travelers queue with the tall layer by base-y (the old
+  // players-only y-sort is subsumed by the global queue sort below).
+  list.forEach((p) => { DQ.push({ y: p.y, d: () => {
     // stride + bob walk cycle: painted stride frames (1/2) selected by stride
     // phase while moving, idle frame 0 otherwise; a slow breath-like sway when idle
     const stridePhase = now/150 + p.x*0.01;
@@ -6915,8 +7160,14 @@ function loop(now) {
       ctx.closePath(); ctx.fill();
       ctx.fillStyle = '#3a2a12'; ctx.fillText(qb.text, bx, by);
     }
+  }}); // end Y-DEPTH-SORT traveler draw
   });
   for (const [id, qb] of qcBubbles) if (Date.now() >= qb.until) qcBubbles.delete(id);
+  // Y-DEPTH-SORT: back-to-front by base-y — tall world objects and entities
+  // interleave, then the queue clears for the next frame.
+  DQ.sort((a,b)=>a.y-b.y);
+  for (let qi=0; qi<DQ.length; qi++) DQ[qi].d();
+  DQ.length = 0;
   // celebration particles
   if (burst > 0) {
     for (let i=0;i<4;i++) particles.push({x:20*TILE+(Math.random()-0.5)*5*TILE, y:14*TILE+(Math.random()-0.5)*5*TILE, vx:(Math.random()-0.5)*1.5, vy:-Math.random()*1.5-0.3, life:60+Math.random()*40, c:'255,220,120'});

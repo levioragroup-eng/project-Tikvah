@@ -134,11 +134,14 @@ function baseKind(tx, ty) {   // mirrors client baseTile()
   if (ty >= 21 && ty <= 24) return (tx >= 19 && tx <= 21) ? 'bridge' : 'water';
   if (ty === 20 || ty === 25) return (tx >= 19 && tx <= 21) ? 'bridge' : 'sand';
   if (tx >= 17 && tx <= 22 && ty >= 13 && ty <= 17) return 'plaza';
-  if (ty === 12 && tx >= 6 && tx <= 33) return 'path';
+  // PHASE-A STAGE 3: winding lanes mirrored from client baseTile()
+  if (ty === 12 && tx >= 6 && tx <= 33 && !(tx >= 14 && tx <= 25)) return 'path';
+  if (ty === 13 && tx >= 14 && tx <= 25) return 'path';
   if (tx === 13 && ty >= 8 && ty <= 18) return 'path';
   if (tx === 19 && ty >= 6 && ty <= 12) return 'path';
   if (tx === 20 && ty >= 18 && ty <= 19) return 'path';
-  if (ty === 18 && tx >= 13 && tx <= 28) return 'path';
+  if (ty === 18 && tx >= 13 && tx <= 28 && !(tx >= 18 && tx <= 25)) return 'path';
+  if (ty === 19 && tx >= 18 && tx <= 25) return 'path';
   if (tx === 27 && ty >= 12 && ty <= 18) return 'path';
   if (tx === 33 && ty >= 6 && ty <= 12) return 'path';
   if (ty === 8 && tx >= 19 && tx <= 33) return 'path';
