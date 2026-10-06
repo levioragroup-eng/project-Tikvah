@@ -349,3 +349,21 @@ Reward: the **Restoration Key** (HUD 🗝️). Prayer at the church altar with t
 **Deploy:** commit a7fecdb pushed to master; Railway live-verified HTTP 200, "Pastor Nathan" ×7, Y-DEPTH-SORT markers ×19; railway-probe: position restore FIXED.
 
 **Cuts:** Isometric/2.5D projection (would require engine rewrite — frozen); separate intro sequence (used existing onboarding); randomized verse cards (Ariel's 3-verse rule stood at build time — NOTE: she reversed this 2026-10-06 ~10:30 AM, queued post-Phase A).
+
+## PHASE B (2026-10-06) — landmarks + UI, render-only
+Ariel WAIVED the Phase A screenshot checkpoint — continued directly into Phase B.
+
+**Stage 5 — Landmark art:**
+- Church: new Gothic pointed-arch portal (stone surround, wooden double doors, tracery, steps) at the door tile, depth-queued so the player walks into it.
+- Café: patio parasols recolored to board-accurate red/white stripes.
+- Market/home already carried striped awnings, produce, baskets/crates, gardens from earlier passes — verified, no changes needed.
+
+**Stage 6 — UI pass:**
+- Bottom action ribbon: 8 circular parchment buttons (Farm/Fish/Cook/Befriend/Explore/Learn/Worship/Discover); each shows a guiding toast; Learn opens the journal, Befriend waves.
+- HUD portrait (bottom-right): player's own sprite in a gold-ringed circle + pulsing [E] prompt mirrored from the interaction system.
+- Top-left banner: now location-aware (Day · Season · Time · Location, e.g. "Day 1 · Spring · Morning · Café"), refreshed every 200ms.
+- Dialogue already had dual portraits + 5-heart meters — verified, untouched.
+
+**Stage 7 — Verify:** characters + seasons/lighting checked against the reference board via screenshots; no rework needed.
+
+**Stage 8 — Playtest + deploy:** (pending test results below)
