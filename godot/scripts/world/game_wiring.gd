@@ -36,8 +36,7 @@ const DOORS := [
 	{"tile": Vector2i(40, 20), "target": "res://scenes/interiors/market_interior.tscn", "id": "market"},
 ]
 
-const NPC_DEFS := [
-	{"scene": "hannah", "art": "hannah.png", "schedule": {
+const NPC_DEFS := [	{"scene": "hannah", "art": "hannah.png", "schedule": {
 		"morning": Vector2i(12, 28), "afternoon": Vector2i(40, 17),
 		"dusk": Vector2i(53, 39), "night": Vector2i(12, 15)}},
 	{"scene": "elias", "art": "elias.png", "schedule": {
@@ -114,7 +113,24 @@ static func wire(village: Node2D) -> void:
 	_wire_npcs(village, state)
 	_wire_systems(village, state)
 	_wire_story(village, state)
+	_wire_buildings(village)
 	_wire_title_screen(village, state)
+
+	# Y-sort layer: move all visual Node2Ds (except tile layers and the
+	# canvas-wide DayTint) under a YSort node so the player walks behind
+	# buildings/trees and in front of walls correctly.
+	var entities := Node2D.new()
+	entities.name = "Entities"
+	entities.y_sort_enabled = true
+	village.add_child(entities)
+	var movers: Array = []
+	for c in village.get_children():
+		if c != entities and c is Node2D and not (c is TileMapLayer) and c.name != "DayTint":
+			movers.append(c)
+	for c in movers:
+		village.remove_child(c)
+		entities.add_child(c)
+	state["entities"] = entities
 
 	# Defer player spawn ~0.25s: the DoorTransition driver delivers the
 	# carried player ~2 frames after the scene loads. Adopt it if present
@@ -618,6 +634,33 @@ static func _sync_story_flag(state: Dictionary, flag: String, value: Variant) ->
 	var client: Node = state.get("client")
 	if client != null and bool(client.get("is_joined")):
 		client.call("send_story", flag, value)
+
+
+# ------------------------------------------------------------------ buildings
+
+# Building exteriors. Base (y-sort pivot) sits at the door-front tile so the
+# player sorts correctly against them. Sprite art: assets/buildings/*.png.
+const BUILDINGS := [
+	{"png": "church.png", "base": Vector2(1024, 520), "h": 96},
+	{"png": "home.png", "base": Vector2(200, 248), "h": 64},
+	{"png": "cafe.png", "base": Vector2(856, 664), "h": 64},
+	{"png": "market.png", "base": Vector2(648, 328), "h": 64},
+]
+
+
+static func _wire_buildings(village: Node2D) -> void:
+	for b in BUILDINGS:
+		var tex: Texture2D = load("res://assets/buildings/%s" % b["png"]) as Texture2D
+		if tex == null:
+			continue
+		var root := Node2D.new()
+		root.name = "Building_%s" % str(b["png"]).get_basename()
+		root.position = b["base"]
+		var spr := Sprite2D.new()
+		spr.texture = tex
+		spr.position = Vector2(0, -float(b["h"]) * 0.5)
+		root.add_child(spr)
+		village.add_child(root)
 
 
 # ------------------------------------------------------------------ netcode + title
