@@ -8,12 +8,15 @@ RUN apt-get update \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
-COPY build/server/tikvah_server.x86_64 /app/server.x86_64
-RUN chmod +x /app/server.x86_64
+# The .pck holds all game data — the binary exits immediately without it.
+# Keep the original basename: the binary looks for <basename>.pck beside itself.
+COPY build/server/tikvah_server.x86_64 /app/tikvah_server.x86_64
+COPY build/server/tikvah_server.pck /app/tikvah_server.pck
+RUN chmod +x /app/tikvah_server.x86_64
 
 ENV PORT=8080
 EXPOSE 8080
 
-# --server selects the dedicated room-server main loop (see boot.gd).
+# --server selects the dedicated room-server main loop (see scripts/multiplayer/boot.gd).
 # (Exported binaries ignore the -s script override; do not use it.)
-CMD ["/app/server.x86_64", "--headless", "--server"]
+CMD ["/app/tikvah_server.x86_64", "--headless", "--server"]
