@@ -14,6 +14,6 @@ RUN chmod +x /app/server.x86_64
 ENV PORT=8080
 EXPOSE 8080
 
-# The -s script override selects the server main loop (extends SceneTree);
-# --headless --server alone would boot the game scene instead.
-CMD ["/app/server.x86_64", "--headless", "--server", "-s", "res://scripts/multiplayer/tikvah_server.gd"]
+# --server selects the dedicated room-server main loop (see boot.gd).
+# (Exported binaries ignore the -s script override; do not use it.)
+CMD ["/app/server.x86_64", "--headless", "--server"]

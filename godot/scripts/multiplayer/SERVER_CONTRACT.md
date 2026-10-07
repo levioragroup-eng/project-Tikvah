@@ -5,7 +5,9 @@ For the deploy track (`deploy/server/Dockerfile`, `deploy/web/serve.py`,
 
 ## Server binary
 
-- **Launch command:** `server.x86_64 --headless -s res://scripts/multiplayer/tikvah_server.gd`
+- **Launch command:** `server.x86_64 --headless --server`
+  (boot.tscn detects `--server` and starts the room server in-process;
+  exported binaries ignore the `-s` script override, so it is not used.)
   - The `-s` override is REQUIRED: it swaps the game main scene for the server
     main loop. Without it the binary boots the village scene, not the server.
   - `--headless` is required (no display on Railway). The extra `--server` flag
