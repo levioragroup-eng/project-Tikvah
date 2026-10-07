@@ -1,0 +1,232 @@
+[gd_scene load_steps=12 format=3]
+
+[ext_resource type="Script" path="res://scenes/interiors/interior.gd" id="1_int"]
+
+[ext_resource type="Script" path="res://scenes/interiors/stub_interactable.gd" id="2_stub"]
+
+[ext_resource type="PackedScene" path="res://scenes/systems/door_transition.tscn" id="3_door"]
+
+[sub_resource type="CircleShape2D" id="InteractShape"]
+radius = 8.0
+
+[sub_resource type="RectangleShape2D" id="Solid0"]
+size = Vector2(32, 32)
+
+[sub_resource type="RectangleShape2D" id="Solid1"]
+size = Vector2(16, 24)
+
+[sub_resource type="RectangleShape2D" id="Solid2"]
+size = Vector2(16, 24)
+
+[sub_resource type="RectangleShape2D" id="Solid3"]
+size = Vector2(64, 12)
+
+[sub_resource type="RectangleShape2D" id="Solid4"]
+size = Vector2(64, 12)
+
+[sub_resource type="RectangleShape2D" id="Solid5"]
+size = Vector2(64, 12)
+
+[sub_resource type="RectangleShape2D" id="Solid6"]
+size = Vector2(64, 12)
+
+[node name="ChurchInterior" type="Node2D"]
+script = ExtResource("1_int")
+room = Rect2i(0, 0, 20, 12)
+floor_tile = 49
+floor_alt = 50
+wall_tile = 51
+door_gap = Rect2i(9, 11, 2, 1)
+
+[node name="Furniture" type="Node2D" parent="."]
+
+[node name="Altar" type="ColorRect" parent="Furniture"]
+mouse_filter = 2
+offset_left = 144.0
+offset_top = 32.0
+offset_right = 176.0
+offset_bottom = 64.0
+color = Color(0.85, 0.70, 0.35, 1)
+
+[node name="Label" type="Label" parent="Furniture/Altar"]
+offset_left = 2.0
+offset_top = 1.0
+offset_right = 30.0
+offset_bottom = 16.0
+text = "Altar"
+
+[node name="VerseStand" type="ColorRect" parent="Furniture"]
+mouse_filter = 2
+offset_left = 80.0
+offset_top = 48.0
+offset_right = 96.0
+offset_bottom = 72.0
+color = Color(0.40, 0.28, 0.16, 1)
+
+[node name="Label" type="Label" parent="Furniture/VerseStand"]
+offset_left = 2.0
+offset_top = 1.0
+offset_right = 14.0
+offset_bottom = 16.0
+text = "Bible"
+
+[node name="Nathan" type="ColorRect" parent="Furniture"]
+mouse_filter = 2
+offset_left = 192.0
+offset_top = 48.0
+offset_right = 208.0
+offset_bottom = 72.0
+color = Color(0.96, 0.94, 0.87, 1)
+
+[node name="Label" type="Label" parent="Furniture/Nathan"]
+offset_left = 2.0
+offset_top = 1.0
+offset_right = 14.0
+offset_bottom = 16.0
+text = "Nathan"
+
+[node name="PewL1" type="ColorRect" parent="Furniture"]
+mouse_filter = 2
+offset_left = 64.0
+offset_top = 96.0
+offset_right = 128.0
+offset_bottom = 108.0
+color = Color(0.48, 0.33, 0.20, 1)
+
+[node name="Label" type="Label" parent="Furniture/PewL1"]
+offset_left = 2.0
+offset_top = 1.0
+offset_right = 62.0
+offset_bottom = 16.0
+text = "Pew"
+
+[node name="PewL2" type="ColorRect" parent="Furniture"]
+mouse_filter = 2
+offset_left = 64.0
+offset_top = 128.0
+offset_right = 128.0
+offset_bottom = 140.0
+color = Color(0.48, 0.33, 0.20, 1)
+
+[node name="Label" type="Label" parent="Furniture/PewL2"]
+offset_left = 2.0
+offset_top = 1.0
+offset_right = 62.0
+offset_bottom = 16.0
+text = "Pew"
+
+[node name="PewR1" type="ColorRect" parent="Furniture"]
+mouse_filter = 2
+offset_left = 192.0
+offset_top = 96.0
+offset_right = 256.0
+offset_bottom = 108.0
+color = Color(0.48, 0.33, 0.20, 1)
+
+[node name="Label" type="Label" parent="Furniture/PewR1"]
+offset_left = 2.0
+offset_top = 1.0
+offset_right = 62.0
+offset_bottom = 16.0
+text = "Pew"
+
+[node name="PewR2" type="ColorRect" parent="Furniture"]
+mouse_filter = 2
+offset_left = 192.0
+offset_top = 128.0
+offset_right = 256.0
+offset_bottom = 140.0
+color = Color(0.48, 0.33, 0.20, 1)
+
+[node name="Label" type="Label" parent="Furniture/PewR2"]
+offset_left = 2.0
+offset_top = 1.0
+offset_right = 62.0
+offset_bottom = 16.0
+text = "Pew"
+
+[node name="Solids" type="StaticBody2D" parent="."]
+
+[node name="AltarCol" type="CollisionShape2D" parent="Solids"]
+position = Vector2(160, 48)
+shape = SubResource("Solid0")
+
+[node name="VerseStandCol" type="CollisionShape2D" parent="Solids"]
+position = Vector2(88, 60)
+shape = SubResource("Solid1")
+
+[node name="NathanCol" type="CollisionShape2D" parent="Solids"]
+position = Vector2(200, 60)
+shape = SubResource("Solid2")
+
+[node name="PewL1Col" type="CollisionShape2D" parent="Solids"]
+position = Vector2(96, 102)
+shape = SubResource("Solid3")
+
+[node name="PewL2Col" type="CollisionShape2D" parent="Solids"]
+position = Vector2(96, 134)
+shape = SubResource("Solid4")
+
+[node name="PewR1Col" type="CollisionShape2D" parent="Solids"]
+position = Vector2(224, 102)
+shape = SubResource("Solid5")
+
+[node name="PewR2Col" type="CollisionShape2D" parent="Solids"]
+position = Vector2(224, 134)
+shape = SubResource("Solid6")
+
+[node name="Interactables" type="Node2D" parent="."]
+
+[node name="PrayAltar" type="Area2D" parent="Interactables"]
+position = Vector2(152, 76)
+script = ExtResource("2_stub")
+prompt_text = "Pray"
+action_id = "pray"
+
+[node name="Shape" type="CollisionShape2D" parent="Interactables/PrayAltar"]
+shape = SubResource("InteractShape")
+
+[node name="ReadScripture" type="Area2D" parent="Interactables"]
+position = Vector2(88, 84)
+script = ExtResource("2_stub")
+prompt_text = "Read Scripture"
+action_id = "read_scripture"
+
+[node name="Shape" type="CollisionShape2D" parent="Interactables/ReadScripture"]
+shape = SubResource("InteractShape")
+
+[node name="TalkNathan" type="Area2D" parent="Interactables"]
+position = Vector2(200, 84)
+script = ExtResource("2_stub")
+prompt_text = "Talk to Pastor Nathan"
+action_id = "talk_nathan"
+
+[node name="Shape" type="CollisionShape2D" parent="Interactables/TalkNathan"]
+shape = SubResource("InteractShape")
+
+[node name="Worship" type="Area2D" parent="Interactables"]
+position = Vector2(168, 120)
+script = ExtResource("2_stub")
+prompt_text = "Worship"
+action_id = "worship"
+
+[node name="Shape" type="CollisionShape2D" parent="Interactables/Worship"]
+shape = SubResource("InteractShape")
+
+[node name="ExitDoor" parent="." instance=ExtResource("3_door")]
+position = Vector2(152, 168)
+prompt_text = "Leave"
+target_scene = "res://scenes/world/village.tscn"
+spawn_id = "church"
+
+[node name="Spawn_enter" type="Marker2D" parent="."]
+position = Vector2(152, 136)
+
+[node name="WarmTint" type="CanvasLayer" parent="."]
+layer = 5
+
+[node name="Tint" type="ColorRect" parent="WarmTint"]
+mouse_filter = 2
+offset_right = 320.0
+offset_bottom = 192.0
+color = Color(1, 0.86, 0.62, 0.10)

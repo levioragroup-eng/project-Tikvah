@@ -1,0 +1,160 @@
+[gd_scene load_steps=10 format=3]
+
+[ext_resource type="Script" path="res://scenes/interiors/interior.gd" id="1_int"]
+
+[ext_resource type="Script" path="res://scenes/interiors/stub_interactable.gd" id="2_stub"]
+
+[ext_resource type="PackedScene" path="res://scenes/systems/door_transition.tscn" id="3_door"]
+
+[sub_resource type="CircleShape2D" id="InteractShape"]
+radius = 8.0
+
+[sub_resource type="RectangleShape2D" id="Solid0"]
+size = Vector2(48, 24)
+
+[sub_resource type="RectangleShape2D" id="Solid1"]
+size = Vector2(48, 24)
+
+[sub_resource type="RectangleShape2D" id="Solid2"]
+size = Vector2(48, 24)
+
+[sub_resource type="RectangleShape2D" id="Solid3"]
+size = Vector2(16, 16)
+
+[sub_resource type="RectangleShape2D" id="Solid4"]
+size = Vector2(16, 16)
+
+[node name="MarketInterior" type="Node2D"]
+script = ExtResource("1_int")
+room = Rect2i(0, 0, 18, 10)
+floor_tile = 8
+wall_tile = 50
+door_gap = Rect2i(8, 9, 2, 1)
+
+[node name="Furniture" type="Node2D" parent="."]
+
+[node name="StallA" type="ColorRect" parent="Furniture"]
+mouse_filter = 2
+offset_left = 48.0
+offset_top = 32.0
+offset_right = 96.0
+offset_bottom = 56.0
+color = Color(0.78, 0.62, 0.32, 1)
+
+[node name="Label" type="Label" parent="Furniture/StallA"]
+offset_left = 2.0
+offset_top = 1.0
+offset_right = 46.0
+offset_bottom = 16.0
+text = "Stall"
+
+[node name="StallB" type="ColorRect" parent="Furniture"]
+mouse_filter = 2
+offset_left = 128.0
+offset_top = 32.0
+offset_right = 176.0
+offset_bottom = 56.0
+color = Color(0.78, 0.62, 0.32, 1)
+
+[node name="Label" type="Label" parent="Furniture/StallB"]
+offset_left = 2.0
+offset_top = 1.0
+offset_right = 46.0
+offset_bottom = 16.0
+text = "Stall"
+
+[node name="StallC" type="ColorRect" parent="Furniture"]
+mouse_filter = 2
+offset_left = 208.0
+offset_top = 32.0
+offset_right = 256.0
+offset_bottom = 56.0
+color = Color(0.78, 0.62, 0.32, 1)
+
+[node name="Label" type="Label" parent="Furniture/StallC"]
+offset_left = 2.0
+offset_top = 1.0
+offset_right = 46.0
+offset_bottom = 16.0
+text = "Stall"
+
+[node name="Crate1" type="ColorRect" parent="Furniture"]
+mouse_filter = 2
+offset_left = 32.0
+offset_top = 96.0
+offset_right = 48.0
+offset_bottom = 112.0
+color = Color(0.55, 0.40, 0.24, 1)
+
+[node name="Label" type="Label" parent="Furniture/Crate1"]
+offset_left = 2.0
+offset_top = 1.0
+offset_right = 14.0
+offset_bottom = 16.0
+text = "Crate"
+
+[node name="Crate2" type="ColorRect" parent="Furniture"]
+mouse_filter = 2
+offset_left = 240.0
+offset_top = 96.0
+offset_right = 256.0
+offset_bottom = 112.0
+color = Color(0.55, 0.40, 0.24, 1)
+
+[node name="Label" type="Label" parent="Furniture/Crate2"]
+offset_left = 2.0
+offset_top = 1.0
+offset_right = 14.0
+offset_bottom = 16.0
+text = "Crate"
+
+[node name="Solids" type="StaticBody2D" parent="."]
+
+[node name="StallACol" type="CollisionShape2D" parent="Solids"]
+position = Vector2(72, 44)
+shape = SubResource("Solid0")
+
+[node name="StallBCol" type="CollisionShape2D" parent="Solids"]
+position = Vector2(152, 44)
+shape = SubResource("Solid1")
+
+[node name="StallCCol" type="CollisionShape2D" parent="Solids"]
+position = Vector2(232, 44)
+shape = SubResource("Solid2")
+
+[node name="Crate1Col" type="CollisionShape2D" parent="Solids"]
+position = Vector2(40, 104)
+shape = SubResource("Solid3")
+
+[node name="Crate2Col" type="CollisionShape2D" parent="Solids"]
+position = Vector2(248, 104)
+shape = SubResource("Solid4")
+
+[node name="Interactables" type="Node2D" parent="."]
+
+[node name="Buy" type="Area2D" parent="Interactables"]
+position = Vector2(72, 72)
+script = ExtResource("2_stub")
+prompt_text = "Buy"
+action_id = "buy"
+
+[node name="Shape" type="CollisionShape2D" parent="Interactables/Buy"]
+shape = SubResource("InteractShape")
+
+[node name="Sell" type="Area2D" parent="Interactables"]
+position = Vector2(152, 72)
+script = ExtResource("2_stub")
+prompt_text = "Sell"
+action_id = "sell"
+
+[node name="Shape" type="CollisionShape2D" parent="Interactables/Sell"]
+shape = SubResource("InteractShape")
+
+[node name="ExitDoor" parent="." instance=ExtResource("3_door")]
+position = Vector2(136, 136)
+prompt_text = "Leave"
+target_scene = "res://scenes/world/village.tscn"
+spawn_id = "market"
+
+[node name="Spawn_enter" type="Marker2D" parent="."]
+position = Vector2(136, 104)

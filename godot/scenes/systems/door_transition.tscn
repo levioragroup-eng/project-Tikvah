@@ -1,0 +1,12 @@
+[gd_scene load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://scripts/systems/door_transition.gd" id="1_door"]
+
+[sub_resource type="RectangleShape2D" id="DoorShape"]
+size = Vector2(20, 20)
+
+[node name="DoorTransition" type="Area2D"]
+script = ExtResource("1_door")
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="."]
+shape = SubResource("DoorShape")

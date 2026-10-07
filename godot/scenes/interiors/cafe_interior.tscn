@@ -1,0 +1,141 @@
+[gd_scene load_steps=8 format=3]
+
+[ext_resource type="Script" path="res://scenes/interiors/interior.gd" id="1_int"]
+
+[ext_resource type="Script" path="res://scenes/interiors/stub_interactable.gd" id="2_stub"]
+
+[ext_resource type="PackedScene" path="res://scenes/systems/door_transition.tscn" id="3_door"]
+
+[sub_resource type="CircleShape2D" id="InteractShape"]
+radius = 8.0
+
+[sub_resource type="RectangleShape2D" id="Solid0"]
+size = Vector2(96, 16)
+
+[sub_resource type="RectangleShape2D" id="Solid1"]
+size = Vector2(20, 20)
+
+[sub_resource type="RectangleShape2D" id="Solid2"]
+size = Vector2(20, 20)
+
+[node name="CafeInterior" type="Node2D"]
+script = ExtResource("1_int")
+room = Rect2i(0, 0, 16, 10)
+floor_tile = 52
+wall_tile = 50
+door_gap = Rect2i(7, 9, 2, 1)
+
+[node name="Furniture" type="Node2D" parent="."]
+
+[node name="Counter" type="ColorRect" parent="Furniture"]
+mouse_filter = 2
+offset_left = 80.0
+offset_top = 32.0
+offset_right = 176.0
+offset_bottom = 48.0
+color = Color(0.45, 0.30, 0.18, 1)
+
+[node name="Label" type="Label" parent="Furniture/Counter"]
+offset_left = 2.0
+offset_top = 1.0
+offset_right = 94.0
+offset_bottom = 16.0
+text = "Counter"
+
+[node name="Table1" type="ColorRect" parent="Furniture"]
+mouse_filter = 2
+offset_left = 64.0
+offset_top = 80.0
+offset_right = 84.0
+offset_bottom = 100.0
+color = Color(0.55, 0.38, 0.24, 1)
+
+[node name="Label" type="Label" parent="Furniture/Table1"]
+offset_left = 2.0
+offset_top = 1.0
+offset_right = 18.0
+offset_bottom = 16.0
+text = "Table"
+
+[node name="Table2" type="ColorRect" parent="Furniture"]
+mouse_filter = 2
+offset_left = 172.0
+offset_top = 80.0
+offset_right = 192.0
+offset_bottom = 100.0
+color = Color(0.55, 0.38, 0.24, 1)
+
+[node name="Label" type="Label" parent="Furniture/Table2"]
+offset_left = 2.0
+offset_top = 1.0
+offset_right = 18.0
+offset_bottom = 16.0
+text = "Table"
+
+[node name="Chair1" type="ColorRect" parent="Furniture"]
+mouse_filter = 2
+offset_left = 66.0
+offset_top = 104.0
+offset_right = 82.0
+offset_bottom = 114.0
+color = Color(0.60, 0.45, 0.30, 1)
+
+[node name="Chair2" type="ColorRect" parent="Furniture"]
+mouse_filter = 2
+offset_left = 174.0
+offset_top = 104.0
+offset_right = 190.0
+offset_bottom = 114.0
+color = Color(0.60, 0.45, 0.30, 1)
+
+[node name="Solids" type="StaticBody2D" parent="."]
+
+[node name="CounterCol" type="CollisionShape2D" parent="Solids"]
+position = Vector2(128, 40)
+shape = SubResource("Solid0")
+
+[node name="Table1Col" type="CollisionShape2D" parent="Solids"]
+position = Vector2(74, 90)
+shape = SubResource("Solid1")
+
+[node name="Table2Col" type="CollisionShape2D" parent="Solids"]
+position = Vector2(182, 90)
+shape = SubResource("Solid2")
+
+[node name="Interactables" type="Node2D" parent="."]
+
+[node name="Cook" type="Area2D" parent="Interactables"]
+position = Vector2(128, 64)
+script = ExtResource("2_stub")
+prompt_text = "Cook"
+action_id = "cook"
+
+[node name="Shape" type="CollisionShape2D" parent="Interactables/Cook"]
+shape = SubResource("InteractShape")
+
+[node name="Eat" type="Area2D" parent="Interactables"]
+position = Vector2(74, 108)
+script = ExtResource("2_stub")
+prompt_text = "Eat"
+action_id = "eat"
+
+[node name="Shape" type="CollisionShape2D" parent="Interactables/Eat"]
+shape = SubResource("InteractShape")
+
+[node name="Gift" type="Area2D" parent="Interactables"]
+position = Vector2(182, 108)
+script = ExtResource("2_stub")
+prompt_text = "Give a meal"
+action_id = "gift"
+
+[node name="Shape" type="CollisionShape2D" parent="Interactables/Gift"]
+shape = SubResource("InteractShape")
+
+[node name="ExitDoor" parent="." instance=ExtResource("3_door")]
+position = Vector2(120, 136)
+prompt_text = "Leave"
+target_scene = "res://scenes/world/village.tscn"
+spawn_id = "cafe"
+
+[node name="Spawn_enter" type="Marker2D" parent="."]
+position = Vector2(120, 104)
