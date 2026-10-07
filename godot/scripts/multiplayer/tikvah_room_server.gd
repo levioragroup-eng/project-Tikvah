@@ -238,6 +238,18 @@ func _on_peer_disconnected(peer_id: int) -> void:
 func _on_message(peer_id: int, msg: Dictionary) -> void:
 	var mtype := str(msg.get("t", ""))
 	match mtype:
+		"create":
+			var new_code := create_room()
+			if new_code.is_empty():
+				_send_to(peer_id, {"t": "error", "code": "create_failed",
+					"msg": "Could not create a room right now."})
+			else:
+				var cres := _join_room(new_code, peer_id,
+					_sanitize_name(msg.get("name", "")),
+					_sanitize_sprite(msg.get("sprite", 0)),
+					str(msg.get("uuid", "")))
+				if not bool(cres["ok"]):
+					_send_to(peer_id, {"t": "error", "code": cres["code"], "msg": cres["msg"]})
 		"hello":
 			_hello_wait.erase(peer_id)
 			var code := _normalize_code(msg.get("room", ""))

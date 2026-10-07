@@ -28,6 +28,8 @@ extends Node2D
 ##   Market<->Forest, Home<->Forest. Multiple routes, graph has cycles.
 
 const PT := preload("res://scripts/world/placeholder_tiles.gd")
+const GT := preload("res://scripts/world/game_tiles.gd")
+const GW := preload("res://scripts/world/game_wiring.gd")
 
 const MAP_W := 80
 const MAP_H := 60
@@ -68,12 +70,17 @@ var _day_phase := "morning"
 
 func _ready() -> void:
 	_rng.seed = 777123
-	var ts := PT.make_tileset()
+	var ts := GT.make_tileset()
 	for child in get_children():
 		if child is TileMapLayer:
 			_layers[child.name] = child
 			child.tile_set = ts
+			# Only the invisible Collision layer participates in physics.
+			# (Tile 48 carries a physics polygon; visual layers painting it
+			# must NOT collide, else the plaza becomes an invisible wall.)
+			child.collision_enabled = (child.name == "Collision")
 	_paint_all()
+	GW.wire(self)
 
 
 func _process(delta: float) -> void:

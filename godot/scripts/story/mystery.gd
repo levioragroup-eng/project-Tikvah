@@ -129,6 +129,11 @@ func discovered_clues() -> Array:
 	return out
 
 
+## Has this clue been discovered?
+func is_clue_found(clue_id: String) -> bool:
+	return _flags.has(clue_id)
+
+
 ## Has the revelation already fired?
 func revelation_fired() -> bool:
 	return _revealed

@@ -38,6 +38,13 @@ var _peer: WebSocketMultiplayerPeer = null
 var _manual_close := false
 var _reconnects_left := 1
 var _reconnect_in := -1.0
+var _want_create := false
+
+
+func create_room(p_url: String, p_name: String, p_sprite: int, p_uuid: String = "") -> void:
+	"""Connect and ask the server to create a fresh private room."""
+	_want_create = true
+	connect_to(p_url, "", p_name, p_sprite, p_uuid)
 
 
 func connect_to(p_url: String, p_room_code: String, p_name: String, p_sprite: int, p_uuid: String = "") -> void:
@@ -110,9 +117,14 @@ func send_story(flag: String, value: Variant = true) -> void:
 
 
 func _on_peer_connected(peer_id: int) -> void:
-	# Server is id 1; send hello and wait for welcome.
-	_send({"t": "hello", "room": room_code, "name": player_name,
-		"sprite": sprite_id, "uuid": my_uuid})
+	# Server is id 1; send hello (or create) and wait for welcome.
+	if _want_create:
+		_want_create = false
+		_send({"t": "create", "name": player_name,
+			"sprite": sprite_id, "uuid": my_uuid})
+	else:
+		_send({"t": "hello", "room": room_code, "name": player_name,
+			"sprite": sprite_id, "uuid": my_uuid})
 	connected.emit()
 
 

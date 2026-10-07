@@ -65,6 +65,11 @@ func reset() -> void:
 	_done = false
 
 
+## Force the restored state (e.g. when the server says the garden is done).
+func force_restored() -> void:
+	_finish()
+
+
 func _finish() -> void:
 	if _done:
 		return
