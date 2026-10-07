@@ -1,0 +1,131 @@
+[gd_scene load_steps=4 format=3]
+
+[ext_resource type="Script" path="res://scripts/ui/notebook.gd" id="1_nb"]
+
+[sub_resource type="StyleBoxFlat" id="parchment"]
+bg_color = Color(0.94902, 0.898039, 0.772549, 1)
+border_color = Color(0.788235, 0.643137, 0.290196, 1)
+border_width_left = 3
+border_width_top = 3
+border_width_right = 3
+border_width_bottom = 3
+corner_radius_top_left = 10
+corner_radius_top_right = 10
+corner_radius_bottom_right = 10
+corner_radius_bottom_left = 10
+
+[sub_resource type="StyleBoxFlat" id="parchment_dark"]
+bg_color = Color(0.905882, 0.843137, 0.694118, 1)
+border_color = Color(0.788235, 0.643137, 0.290196, 1)
+border_width_bottom = 2
+content_margin_left = 8.0
+content_margin_top = 6.0
+content_margin_right = 8.0
+content_margin_bottom = 6.0
+
+[node name="Notebook" type="Control"]
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+script = ExtResource("1_nb")
+
+[node name="Panel" type="PanelContainer" parent="."]
+unique_name_in_owner = true
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -280.0
+offset_top = -150.0
+offset_right = 280.0
+offset_bottom = 150.0
+theme_override_styles/panel = SubResource("parchment")
+
+[node name="Margin" type="MarginContainer" parent="Panel"]
+theme_override_constants/margin_left = 14
+theme_override_constants/margin_top = 10
+theme_override_constants/margin_right = 14
+theme_override_constants/margin_bottom = 10
+
+[node name="VBox" type="VBoxContainer" parent="Panel/Margin"]
+theme_override_constants/separation = 8
+
+[node name="Header" type="HBoxContainer" parent="Panel/Margin/VBox"]
+theme_override_constants/separation = 8
+
+[node name="Title" type="Label" parent="Panel/Margin/VBox/Header"]
+unique_name_in_owner = true
+theme_override_colors/font_color = Color(0.321569, 0.243137, 0.12549, 1)
+theme_override_font_sizes/font_size = 22
+size_flags_horizontal = 3
+text = "📓 TIKVAH JOURNAL"
+
+[node name="CloseButton" type="Button" parent="Panel/Margin/VBox/Header"]
+unique_name_in_owner = true
+text = "✕"
+
+[node name="Tabs" type="TabContainer" parent="Panel/Margin/VBox"]
+unique_name_in_owner = true
+size_flags_vertical = 3
+theme_override_styles/panel = SubResource("parchment_dark")
+
+[node name="Mysteries" type="Control" parent="Panel/Margin/VBox/Tabs"]
+
+[node name="MysteriesBox" type="VBoxContainer" parent="Panel/Margin/VBox/Tabs/Mysteries"]
+unique_name_in_owner = true
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+theme_override_constants/separation = 6
+
+[node name="Clues" type="Control" parent="Panel/Margin/VBox/Tabs"]
+
+[node name="CluesScroll" type="ScrollContainer" parent="Panel/Margin/VBox/Tabs/Clues"]
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+
+[node name="CluesBox" type="VBoxContainer" parent="Panel/Margin/VBox/Tabs/Clues/CluesScroll"]
+unique_name_in_owner = true
+size_flags_horizontal = 3
+theme_override_constants/separation = 6
+
+[node name="Scripture" type="Control" parent="Panel/Margin/VBox/Tabs"]
+
+[node name="ScriptureBox" type="VBoxContainer" parent="Panel/Margin/VBox/Tabs/Scripture"]
+unique_name_in_owner = true
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+theme_override_constants/separation = 8
+
+[node name="DailyLabel" type="Label" parent="Panel/Margin/VBox/Tabs/Scripture/ScriptureBox"]
+theme_override_colors/font_color = Color(0.321569, 0.243137, 0.12549, 1)
+theme_override_font_sizes/font_size = 14
+text = "📖 Daily Verse"
+
+[node name="VerseRef" type="Label" parent="Panel/Margin/VBox/Tabs/Scripture/ScriptureBox"]
+unique_name_in_owner = true
+theme_override_colors/font_color = Color(0.321569, 0.243137, 0.12549, 1)
+theme_override_font_sizes/font_size = 18
+text = "…"
+
+[node name="VerseText" type="Label" parent="Panel/Margin/VBox/Tabs/Scripture/ScriptureBox"]
+unique_name_in_owner = true
+theme_override_colors/font_color = Color(0.239216, 0.180392, 0.0980392, 1)
+theme_override_font_sizes/font_size = 15
+size_flags_vertical = 3
+autowrap_mode = 2
+text = "…"
+
+[node name="ToggleButton" type="Button" parent="."]
+unique_name_in_owner = true
+anchors_preset = 2
+anchor_top = 1.0
+anchor_bottom = 1.0
+offset_left = 8.0
+offset_top = -44.0
+offset_right = 52.0
+offset_bottom = -8.0
+text = "📓"
